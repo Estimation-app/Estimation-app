@@ -233,7 +233,7 @@ export default function App() {
               type: "text",
               text:
                 "Tu regardes une photo d'un objet à revendre d'occasion en France. Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
-                '{"objet": "nom précis de l\'objet, marque et modèle si visible", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé"}',
+                  '{"objet": "nom précis de l\'objet, marque et modèle si visible", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (sans détails de couleur/état précis)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé"}',
             },
           ],
         },
@@ -243,9 +243,10 @@ export default function App() {
       setStatus("pricing");
       let pricing;
       try {
-        const { results, prices } = await fetchMarketPrices(identification.objet);
+        const searchTerm = identification.recherche || identification.objet;
+        const { results, prices } = await fetchMarketPrices(searchTerm);
 
-        if (prices.length >= 2) {
+        if (prices.length >= 1) {
           const prix_bas = prices[0];
           const prix_haut = prices[prices.length - 1];
 
