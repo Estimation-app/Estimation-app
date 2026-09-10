@@ -1,8 +1,6 @@
 import { useState, useRef } from "react";
 import { Camera, Upload, Loader2, Tag, RotateCcw } from "lucide-react";
 
-// Serveur relais (Cloudflare Worker) qui cache la clé SerpAPI et évite le
-// blocage CORS d'un appel direct depuis le navigateur.
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
 // blocage CORS d'un appel direct depuis le navigateur.
 const PROXY_URL = "https://dark-lake-8ef1.dyloo999.workers.dev";
@@ -33,9 +31,6 @@ export default function App() {
       return;
     }
 
-    // Méthode principale: createImageBitmap redimensionne directement depuis
-    // le fichier, sans jamais charger l'image originale (potentiellement
-    // énorme) en mémoire complète — plus fiable que passer par Image()/blob.
     try {
       if (window.createImageBitmap) {
         const bitmap = await createImageBitmap(file, {
@@ -61,8 +56,6 @@ export default function App() {
       // on tente le repli simple ci-dessous
     }
 
-    // Repli: lecture directe sans redimensionnement (si createImageBitmap
-    // n'est pas disponible ou a échoué).
     const reader = new FileReader();
     reader.onerror = () => {
       setError("Impossible de lire le fichier sélectionné.");
@@ -86,9 +79,6 @@ export default function App() {
   }
 
   async function readBody(res) {
-    // Repli: dans certains navigateurs/webviews mobiles, Response.text()
-    // renvoie une chaîne vide sur des réponses en streaming. On lit le
-    // flux manuellement en repli.
     if (res.body && res.body.getReader) {
       try {
         const reader = res.body.getReader();
@@ -130,8 +120,6 @@ export default function App() {
 
     const rawText = await readBody(res);
 
-    // Tentative de parse JSON classique, en ignorant un éventuel préfixe
-    // parasite avant la première accolade.
     let data = null;
     const braceStart = rawText.indexOf("{");
     if (braceStart !== -1) {
@@ -156,9 +144,6 @@ export default function App() {
       if (text) return text;
     }
 
-    // Repli: la réponse est tronquée ou mal formée (ex: début de la trame
-    // perdu côté réseau). On extrait directement le champ "text" par motif,
-    // sans dépendre de la structure JSON complète.
     const match = rawText.match(/"text"\s*:\s*"((?:\\.|[^"\\])*)"/);
     if (match) {
       try {
@@ -188,10 +173,10 @@ export default function App() {
     }
   }
 
-  async function fetchMarketPrices(query) {
-    const url =
-      PROXY_URL + "/prices?q=" + encodeURIComponent(query + " occasion");
-
+  // Interroge le serveur relais pour une requête donnée, renvoie les prix
+  // trouvés (liste vide si rien de concluant — pas d'exception ici).
+  async function fetchMarketPricesOnce(query) {
+    const url = PROXY_URL + "/prices?q=" + encodeURIComponent(query);
     let res;
     try {
       res = await fetch(url);
@@ -212,8 +197,18 @@ export default function App() {
       .map((r) => r.extracted_price)
       .filter((p) => typeof p === "number" && p > 0)
       .sort((a, b) => a - b);
-
     return { results: results.slice(0, 6), prices };
+  }
+
+  // Deux tentatives: d'abord un terme générique (marché du neuf, plus de
+  // résultats sur Google Shopping), puis en repli avec "occasion" ajouté
+  // si la première ne renvoie rien.
+  async function fetchMarketPrices(query) {
+    const first = await fetchMarketPricesOnce(query);
+    if (first.prices.length >= 1) return { ...first, queryUsed: query };
+
+    const second = await fetchMarketPricesOnce(query + " occasion");
+    return { ...second, queryUsed: query + " occasion" };
   }
 
   async function estimate() {
@@ -233,7 +228,7 @@ export default function App() {
               type: "text",
               text:
                 "Tu regardes une photo d'un objet à revendre d'occasion en France. Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
-                  '{"objet": "nom précis de l\'objet, marque et modèle si visible", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (sans détails de couleur/état précis)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé"}',
+                '{"objet": "nom précis de l\'objet, marque et modèle si visible", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (sans détails de couleur/état précis)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé"}',
             },
           ],
         },
@@ -255,8 +250,8 @@ export default function App() {
               role: "user",
               content:
                 `Objet: ${identification.objet}, état: ${identification.etat_note}. ` +
-                `Prix trouvés sur des annonces réelles en ligne: ${prices.join(", ")} €. ` +
-                "Donne une estimation pour la revente en brocante/vide-grenier (souvent moins cher qu'en ligne) et un conseil de vente pratique en une phrase. " +
+                `Prix trouvés en ligne pour ce type de produit (référence marché du neuf/quasi-neuf): ${prices.join(", ")} €. ` +
+                "Donne une estimation pour la revente d'occasion en brocante/vide-grenier (généralement 40-70% moins cher que le neuf) et un conseil de vente pratique en une phrase. " +
                 'Réponds UNIQUEMENT en JSON: {"prix_brocante": "...", "conseil": "..."}',
             },
           ]);
@@ -275,7 +270,6 @@ export default function App() {
           throw new Error("Pas assez d'annonces trouvées pour cet objet.");
         }
       } catch (marketError) {
-        // Repli: l'IA estime "de mémoire" si SerpAPI échoue ou ne trouve rien.
         const priceText = await callClaude([
           {
             role: "user",
