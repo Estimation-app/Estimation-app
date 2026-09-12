@@ -198,7 +198,7 @@ export default function App() {
       .map((r) => r.extracted_price)
       .filter((p) => typeof p === "number" && p > 0)
       .sort((a, b) => a - b);
-    return { results: results.slice(0, 6), prices };
+    return { results: results.slice(0, 12), prices };
   }
 
   // Deux tentatives: d'abord un terme générique (marché du neuf, plus de
@@ -210,6 +210,27 @@ export default function App() {
 
     const second = await fetchMarketPricesOnce(query + " occasion");
     return { ...second, queryUsed: query + " occasion" };
+  }
+
+  // Comparateur multi-vendeurs pour un produit précis (product_id). Plus
+  // fiable qu'une recherche shopping classique car Google a déjà associé
+  // tous les vendeurs au même produit exact. Ne lève jamais d'exception:
+  // retourne une liste vide si indisponible, pour permettre un repli propre.
+  async function fetchProductSellers(productId) {
+    if (!productId) return { results: [], prices: [] };
+    try {
+      const res = await fetch(PROXY_URL + "/product?id=" + encodeURIComponent(productId));
+      const data = await res.json();
+      if (data.error) return { results: [], prices: [] };
+      const results = data.results || [];
+      const prices = results
+        .map((r) => r.extracted_price)
+        .filter((p) => typeof p === "number" && p > 0)
+        .sort((a, b) => a - b);
+      return { results, prices };
+    } catch (e) {
+      return { results: [], prices: [] };
+    }
   }
 
   async function estimate() {
@@ -284,18 +305,36 @@ export default function App() {
             );
           }
 
-          const prix_neuf_bas = relevantPrices[0];
-          const prix_neuf_haut = relevantPrices[relevantPrices.length - 1];
+          // Tentative d'upgrade: comparateur multi-vendeurs Google pour le
+          // produit précis (plus fiable qu'une poignée d'annonces shopping
+          // éparses). On prend le product_id de la meilleure annonce
+          // retenue. Repli silencieux sur relevantResults/relevantPrices
+          // si indisponible pour ce produit.
+          const productId = relevantResults.find((r) => r.product_id)?.product_id;
+          const sellerData = await fetchProductSellers(productId);
+
+          const usedResults = sellerData.prices.length >= 1 ? sellerData.results : relevantResults;
+          const usedPrices = sellerData.prices.length >= 1 ? sellerData.prices : relevantPrices;
+          const usedSource =
+            sellerData.prices.length >= 1
+              ? "comparateur multi-vendeurs (" + usedPrices.length + " vendeur(s) pour ce produit exact)"
+              : "estimation basée sur " + usedPrices.length + " prix neuf(s) correspondant vraiment au produit";
+
+          const prix_neuf_bas = usedPrices[0];
+          const prix_neuf_haut = usedPrices[usedPrices.length - 1];
 
           const conseilText = await callClaude([
             {
               role: "user",
               content:
                 `Objet: ${identification.objet}, état: ${identification.etat_note}. ` +
-                `Prix neufs trouvés en ligne pour ce produit précis (référence marché, pas spécifiquement occasion): ${relevantPrices.join(", ")} €. ` +
+                `Prix neufs trouvés en ligne pour ce produit précis (référence marché, pas spécifiquement occasion): ${usedPrices.join(", ")} €` +
+                ` (${usedPrices.length} annonce(s) au total). ` +
                 "À partir de ce prix neuf de référence et de l'état de l'objet, estime une fourchette de revente d'OCCASION réaliste (Leboncoin/Vinted), " +
                 "une estimation pour la revente en brocante/vide-grenier (souvent moins cher), et un conseil de vente pratique en une phrase. " +
-                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "prix_brocante": "...", "conseil": "..."}',
+                "Compare aussi ce prix neuf trouvé à ta connaissance générale du prix de vente officiel/habituel de ce produit: s'il te semble anormalement bas ou haut " +
+                "(ex: promo exceptionnelle, erreur de prix, produit différent malgré le nom), signale-le brièvement dans \"alerte\" (sinon renvoie une chaîne vide). " +
+                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "prix_brocante": "...", "conseil": "...", "alerte": "..."}',
             },
           ]);
           const extra = extractJson(conseilText);
@@ -307,10 +346,11 @@ export default function App() {
             prix_neuf_haut,
             prix_brocante: extra.prix_brocante,
             conseil: extra.conseil,
-            confiance: relevantPrices.length >= 4 ? "haute" : "moyenne",
-            source:
-              "estimation basée sur " + relevantPrices.length + " prix neuf(s) correspondant vraiment au produit",
-            listings: relevantResults,
+            alerte: extra.alerte || null,
+            confiance:
+              usedPrices.length >= 4 ? "haute" : usedPrices.length >= 2 ? "moyenne" : "basse",
+            source: usedSource,
+            listings: usedResults,
           };
         } else {
           throw new Error("Pas assez d'annonces trouvées pour cet objet.");
@@ -615,6 +655,24 @@ export default function App() {
                   {result.prix_neuf_bas != null &&
                     ` (basée sur un neuf à ${result.prix_neuf_bas}–${result.prix_neuf_haut} € en ligne)`}
                 </div>
+
+                {result.alerte && (
+                  <div
+                    className="mono"
+                    style={{
+                      fontSize: 12,
+                      color: "#B4432C",
+                      background: "#F6E4DE",
+                      border: "1px solid #E0B5A8",
+                      borderRadius: 3,
+                      padding: "10px 12px",
+                      marginBottom: 14,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    ⚠ {result.alerte}
+                  </div>
+                )}
 
                 {result.listings && result.listings.length > 0 && (
                   <div
