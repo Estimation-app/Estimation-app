@@ -7,6 +7,7 @@ const PROXY_URL = "https://dark-lake-8ef1.dyloo999.workers.dev";
 
 export default function App() {
   const [image, setImage] = useState(null); // { dataUrl, mediaType, base64 }
+  const [details, setDetails] = useState(""); // précisions manuelles optionnelles
   const [status, setStatus] = useState("idle"); // idle | analyzing | pricing | done | error
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -228,7 +229,10 @@ export default function App() {
               type: "text",
               text:
                 "Tu regardes une photo d'un objet à revendre d'occasion en France. Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
-                '{"objet": "nom précis de l\'objet, marque et modèle si visible", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (sans détails de couleur/état précis)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé"}',
+                '{"objet": "nom précis de l\'objet, marque et modèle si visible", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (sans détails de couleur/état précis)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé"}' +
+                (details.trim()
+                  ? ` L'utilisateur précise en plus: "${details.trim()}". Utilise ces précisions en priorité sur ce que tu vois sur la photo si elles se contredisent (ex: la contenance exacte, un défaut caché), et intègre-les dans "objet" et "recherche".`
+                  : ""),
             },
           ],
         },
@@ -342,6 +346,7 @@ export default function App() {
 
   function reset() {
     setImage(null);
+    setDetails("");
     setResult(null);
     setError(null);
     setStatus("idle");
@@ -505,6 +510,34 @@ export default function App() {
             {image.debug && (
               <div className="mono" style={{ fontSize: 11, color: "#A99C82" }}>
                 debug: {image.debug} · type: {image.mediaType}
+              </div>
+            )}
+
+            {status === "idle" && (
+              <div>
+                <label
+                  className="mono"
+                  style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 6 }}
+                >
+                  Précisions (optionnel) — contenance, état, modèle exact...
+                </label>
+                <textarea
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  placeholder="ex: flacon de 100ml, léger éclat sur le bord"
+                  rows={2}
+                  style={{
+                    width: "100%",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 13,
+                    padding: "10px 12px",
+                    borderRadius: 3,
+                    border: "1px solid #B7AC96",
+                    background: "#F6F1E3",
+                    color: "#2B241C",
+                    resize: "vertical",
+                  }}
+                />
               </div>
             )}
 
