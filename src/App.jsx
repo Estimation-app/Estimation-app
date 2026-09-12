@@ -212,27 +212,6 @@ export default function App() {
     return { ...second, queryUsed: query + " occasion" };
   }
 
-  // Comparateur multi-vendeurs pour un produit précis (product_id). Plus
-  // fiable qu'une recherche shopping classique car Google a déjà associé
-  // tous les vendeurs au même produit exact. Ne lève jamais d'exception:
-  // retourne une liste vide si indisponible, pour permettre un repli propre.
-  async function fetchProductSellers(productId) {
-    if (!productId) return { results: [], prices: [] };
-    try {
-      const res = await fetch(PROXY_URL + "/product?id=" + encodeURIComponent(productId));
-      const data = await res.json();
-      if (data.error) return { results: [], prices: [] };
-      const results = data.results || [];
-      const prices = results
-        .map((r) => r.extracted_price)
-        .filter((p) => typeof p === "number" && p > 0)
-        .sort((a, b) => a - b);
-      return { results, prices };
-    } catch (e) {
-      return { results: [], prices: [] };
-    }
-  }
-
   async function estimate() {
     if (!image) return;
     setError(null);
@@ -305,20 +284,10 @@ export default function App() {
             );
           }
 
-          // Tentative d'upgrade: comparateur multi-vendeurs Google pour le
-          // produit précis (plus fiable qu'une poignée d'annonces shopping
-          // éparses). On prend le product_id de la meilleure annonce
-          // retenue. Repli silencieux sur relevantResults/relevantPrices
-          // si indisponible pour ce produit.
-          const productId = relevantResults.find((r) => r.product_id)?.product_id;
-          const sellerData = await fetchProductSellers(productId);
-
-          const usedResults = sellerData.prices.length >= 1 ? sellerData.results : relevantResults;
-          const usedPrices = sellerData.prices.length >= 1 ? sellerData.prices : relevantPrices;
+          const usedResults = relevantResults;
+          const usedPrices = relevantPrices;
           const usedSource =
-            sellerData.prices.length >= 1
-              ? "comparateur multi-vendeurs (" + usedPrices.length + " vendeur(s) pour ce produit exact)"
-              : "estimation basée sur " + usedPrices.length + " prix neuf(s) correspondant vraiment au produit";
+            "estimation basée sur " + usedPrices.length + " prix neuf(s) correspondant vraiment au produit";
 
           const prix_neuf_bas = usedPrices[0];
           const prix_neuf_haut = usedPrices[usedPrices.length - 1];
