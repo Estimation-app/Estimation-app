@@ -28,7 +28,8 @@ export default function App() {
   // (limité, propre à cet appareil) comme avant.
   const [user, setUser] = useState(null);
   const [authEmail, setAuthEmail] = useState("");
-  const [authStatus, setAuthStatus] = useState("idle"); // idle | sending | sent
+  const [authPassword, setAuthPassword] = useState("");
+  const [authStatus, setAuthStatus] = useState("idle"); // idle | sending | sent | signup_sent
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
@@ -53,6 +54,38 @@ export default function App() {
     } else {
       setAuthStatus("sent");
     }
+  }
+
+  async function signUpWithPassword() {
+    if (!authEmail.trim() || !authPassword) return;
+    setAuthStatus("sending");
+    setAuthError(null);
+    const { error } = await supabase.auth.signUp({
+      email: authEmail.trim(),
+      password: authPassword,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) {
+      setAuthError(error.message);
+      setAuthStatus("idle");
+    } else {
+      setAuthStatus("signup_sent");
+    }
+  }
+
+  async function signInWithPassword() {
+    if (!authEmail.trim() || !authPassword) return;
+    setAuthStatus("sending");
+    setAuthError(null);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: authEmail.trim(),
+      password: authPassword,
+    });
+    if (error) {
+      setAuthError(error.message);
+      setAuthStatus("idle");
+    }
+    // en cas de succès, onAuthStateChange met "user" à jour automatiquement
   }
 
   async function signOut() {
@@ -956,36 +989,90 @@ export default function App() {
                 <p style={{ fontSize: 12, color: "#4A4335", margin: 0 }}>
                   Lien envoyé ! Vérifie ta boîte mail ({authEmail}) et clique dessus pour te connecter.
                 </p>
+              ) : authStatus === "signup_sent" ? (
+                <p style={{ fontSize: 12, color: "#4A4335", margin: 0 }}>
+                  Compte créé ! Vérifie ta boîte mail ({authEmail}) et clique sur le lien de confirmation pour
+                  activer ton compte, puis reviens te connecter avec ton mot de passe.
+                </p>
               ) : (
                 <div>
                   <p style={{ fontSize: 12, color: "#4A4335", marginTop: 0, marginBottom: 8 }}>
                     Connecte-toi pour un historique illimité, synchronisé entre appareils (optionnel).
                   </p>
+                  <input
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="ton@email.com"
+                    style={{
+                      width: "100%",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 12,
+                      padding: "8px 10px",
+                      borderRadius: 3,
+                      border: "1px solid #B7AC96",
+                      background: "#fff",
+                      marginBottom: 6,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="mot de passe"
+                    style={{
+                      width: "100%",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 12,
+                      padding: "8px 10px",
+                      borderRadius: 3,
+                      border: "1px solid #B7AC96",
+                      background: "#fff",
+                      marginBottom: 8,
+                      boxSizing: "border-box",
+                    }}
+                  />
                   <div style={{ display: "flex", gap: 6 }}>
-                    <input
-                      type="email"
-                      value={authEmail}
-                      onChange={(e) => setAuthEmail(e.target.value)}
-                      placeholder="ton@email.com"
-                      style={{
-                        flex: 1,
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: 12,
-                        padding: "8px 10px",
-                        borderRadius: 3,
-                        border: "1px solid #B7AC96",
-                        background: "#fff",
-                      }}
-                    />
                     <button
                       className="btn-ghost"
-                      onClick={sendMagicLink}
+                      onClick={signInWithPassword}
                       disabled={authStatus === "sending"}
-                      style={{ flexShrink: 0 }}
+                      style={{ flex: 1, justifyContent: "center" }}
                     >
-                      <Mail size={14} /> lien
+                      se connecter
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      onClick={signUpWithPassword}
+                      disabled={authStatus === "sending"}
+                      style={{ flex: 1, justifyContent: "center" }}
+                    >
+                      créer un compte
                     </button>
                   </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      margin: "10px 0",
+                      color: "#8A7C63",
+                      fontSize: 11,
+                    }}
+                  >
+                    <div style={{ flex: 1, height: 1, background: "#C9BD9F" }} />
+                    ou
+                    <div style={{ flex: 1, height: 1, background: "#C9BD9F" }} />
+                  </div>
+                  <button
+                    className="btn-ghost"
+                    onClick={sendMagicLink}
+                    disabled={authStatus === "sending" || !authEmail.trim()}
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
+                    <Mail size={14} /> recevoir un lien de connexion (sans mot de passe)
+                  </button>
                   {authError && (
                     <p style={{ fontSize: 11, color: "#B4432C", marginTop: 6, marginBottom: 0 }}>{authError}</p>
                   )}
