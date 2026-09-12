@@ -1,9 +1,19 @@
-import { useState, useRef } from "react";
-import { Camera, Upload, Loader2, Tag, RotateCcw } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut } from "lucide-react";
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
 // blocage CORS d'un appel direct depuis le navigateur.
 const PROXY_URL = "https://dark-lake-8ef1.dyloo999.workers.dev";
+
+// Identifiants Supabase (comptes + base de données). Contrairement aux clés
+// SerpAPI/Anthropic, la clé "anon" est PUBLIQUE par conception — elle est
+// protégée par les règles de sécurité (RLS) côté base de données, pas en
+// la cachant. Remplace ces deux valeurs par les tiennes (Settings > API
+// dans ton projet Supabase).
+const SUPABASE_URL = "https://heykndklprjuvooqztmi.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_HFixMx_zGtcvHw6wqAUKBA_66uuJkBZ";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default function App() {
   const [image, setImage] = useState(null); // { dataUrl, mediaType, base64 }
@@ -12,6 +22,142 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
+
+  // Compte utilisateur (optionnel) — permet un historique illimité,
+  // synchronisé entre appareils. Sans compte, l'historique reste local
+  // (limité, propre à cet appareil) comme avant.
+  const [user, setUser] = useState(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authStatus, setAuthStatus] = useState("idle"); // idle | sending | sent
+  const [authError, setAuthError] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  async function sendMagicLink() {
+    if (!authEmail.trim()) return;
+    setAuthStatus("sending");
+    setAuthError(null);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: authEmail.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) {
+      setAuthError(error.message);
+      setAuthStatus("idle");
+    } else {
+      setAuthStatus("sent");
+    }
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
+
+  const HISTORY_KEY = "estimateur_historique";
+  const [history, setHistory] = useState(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Une fois connecté, on charge l'historique complet depuis Supabase
+  // (illimité, synchronisé) à la place de l'historique local.
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("estimations")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (!error && data) {
+        setHistory(
+          data.map((d) => ({
+            id: d.id,
+            date: d.created_at,
+            image: d.image,
+            objet: d.objet,
+            categorie: d.categorie,
+            prix_bas: d.prix_bas,
+            prix_haut: d.prix_haut,
+            confiance: d.confiance,
+          }))
+        );
+      }
+    })();
+  }, [user]);
+
+  async function addToHistory(entry) {
+    if (user) {
+      try {
+        await supabase.from("estimations").insert({
+          user_id: user.id,
+          objet: entry.objet,
+          categorie: entry.categorie,
+          prix_bas: entry.prix_bas,
+          prix_haut: entry.prix_haut,
+          confiance: entry.confiance,
+          image: entry.image,
+        });
+        // On recharge simplement en préfixant localement (évite un aller-retour)
+        setHistory((prev) => [entry, ...prev].slice(0, 200));
+      } catch (e) {
+        // silencieux: l'entrée reste au moins visible localement ci-dessous
+        setHistory((prev) => [entry, ...prev].slice(0, 200));
+      }
+      return;
+    }
+    setHistory((prev) => {
+      const next = [entry, ...prev].slice(0, 15);
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      } catch (e) {
+        // stockage plein: on garde en mémoire pour cette session sans persister
+      }
+      return next;
+    });
+  }
+
+  async function removeFromHistory(id) {
+    if (user && typeof id === "string") {
+      try {
+        await supabase.from("estimations").delete().eq("id", id);
+      } catch (e) {}
+    }
+    setHistory((prev) => {
+      const next = prev.filter((h) => h.id !== id);
+      if (!user) {
+        try {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
+  }
+
+  async function clearHistory() {
+    if (user) {
+      try {
+        await supabase.from("estimations").delete().eq("user_id", user.id);
+      } catch (e) {}
+    } else {
+      try {
+        localStorage.removeItem(HISTORY_KEY);
+      } catch (e) {}
+    }
+    setHistory([]);
+  }
 
   async function handleFile(e) {
     const file = e.target.files?.[0];
@@ -344,8 +490,19 @@ export default function App() {
         };
       }
 
-      setResult({ ...identification, ...pricing });
+      const finalResult = { ...identification, ...pricing };
+      setResult(finalResult);
       setStatus("done");
+      addToHistory({
+        id: Date.now(),
+        date: new Date().toISOString(),
+        image: image.dataUrl,
+        objet: finalResult.objet,
+        categorie: finalResult.categorie,
+        prix_bas: finalResult.prix_bas,
+        prix_haut: finalResult.prix_haut,
+        confiance: finalResult.confiance,
+      });
     } catch (e) {
       console.error(e);
       setError(e.message || "L'estimation a échoué. Réessaie avec une autre photo.");
@@ -445,7 +602,15 @@ export default function App() {
       `}</style>
 
       <div style={{ width: "100%", maxWidth: 420 }}>
-        <header style={{ marginBottom: 24 }}>
+        <header style={{ marginBottom: 24, position: "relative" }}>
+          <button
+            className="btn-ghost"
+            onClick={() => setShowHistory(true)}
+            style={{ position: "absolute", top: 0, right: 0 }}
+            aria-label="voir l'historique"
+          >
+            <History size={14} /> {history.length > 0 ? history.length : ""}
+          </button>
           <div
             className="mono"
             style={{ fontSize: 12, letterSpacing: "0.08em", color: "#8A7C63", marginBottom: 6 }}
@@ -703,6 +868,196 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {showHistory && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 10,
+          }}
+          onClick={() => setShowHistory(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#E4DCC8",
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "80vh",
+              overflowY: "auto",
+              borderRadius: "8px 8px 0 0",
+              padding: "20px 16px 32px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <h2 className="brand" style={{ fontSize: 20, margin: 0 }}>
+                Historique
+              </h2>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {history.length > 0 && (
+                  <button
+                    className="mono"
+                    onClick={clearHistory}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#8A7C63",
+                      fontSize: 12,
+                      textDecoration: "underline",
+                    }}
+                  >
+                    tout effacer
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowHistory(false)}
+                  style={{ background: "none", border: "none", padding: 4 }}
+                  aria-label="fermer"
+                >
+                  <X size={20} color="#6B6154" />
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: "#F6F1E3",
+                border: "1px solid #C9BD9F",
+                borderRadius: 3,
+                padding: 12,
+                marginBottom: 16,
+              }}
+            >
+              {user ? (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 12, color: "#4A4335" }}>
+                    Connecté : <strong>{user.email}</strong>
+                    <div className="mono" style={{ fontSize: 11, color: "#8A7C63", marginTop: 2 }}>
+                      historique illimité, synchronisé
+                    </div>
+                  </div>
+                  <button className="btn-ghost" onClick={signOut} style={{ flexShrink: 0 }}>
+                    <LogOut size={14} /> déconnexion
+                  </button>
+                </div>
+              ) : authStatus === "sent" ? (
+                <p style={{ fontSize: 12, color: "#4A4335", margin: 0 }}>
+                  Lien envoyé ! Vérifie ta boîte mail ({authEmail}) et clique dessus pour te connecter.
+                </p>
+              ) : (
+                <div>
+                  <p style={{ fontSize: 12, color: "#4A4335", marginTop: 0, marginBottom: 8 }}>
+                    Connecte-toi pour un historique illimité, synchronisé entre appareils (optionnel).
+                  </p>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      type="email"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      placeholder="ton@email.com"
+                      style={{
+                        flex: 1,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 12,
+                        padding: "8px 10px",
+                        borderRadius: 3,
+                        border: "1px solid #B7AC96",
+                        background: "#fff",
+                      }}
+                    />
+                    <button
+                      className="btn-ghost"
+                      onClick={sendMagicLink}
+                      disabled={authStatus === "sending"}
+                      style={{ flexShrink: 0 }}
+                    >
+                      <Mail size={14} /> lien
+                    </button>
+                  </div>
+                  {authError && (
+                    <p style={{ fontSize: 11, color: "#B4432C", marginTop: 6, marginBottom: 0 }}>{authError}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {history.length === 0 && (
+              <p className="mono" style={{ fontSize: 13, color: "#8A7C63" }}>
+                Aucune estimation pour l'instant.
+              </p>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {history.map((h) => (
+                <div
+                  key={h.id}
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    alignItems: "center",
+                    background: "#F6F1E3",
+                    border: "1px solid #C9BD9F",
+                    borderRadius: 3,
+                    padding: 8,
+                  }}
+                >
+                  <img
+                    src={h.image}
+                    alt={h.objet}
+                    style={{
+                      width: 48,
+                      height: 48,
+                      objectFit: "cover",
+                      borderRadius: 3,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {h.objet}
+                    </div>
+                    <div className="mono" style={{ fontSize: 12, color: "#8A7C63" }}>
+                      {h.prix_bas}–{h.prix_haut} € ·{" "}
+                      {new Date(h.date).toLocaleDateString("fr-FR", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeFromHistory(h.id)}
+                    style={{ background: "none", border: "none", padding: 4, flexShrink: 0 }}
+                    aria-label="supprimer"
+                  >
+                    <Trash2 size={16} color="#B4432C" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
