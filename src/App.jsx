@@ -242,29 +242,71 @@ export default function App() {
         const { results, prices } = await fetchMarketPrices(searchTerm);
 
         if (prices.length >= 1) {
-          const prix_bas = prices[0];
-          const prix_haut = prices[prices.length - 1];
+          // Filtrage de pertinence: on ne garde que les annonces qui
+          // correspondent vraiment au même produit (même format/taille/
+          // modèle), pour éviter de mélanger un parfum 30ml avec un 100ml
+          // par exemple.
+          const listingsForReview = results
+            .map((r, i) => `${i}: "${r.title}" — ${r.price || r.extracted_price + " €"}`)
+            .join("\n");
+
+          const filterText = await callClaude([
+            {
+              role: "user",
+              content:
+                `Objet identifié avec précision: "${identification.objet}" (${identification.etat_note}). ` +
+                `Voici des annonces trouvées en ligne pour une recherche proche:\n${listingsForReview}\n\n` +
+                "Indique UNIQUEMENT les numéros des annonces qui correspondent vraiment au MÊME produit " +
+                "(même modèle, même taille/format/volume si applicable — pas juste la même marque ou catégorie). " +
+                "Exclus tout ce qui est un format, coloris ou modèle différent. " +
+                'Réponds UNIQUEMENT en JSON: {"indices_pertinents": [0, 2]} (liste vide si rien ne correspond vraiment).',
+            },
+          ]);
+          const filterResult = extractJson(filterText);
+          const relevantIndices = Array.isArray(filterResult.indices_pertinents)
+            ? filterResult.indices_pertinents
+            : [];
+
+          const relevantResults = relevantIndices
+            .map((i) => results[i])
+            .filter((r) => r && typeof r.extracted_price === "number" && r.extracted_price > 0);
+          const relevantPrices = relevantResults
+            .map((r) => r.extracted_price)
+            .sort((a, b) => a - b);
+
+          if (relevantPrices.length === 0) {
+            throw new Error(
+              "Des annonces ont été trouvées mais aucune ne correspond précisément au même produit (même format/modèle)."
+            );
+          }
+
+          const prix_neuf_bas = relevantPrices[0];
+          const prix_neuf_haut = relevantPrices[relevantPrices.length - 1];
 
           const conseilText = await callClaude([
             {
               role: "user",
               content:
                 `Objet: ${identification.objet}, état: ${identification.etat_note}. ` +
-                `Prix trouvés en ligne pour ce type de produit (référence marché du neuf/quasi-neuf): ${prices.join(", ")} €. ` +
-                "Donne une estimation pour la revente d'occasion en brocante/vide-grenier (généralement 40-70% moins cher que le neuf) et un conseil de vente pratique en une phrase. " +
-                'Réponds UNIQUEMENT en JSON: {"prix_brocante": "...", "conseil": "..."}',
+                `Prix neufs trouvés en ligne pour ce produit précis (référence marché, pas spécifiquement occasion): ${relevantPrices.join(", ")} €. ` +
+                "À partir de ce prix neuf de référence et de l'état de l'objet, estime une fourchette de revente d'OCCASION réaliste (Leboncoin/Vinted), " +
+                "une estimation pour la revente en brocante/vide-grenier (souvent moins cher), et un conseil de vente pratique en une phrase. " +
+                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "prix_brocante": "...", "conseil": "..."}',
             },
           ]);
           const extra = extractJson(conseilText);
 
           pricing = {
-            prix_bas,
-            prix_haut,
+            prix_bas: extra.prix_bas,
+            prix_haut: extra.prix_haut,
+            prix_neuf_bas,
+            prix_neuf_haut,
             prix_brocante: extra.prix_brocante,
             conseil: extra.conseil,
-            confiance: prices.length >= 4 ? "haute" : "moyenne",
-            source: "annonces réelles (" + prices.length + " trouvées)",
-            listings: results,
+            confiance: relevantPrices.length >= 4 ? "haute" : "moyenne",
+            source:
+              "estimation basée sur " + relevantPrices.length + " prix neuf(s) correspondant vraiment au produit",
+            listings: relevantResults,
           };
         } else {
           throw new Error("Pas assez d'annonces trouvées pour cet objet.");
@@ -536,7 +578,9 @@ export default function App() {
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
                 <div style={{ fontSize: 13, color: "#6B6154", marginBottom: 14 }}>
-                  fourchette basée sur des annonces en ligne trouvées
+                  estimation d'occasion
+                  {result.prix_neuf_bas != null &&
+                    ` (basée sur un neuf à ${result.prix_neuf_bas}–${result.prix_neuf_haut} € en ligne)`}
                 </div>
 
                 {result.listings && result.listings.length > 0 && (
@@ -548,7 +592,7 @@ export default function App() {
                     }}
                   >
                     <div style={{ fontSize: 12, color: "#8A7C63", marginBottom: 6 }}>
-                      annonces trouvées :
+                      annonces retenues (même produit) :
                     </div>
                     {result.listings.map((l, i) => (
                       <div
