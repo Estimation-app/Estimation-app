@@ -92,6 +92,27 @@ export default function App() {
     await supabase.auth.signOut();
   }
 
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordStatus, setPasswordStatus] = useState("idle"); // idle | saving | done
+  const [passwordError, setPasswordError] = useState(null);
+
+  async function setAccountPassword() {
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError("6 caractères minimum.");
+      return;
+    }
+    setPasswordStatus("saving");
+    setPasswordError(null);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setPasswordError(error.message);
+      setPasswordStatus("idle");
+    } else {
+      setPasswordStatus("done");
+      setNewPassword("");
+    }
+  }
+
   const HISTORY_KEY = "estimateur_historique";
   const [history, setHistory] = useState(() => {
     try {
@@ -974,16 +995,68 @@ export default function App() {
               }}
             >
               {user ? (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontSize: 12, color: "#4A4335" }}>
-                    Connecté : <strong>{user.email}</strong>
-                    <div className="mono" style={{ fontSize: 11, color: "#8A7C63", marginTop: 2 }}>
-                      historique illimité, synchronisé
+                <div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: "#4A4335" }}>
+                      Connecté : <strong>{user.email}</strong>
+                      <div className="mono" style={{ fontSize: 11, color: "#8A7C63", marginTop: 2 }}>
+                        historique illimité, synchronisé
+                      </div>
                     </div>
+                    <button className="btn-ghost" onClick={signOut} style={{ flexShrink: 0 }}>
+                      <LogOut size={14} /> déconnexion
+                    </button>
                   </div>
-                  <button className="btn-ghost" onClick={signOut} style={{ flexShrink: 0 }}>
-                    <LogOut size={14} /> déconnexion
-                  </button>
+
+                  <div style={{ borderTop: "1px dashed #C9BD9F", marginTop: 10, paddingTop: 10 }}>
+                    {passwordStatus === "done" ? (
+                      <p style={{ fontSize: 12, color: "#4A4335", margin: 0 }}>
+                        Mot de passe défini ! Tu peux maintenant l'utiliser pour te connecter.
+                      </p>
+                    ) : (
+                      <div>
+                        <p style={{ fontSize: 11, color: "#8A7C63", marginTop: 0, marginBottom: 6 }}>
+                          Définir un mot de passe (pour te reconnecter sans lien par email) :
+                        </p>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="nouveau mot de passe"
+                            style={{
+                              flex: 1,
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: 12,
+                              padding: "8px 10px",
+                              borderRadius: 3,
+                              border: "1px solid #B7AC96",
+                              background: "#fff",
+                            }}
+                          />
+                          <button
+                            className="btn-ghost"
+                            onClick={setAccountPassword}
+                            disabled={passwordStatus === "saving"}
+                            style={{ flexShrink: 0 }}
+                          >
+                            définir
+                          </button>
+                        </div>
+                        {passwordError && (
+                          <p style={{ fontSize: 11, color: "#B4432C", marginTop: 6, marginBottom: 0 }}>
+                            {passwordError}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : authStatus === "sent" ? (
                 <p style={{ fontSize: 12, color: "#4A4335", margin: 0 }}>
