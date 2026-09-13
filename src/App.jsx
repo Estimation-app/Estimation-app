@@ -669,7 +669,7 @@ export default function App() {
             className="mono"
             style={{ fontSize: 12, letterSpacing: "0.08em", color: "#8A7C63", marginBottom: 6 }}
           >
-            estimateur d'objets — v0
+            estim' — v0
           </div>
           <h1
             className="brand"
