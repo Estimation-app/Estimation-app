@@ -305,14 +305,14 @@ export default function App() {
     }
   }
 
-  async function callClaude(messages) {
+  async function callClaude(messages, model = "claude-sonnet-4-6") {
     let res;
     try {
       res = await fetch(PROXY_URL + "/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model,
           max_tokens: 1000,
           messages,
         }),
@@ -467,7 +467,7 @@ export default function App() {
                 "Exclus tout ce qui est un format, coloris ou modèle différent. " +
                 'Réponds UNIQUEMENT en JSON: {"indices_pertinents": [0, 2]} (liste vide si rien ne correspond vraiment).',
             },
-          ]);
+          ], "claude-haiku-4-5-20251001");
           const filterResult = extractJson(filterText);
           const relevantIndices = Array.isArray(filterResult.indices_pertinents)
             ? filterResult.indices_pertinents
@@ -507,7 +507,7 @@ export default function App() {
                 "(ex: promo exceptionnelle, erreur de prix, produit différent malgré le nom), signale-le brièvement dans \"alerte\" (sinon renvoie une chaîne vide). " +
                 'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "prix_brocante": "...", "conseil": "...", "alerte": "..."}',
             },
-          ]);
+          ], "claude-haiku-4-5-20251001");
           const extra = extractJson(conseilText);
 
           pricing = {
@@ -536,7 +536,7 @@ export default function App() {
               "En te basant sur ta connaissance générale du marché de l'occasion en France, donne une estimation de prix réaliste. " +
               'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "..."}',
           },
-        ]);
+        ], "claude-haiku-4-5-20251001");
         const fallback = extractJson(priceText);
         pricing = {
           ...fallback,
