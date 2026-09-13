@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff } from "lucide-react";
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
 // blocage CORS d'un appel direct depuis le navigateur.
@@ -29,6 +29,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authStatus, setAuthStatus] = useState("idle"); // idle | sending | sent | signup_sent
   const [authError, setAuthError] = useState(null);
 
@@ -93,6 +94,7 @@ export default function App() {
   }
 
   const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [passwordStatus, setPasswordStatus] = useState("idle"); // idle | saving | done
   const [passwordError, setPasswordError] = useState(null);
 
@@ -653,6 +655,22 @@ export default function App() {
           border: 1px solid #C9BD9F;
           border-radius: 50%;
         }
+        .password-field {
+          position: relative;
+          width: 100%;
+        }
+        .password-toggle {
+          position: absolute;
+          top: 50%;
+          right: 8px;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          padding: 4px;
+          display: flex;
+          align-items: center;
+          color: #8A7C63;
+        }
       `}</style>
 
       <div style={{ width: "100%", maxWidth: 420 }}>
@@ -1025,21 +1043,32 @@ export default function App() {
                           Définir un mot de passe (pour te reconnecter sans lien par email) :
                         </p>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <input
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            placeholder="nouveau mot de passe"
-                            style={{
-                              flex: 1,
-                              fontFamily: "'JetBrains Mono', monospace",
-                              fontSize: 12,
-                              padding: "8px 10px",
-                              borderRadius: 3,
-                              border: "1px solid #B7AC96",
-                              background: "#fff",
-                            }}
-                          />
+                          <div className="password-field">
+                            <input
+                              type={showNewPassword ? "text" : "password"}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              placeholder="nouveau mot de passe"
+                              style={{
+                                width: "100%",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontSize: 12,
+                                padding: "8px 34px 8px 10px",
+                                borderRadius: 3,
+                                border: "1px solid #B7AC96",
+                                background: "#fff",
+                                boxSizing: "border-box",
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="password-toggle"
+                              onClick={() => setShowNewPassword((v) => !v)}
+                              aria-label={showNewPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
+                            >
+                              {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          </div>
                           <button
                             className="btn-ghost"
                             onClick={setAccountPassword}
@@ -1089,23 +1118,32 @@ export default function App() {
                       boxSizing: "border-box",
                     }}
                   />
-                  <input
-                    type="password"
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    placeholder="mot de passe"
-                    style={{
-                      width: "100%",
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: 12,
-                      padding: "8px 10px",
-                      borderRadius: 3,
-                      border: "1px solid #B7AC96",
-                      background: "#fff",
-                      marginBottom: 8,
-                      boxSizing: "border-box",
-                    }}
-                  />
+                  <div className="password-field" style={{ marginBottom: 8 }}>
+                    <input
+                      type={showAuthPassword ? "text" : "password"}
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder="mot de passe"
+                      style={{
+                        width: "100%",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 12,
+                        padding: "8px 34px 8px 10px",
+                        borderRadius: 3,
+                        border: "1px solid #B7AC96",
+                        background: "#fff",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle"
+                      onClick={() => setShowAuthPassword((v) => !v)}
+                      aria-label={showAuthPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
+                    >
+                      {showAuthPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button
                       className="btn-ghost"
