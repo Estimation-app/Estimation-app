@@ -154,6 +154,13 @@ export default function App() {
   const [passwordStatus, setPasswordStatus] = useState("idle"); // idle | saving | done
   const [passwordError, setPasswordError] = useState(null);
 
+  // Modes véhicule / immobilier: certaines infos (kilométrage, année,
+  // ville, surface) ne sont jamais visibles sur une photo. On les demande
+  // via un petit formulaire avant l'estimation, plutôt que de deviner.
+  const [pendingIdentification, setPendingIdentification] = useState(null);
+  const [vehicleForm, setVehicleForm] = useState({ annee: "", kilometrage: "", etat: "bon état" });
+  const [realEstateForm, setRealEstateForm] = useState({ ville: "", surface: "", pieces: "" });
+
   async function setAccountPassword() {
     if (!newPassword || newPassword.length < 6) {
       setPasswordError("6 caractères minimum.");
@@ -486,9 +493,9 @@ export default function App() {
             {
               type: "text",
               text:
-                "Tu regardes une photo. D'abord détermine si c'est (a) un objet du quotidien à estimer pour une revente d'occasion, ou (b) un être vivant (humain ou animal — pas un objet). " +
+                "Tu regardes une photo. D'abord détermine le type de sujet: (a) un objet du quotidien à estimer pour une revente d'occasion, (b) un être vivant (humain ou animal), (c) un véhicule (voiture, moto, scooter...), (d) un bien immobilier (maison ou appartement, vu de l'extérieur ou l'intérieur). " +
                 "Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
-                '{"type_sujet": "objet" ou "etre_vivant", "objet": "nom précis de l\'objet (marque/modèle si visible) OU description brève et neutre de l\'être vivant (espèce/race si animal, sans identifier une personne réelle si humain)", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (vide si etre_vivant)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé"}' +
+                '{"type_sujet": "objet" ou "etre_vivant" ou "vehicule" ou "immobilier", "objet": "nom précis de l\'objet (marque/modèle si visible) OU description brève et neutre de l\'être vivant OU description du véhicule OU description du bien immobilier", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (vide si pas type objet)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé", "marque": "marque du véhicule si type_sujet=vehicule, sinon vide", "modele": "modèle du véhicule si type_sujet=vehicule, sinon vide", "annee": nombre (année du véhicule si clairement identifiable, sinon null), "type_bien": "maison ou appartement si type_sujet=immobilier, sinon vide"}' +
                 (details.trim()
                   ? ` L'utilisateur précise en plus: "${details.trim()}". Utilise ces précisions en priorité sur ce que tu vois sur la photo si elles se contredisent (ex: la contenance exacte, un défaut caché), et intègre-les dans "objet" et "recherche".`
                   : ""),
@@ -551,6 +558,27 @@ export default function App() {
           prix_haut: finalResult.prix_haut,
           confiance: finalResult.confiance,
         });
+        return;
+      }
+
+      // Véhicule: le kilométrage et l'année exacte ne sont jamais visibles
+      // sur une photo. On met l'estimation en pause et on demande ces infos
+      // via un petit formulaire avant de continuer.
+      if (identification.type_sujet === "vehicule") {
+        setPendingIdentification(identification);
+        setVehicleForm((prev) => ({
+          ...prev,
+          annee: identification.annee ? String(identification.annee) : prev.annee,
+        }));
+        setStatus("vehicule_form");
+        return;
+      }
+
+      // Immobilier: la ville et la surface ne sont jamais devinables sur
+      // une photo. Même principe: formulaire de précision avant estimation.
+      if (identification.type_sujet === "immobilier") {
+        setPendingIdentification(identification);
+        setStatus("immobilier_form");
         return;
       }
 
@@ -685,9 +713,123 @@ export default function App() {
     setResult(null);
     setError(null);
     setStatus("idle");
+    setPendingIdentification(null);
+    setVehicleForm({ annee: "", kilometrage: "", etat: "bon état" });
+    setRealEstateForm({ ville: "", surface: "", pieces: "" });
     if (isListening && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsListening(false);
+    }
+  }
+
+  async function estimateVehicule() {
+    if (!pendingIdentification) return;
+    setError(null);
+    setStatus("pricing");
+    try {
+      const infoText =
+        `Véhicule identifié sur une photo: ${pendingIdentification.objet}` +
+        (pendingIdentification.marque
+          ? ` (marque: ${pendingIdentification.marque}${pendingIdentification.modele ? ", modèle: " + pendingIdentification.modele : ""})`
+          : "") +
+        `. Année: ${vehicleForm.annee || "non précisée"}. ` +
+        `Kilométrage: ${vehicleForm.kilometrage ? vehicleForm.kilometrage + " km" : "non précisé"}. ` +
+        `État général déclaré par le propriétaire: ${vehicleForm.etat}. `;
+
+      const text = await callClaude(
+        [
+          {
+            role: "user",
+            content:
+              infoText +
+              "En te basant sur ta connaissance générale du marché de l'occasion automobile en France, donne une estimation de prix réaliste pour ce véhicule avec ces caractéristiques. " +
+              "Si l'année ou le kilométrage manquent, base-toi sur une hypothèse raisonnable pour un véhicule de ce type et signale-le clairement dans \"hypothese\" (sinon chaîne vide). " +
+              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "commentaire": "1 à 2 phrases sur la cote de ce véhicule", "hypothese": "..."}',
+          },
+        ],
+        "claude-haiku-4-5-20251001"
+      );
+      const data = extractJson(text);
+      const finalResult = {
+        ...pendingIdentification,
+        prix_bas: data.prix_bas,
+        prix_haut: data.prix_haut,
+        commentaire: data.commentaire,
+        hypothese: data.hypothese || null,
+        confiance: "indicative",
+        source: "estimation IA véhicule — indicative, pas d'annonces réelles comparées",
+      };
+      setResult(finalResult);
+      setStatus("done");
+      addToHistory({
+        id: Date.now(),
+        date: new Date().toISOString(),
+        image: image.dataUrl,
+        objet: finalResult.objet,
+        categorie: finalResult.categorie,
+        prix_bas: finalResult.prix_bas,
+        prix_haut: finalResult.prix_haut,
+        confiance: finalResult.confiance,
+      });
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "L'estimation du véhicule a échoué.");
+      setStatus("error");
+    }
+  }
+
+  async function estimateImmobilier() {
+    if (!pendingIdentification) return;
+    setError(null);
+    setStatus("pricing");
+    try {
+      const infoText =
+        `Bien immobilier identifié sur une photo: ${pendingIdentification.objet}` +
+        (pendingIdentification.type_bien ? ` (${pendingIdentification.type_bien})` : "") +
+        `. Ville ou secteur: ${realEstateForm.ville || "non précisé"}. ` +
+        `Surface: ${realEstateForm.surface ? realEstateForm.surface + " m²" : "non précisée"}. ` +
+        `Nombre de pièces: ${realEstateForm.pieces || "non précisé"}. `;
+
+      const text = await callClaude(
+        [
+          {
+            role: "user",
+            content:
+              infoText +
+              "En te basant sur ta connaissance générale du marché immobilier français, donne une estimation de prix très approximative pour ce bien. " +
+              "Précise bien qu'il s'agit d'un ordre de grandeur très large, sans visite ni données précises du marché local. " +
+              "Si la ville ou la surface manquent, base-toi sur une hypothèse raisonnable et signale-le clairement dans \"hypothese\" (sinon chaîne vide). " +
+              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "commentaire": "1 à 2 phrases sur l\'estimation", "hypothese": "..."}',
+          },
+        ],
+        "claude-haiku-4-5-20251001"
+      );
+      const data = extractJson(text);
+      const finalResult = {
+        ...pendingIdentification,
+        prix_bas: data.prix_bas,
+        prix_haut: data.prix_haut,
+        commentaire: data.commentaire,
+        hypothese: data.hypothese || null,
+        confiance: "indicative",
+        source: "estimation IA immobilier — très approximative, sans données de marché local",
+      };
+      setResult(finalResult);
+      setStatus("done");
+      addToHistory({
+        id: Date.now(),
+        date: new Date().toISOString(),
+        image: image.dataUrl,
+        objet: finalResult.objet,
+        categorie: finalResult.categorie,
+        prix_bas: finalResult.prix_bas,
+        prix_haut: finalResult.prix_haut,
+        confiance: finalResult.confiance,
+      });
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "L'estimation du bien immobilier a échoué.");
+      setStatus("error");
     }
   }
 
@@ -950,7 +1092,7 @@ export default function App() {
               </div>
             )}
 
-            {status !== "done" && (
+            {status !== "done" && status !== "vehicule_form" && status !== "immobilier_form" && (
               <div style={{ display: "flex", gap: 10 }}>
                 <button className="btn-primary" onClick={estimate} disabled={status === "analyzing" || status === "pricing"}>
                   {status === "analyzing" && (
@@ -975,6 +1117,179 @@ export default function App() {
                 <button className="btn-ghost" onClick={reset} aria-label="changer de photo">
                   <RotateCcw size={16} />
                 </button>
+              </div>
+            )}
+
+            {status === "vehicule_form" && (
+              <div className="tag-card">
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 10 }}>
+                  🚗 quelques précisions sur le véhicule
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div>
+                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                      Année
+                    </label>
+                    <input
+                      type="number"
+                      value={vehicleForm.annee}
+                      onChange={(e) => setVehicleForm((v) => ({ ...v, annee: e.target.value }))}
+                      placeholder="ex: 2018"
+                      style={{
+                        width: "100%",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 13,
+                        padding: "8px 10px",
+                        borderRadius: 3,
+                        border: "1px solid #B7AC96",
+                        background: "#F6F1E3",
+                        color: "#2B241C",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                      Kilométrage
+                    </label>
+                    <input
+                      type="number"
+                      value={vehicleForm.kilometrage}
+                      onChange={(e) => setVehicleForm((v) => ({ ...v, kilometrage: e.target.value }))}
+                      placeholder="ex: 85000"
+                      style={{
+                        width: "100%",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 13,
+                        padding: "8px 10px",
+                        borderRadius: 3,
+                        border: "1px solid #B7AC96",
+                        background: "#F6F1E3",
+                        color: "#2B241C",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                      État général
+                    </label>
+                    <select
+                      value={vehicleForm.etat}
+                      onChange={(e) => setVehicleForm((v) => ({ ...v, etat: e.target.value }))}
+                      style={{
+                        width: "100%",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 13,
+                        padding: "8px 10px",
+                        borderRadius: 3,
+                        border: "1px solid #B7AC96",
+                        background: "#F6F1E3",
+                        color: "#2B241C",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <option value="excellent état">excellent état</option>
+                      <option value="bon état">bon état</option>
+                      <option value="état moyen">état moyen</option>
+                      <option value="à réviser / défauts visibles">à réviser / défauts visibles</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                  <button className="btn-primary" onClick={estimateVehicule}>
+                    <Tag size={16} />
+                    Estimer
+                  </button>
+                  <button className="btn-ghost" onClick={reset} aria-label="changer de photo">
+                    <RotateCcw size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {status === "immobilier_form" && (
+              <div className="tag-card">
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 10 }}>
+                  🏠 quelques précisions sur le bien
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div>
+                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                      Ville ou secteur
+                    </label>
+                    <input
+                      type="text"
+                      value={realEstateForm.ville}
+                      onChange={(e) => setRealEstateForm((v) => ({ ...v, ville: e.target.value }))}
+                      placeholder="ex: Rennes centre"
+                      style={{
+                        width: "100%",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 13,
+                        padding: "8px 10px",
+                        borderRadius: 3,
+                        border: "1px solid #B7AC96",
+                        background: "#F6F1E3",
+                        color: "#2B241C",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                      Surface (m²)
+                    </label>
+                    <input
+                      type="number"
+                      value={realEstateForm.surface}
+                      onChange={(e) => setRealEstateForm((v) => ({ ...v, surface: e.target.value }))}
+                      placeholder="ex: 65"
+                      style={{
+                        width: "100%",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 13,
+                        padding: "8px 10px",
+                        borderRadius: 3,
+                        border: "1px solid #B7AC96",
+                        background: "#F6F1E3",
+                        color: "#2B241C",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                      Nombre de pièces (optionnel)
+                    </label>
+                    <input
+                      type="number"
+                      value={realEstateForm.pieces}
+                      onChange={(e) => setRealEstateForm((v) => ({ ...v, pieces: e.target.value }))}
+                      placeholder="ex: 3"
+                      style={{
+                        width: "100%",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 13,
+                        padding: "8px 10px",
+                        borderRadius: 3,
+                        border: "1px solid #B7AC96",
+                        background: "#F6F1E3",
+                        color: "#2B241C",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                  <button className="btn-primary" onClick={estimateImmobilier}>
+                    <Tag size={16} />
+                    Estimer
+                  </button>
+                  <button className="btn-ghost" onClick={reset} aria-label="changer de photo">
+                    <RotateCcw size={16} />
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1035,7 +1350,51 @@ export default function App() {
               </div>
             )}
 
-            {result && status === "done" && result.type_sujet !== "etre_vivant" && (
+            {result && status === "done" && (result.type_sujet === "vehicule" || result.type_sujet === "immobilier") && (
+              <div className="tag-card">
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 4 }}>
+                  {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
+                </div>
+                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
+                  {result.objet}
+                </div>
+
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 30,
+                    fontWeight: 700,
+                    color: "#B4432C",
+                    marginBottom: 14,
+                  }}
+                >
+                  {result.prix_bas}–{result.prix_haut} €
+                </div>
+
+                <div
+                  style={{
+                    borderTop: "1px dashed #C9BD9F",
+                    paddingTop: 12,
+                    fontSize: 14,
+                    color: "#2B241C",
+                    lineHeight: 1.6,
+                    marginBottom: result.hypothese ? 10 : 14,
+                  }}
+                >
+                  {result.commentaire}
+                </div>
+                {result.hypothese && (
+                  <div style={{ fontSize: 12, color: "#8A7C63", fontStyle: "italic", lineHeight: 1.5, marginBottom: 10 }}>
+                    Hypothèse : {result.hypothese}
+                  </div>
+                )}
+                <div className="mono" style={{ fontSize: 11, color: "#A99C82", lineHeight: 1.6 }}>
+                  {result.source}
+                </div>
+              </div>
+            )}
+
+            {result && status === "done" && (!result.type_sujet || result.type_sujet === "objet") && (
               <div className="tag-card">
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 4 }}>
                   {result.categorie}
