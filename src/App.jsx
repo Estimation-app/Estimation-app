@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff } from "lucide-react";
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
 // blocage CORS d'un appel direct depuis le navigateur.
@@ -22,6 +22,62 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
+
+  // Message vocal pour dicter les précisions (Web Speech API, native au
+  // navigateur — pas d'appel serveur, gratuit). Support variable selon les
+  // navigateurs (bon sur Chrome/Android, plus limité sur Safari/iOS).
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const recognitionRef = useRef(null);
+  const detailsBeforeListeningRef = useRef("");
+
+  useEffect(() => {
+    const SpeechRecognitionCtor =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      setSpeechSupported(false);
+      return;
+    }
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = "fr-FR";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      const base = detailsBeforeListeningRef.current;
+      setDetails((base ? base + " " : "") + transcript);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+  }, []);
+
+  function toggleVoiceInput() {
+    if (!recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      detailsBeforeListeningRef.current = details.trim();
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        // start() peut lever une erreur si déjà démarré; on ignore
+      }
+    }
+  }
 
   // Compte utilisateur (optionnel) — permet un historique illimité,
   // synchronisé entre appareils. Sans compte, l'historique reste local
@@ -572,6 +628,10 @@ export default function App() {
     setResult(null);
     setError(null);
     setStatus("idle");
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
   }
 
   return (
@@ -621,6 +681,28 @@ export default function App() {
           display: flex;
           align-items: center;
           gap: 6px;
+        }
+        .btn-mic {
+          background: transparent;
+          color: #6B6154;
+          border: 1px solid #B7AC96;
+          border-radius: 3px;
+          width: 38px;
+          height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .btn-mic.listening {
+          background: #B4432C;
+          color: #F3EDDD;
+          border-color: #B4432C;
+          animation: pulse 1.4s ease-in-out infinite;
+        }
+        @keyframes pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(180, 67, 44, 0.4); }
+          50% { box-shadow: 0 0 0 6px rgba(180, 67, 44, 0); }
         }
         .drop-zone {
           border: 2px dashed #A99C82;
@@ -761,29 +843,53 @@ export default function App() {
 
             {status === "idle" && (
               <div>
-                <label
-                  className="mono"
-                  style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 6 }}
-                >
-                  Précisions (optionnel) — contenance, état, modèle exact...
-                </label>
-                <textarea
-                  value={details}
-                  onChange={(e) => setDetails(e.target.value)}
-                  placeholder="ex: flacon de 100ml, léger éclat sur le bord"
-                  rows={2}
+                <div
                   style={{
-                    width: "100%",
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 13,
-                    padding: "10px 12px",
-                    borderRadius: 3,
-                    border: "1px solid #B7AC96",
-                    background: "#F6F1E3",
-                    color: "#2B241C",
-                    resize: "vertical",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 6,
                   }}
-                />
+                >
+                  <label className="mono" style={{ fontSize: 12, color: "#6B6154" }}>
+                    Précisions (optionnel) — contenance, état, modèle exact...
+                  </label>
+                  {isListening && (
+                    <span className="mono" style={{ fontSize: 11, color: "#B4432C" }}>
+                      ● écoute…
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <textarea
+                    value={details}
+                    onChange={(e) => setDetails(e.target.value)}
+                    placeholder="ex: flacon de 100ml, léger éclat sur le bord"
+                    rows={2}
+                    style={{
+                      flex: 1,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 13,
+                      padding: "10px 12px",
+                      borderRadius: 3,
+                      border: "1px solid #B7AC96",
+                      background: "#F6F1E3",
+                      color: "#2B241C",
+                      resize: "vertical",
+                    }}
+                  />
+                  {speechSupported && (
+                    <button
+                      type="button"
+                      className={"btn-mic" + (isListening ? " listening" : "")}
+                      onClick={toggleVoiceInput}
+                      aria-label={isListening ? "arrêter la dictée vocale" : "dicter les précisions"}
+                      title={isListening ? "Arrêter" : "Dicter à l'oral"}
+                    >
+                      {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
