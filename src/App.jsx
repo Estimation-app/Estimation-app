@@ -486,8 +486,9 @@ export default function App() {
             {
               type: "text",
               text:
-                "Tu regardes une photo d'un objet à revendre d'occasion en France. Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
-                '{"objet": "nom précis de l\'objet, marque et modèle si visible", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (sans détails de couleur/état précis)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé"}' +
+                "Tu regardes une photo. D'abord détermine si c'est (a) un objet du quotidien à estimer pour une revente d'occasion, ou (b) un être vivant (humain ou animal — pas un objet). " +
+                "Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
+                '{"type_sujet": "objet" ou "etre_vivant", "objet": "nom précis de l\'objet (marque/modèle si visible) OU description brève et neutre de l\'être vivant (espèce/race si animal, sans identifier une personne réelle si humain)", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (vide si etre_vivant)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé"}' +
                 (details.trim()
                   ? ` L'utilisateur précise en plus: "${details.trim()}". Utilise ces précisions en priorité sur ce que tu vois sur la photo si elles se contredisent (ex: la contenance exacte, un défaut caché), et intègre-les dans "objet" et "recherche".`
                   : ""),
@@ -496,6 +497,62 @@ export default function App() {
         },
       ]);
       const identification = extractJson(idText);
+
+      // Mode humoristique: un être vivant n'est pas à vendre. On saute la
+      // recherche de vraies annonces et on demande à Claude une estimation
+      // volontairement absurde, avec un style qui change à chaque fois pour
+      // garder l'effet de surprise.
+      if (identification.type_sujet === "etre_vivant") {
+        setStatus("pricing");
+        const humorStyles = [
+          "commissaire-priseur très sérieux et pince-sans-rire qui garde un ton pro malgré l'absurdité",
+          "présentateur télé survolté façon brocante TV, enthousiaste et exagéré",
+          "rapport financier froid et chiffré, avec des termes d'analyste absurdement sérieux",
+          "copain sympa et complice, ton léger, un peu taquin",
+          "expert d'art hautain qui parle de l'objet comme d'une œuvre muséale",
+        ];
+        const chosenStyle = humorStyles[Math.floor(Math.random() * humorStyles.length)];
+
+        const humorText = await callClaude(
+          [
+            {
+              role: "user",
+              content:
+                `Sujet identifié sur une photo: ${identification.objet}. ` +
+                `Adopte ce style pour ta réponse: ${chosenStyle}. ` +
+                "Génère une estimation de prix volontairement fictive et humoristique (les êtres vivants ne sont pas à vendre, c'est un gag). " +
+                "Inclus une courte blague ou remarque drôle et bienveillante liée à ce sujet précis (jamais méchante, jamais dégradante, rien sur l'apparence physique d'une personne). " +
+                "Glisse aussi, sur un ton léger, le rappel que ce n'est bien sûr pas à vendre pour de vrai (les animaux sont des êtres sensibles protégés par la loi, pas des biens; et un humain encore moins). " +
+                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "commentaire": "la blague/remarque, 1 à 2 phrases", "rappel": "le rappel légal/éthique tourné avec humour, 1 phrase"}',
+            },
+          ],
+          "claude-haiku-4-5-20251001"
+        );
+        const humor = extractJson(humorText);
+
+        const finalResult = {
+          ...identification,
+          prix_bas: humor.prix_bas,
+          prix_haut: humor.prix_haut,
+          commentaire: humor.commentaire,
+          rappel: humor.rappel,
+          confiance: "humour",
+          source: "estim' mode 'estimer tout, même n'importe quoi' 🎭",
+        };
+        setResult(finalResult);
+        setStatus("done");
+        addToHistory({
+          id: Date.now(),
+          date: new Date().toISOString(),
+          image: image.dataUrl,
+          objet: finalResult.objet,
+          categorie: finalResult.categorie,
+          prix_bas: finalResult.prix_bas,
+          prix_haut: finalResult.prix_haut,
+          confiance: finalResult.confiance,
+        });
+        return;
+      }
 
       setStatus("pricing");
       let pricing;
@@ -939,7 +996,46 @@ export default function App() {
               </div>
             )}
 
-            {result && status === "done" && (
+            {result && status === "done" && result.type_sujet === "etre_vivant" && (
+              <div className="tag-card">
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 4 }}>
+                  🎭 mode "estimer tout, même n'importe quoi"
+                </div>
+                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
+                  {result.objet}
+                </div>
+
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 30,
+                    fontWeight: 700,
+                    color: "#B4432C",
+                    marginBottom: 14,
+                  }}
+                >
+                  {result.prix_bas}–{result.prix_haut} €
+                </div>
+
+                <div
+                  style={{
+                    borderTop: "1px dashed #C9BD9F",
+                    paddingTop: 12,
+                    fontSize: 14,
+                    color: "#2B241C",
+                    lineHeight: 1.6,
+                    marginBottom: 10,
+                  }}
+                >
+                  {result.commentaire}
+                </div>
+                <div style={{ fontSize: 12, color: "#6B6154", fontStyle: "italic", lineHeight: 1.5 }}>
+                  {result.rappel}
+                </div>
+              </div>
+            )}
+
+            {result && status === "done" && result.type_sujet !== "etre_vivant" && (
               <div className="tag-card">
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 4 }}>
                   {result.categorie}
