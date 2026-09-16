@@ -6,6 +6,14 @@ import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogO
 // blocage CORS d'un appel direct depuis le navigateur.
 const PROXY_URL = "https://dark-lake-8ef1.dyloo999.workers.dev";
 
+// Étiquettes affichées pour chaque source de prix (annonces réelles),
+// utilisées à la fois dans le détail par plateforme et sur chaque annonce.
+const SOURCE_LABELS = {
+  leboncoin: "Leboncoin",
+  vinted: "Vinted",
+  ebay: "eBay",
+};
+
 // Identifiants Supabase (comptes + base de données). Contrairement aux clés
 // SerpAPI/Anthropic, la clé "anon" est PUBLIQUE par conception — elle est
 // protégée par les règles de sécurité (RLS) côté base de données, pas en
@@ -548,10 +556,11 @@ export default function App() {
     }
   }
 
-  // Interroge le serveur relais pour une requête donnée, renvoie les prix
-  // trouvés (liste vide si rien de concluant — pas d'exception ici).
-  async function fetchMarketPricesOnce(query) {
-    const url = PROXY_URL + "/prices?q=" + encodeURIComponent(query);
+  // Interroge le serveur relais /prices-multi (Leboncoin + Vinted + eBay en
+  // parallèle) pour une requête donnée. Renvoie les résultats bruts par
+  // plateforme (liste vide si rien de concluant — pas d'exception ici).
+  async function fetchRealListingsOnce(query) {
+    const url = PROXY_URL + "/prices-multi?q=" + encodeURIComponent(query);
     let res;
     try {
       res = await fetch(url);
@@ -567,22 +576,28 @@ export default function App() {
     if (data.error) {
       throw new Error("Erreur serveur relais: " + data.error);
     }
-    const results = data.results || [];
-    const prices = results
-      .map((r) => r.extracted_price)
-      .filter((p) => typeof p === "number" && p > 0)
-      .sort((a, b) => a - b);
-    return { results: results.slice(0, 12), prices };
+    const pickResults = (entry) => ((entry && entry.results) || []).slice(0, 15);
+    const bySource = {
+      leboncoin: pickResults(data.leboncoin),
+      vinted: pickResults(data.vinted),
+      ebay: pickResults(data.ebay),
+    };
+    const errors = {
+      leboncoin: (data.leboncoin && data.leboncoin.error) || null,
+      vinted: (data.vinted && data.vinted.error) || null,
+      ebay: (data.ebay && data.ebay.error) || null,
+    };
+    const total = bySource.leboncoin.length + bySource.vinted.length + bySource.ebay.length;
+    return { bySource, errors, total };
   }
 
-  // Deux tentatives: d'abord un terme générique (marché du neuf, plus de
-  // résultats sur Google Shopping), puis en repli avec "occasion" ajouté
-  // si la première ne renvoie rien.
-  async function fetchMarketPrices(query) {
-    const first = await fetchMarketPricesOnce(query);
-    if (first.prices.length >= 1) return { ...first, queryUsed: query };
+  // Deux tentatives: d'abord le terme identifié tel quel, puis en repli
+  // avec "occasion" ajouté si la première ne renvoie rien du tout.
+  async function fetchRealListings(query) {
+    const first = await fetchRealListingsOnce(query);
+    if (first.total >= 1) return { ...first, queryUsed: query };
 
-    const second = await fetchMarketPricesOnce(query + " occasion");
+    const second = await fetchRealListingsOnce(query + " occasion");
     return { ...second, queryUsed: query + " occasion" };
   }
 
@@ -717,15 +732,24 @@ export default function App() {
       let pricing;
       try {
         const searchTerm = identification.recherche || identification.objet;
-        const { results, prices } = await fetchMarketPrices(searchTerm);
+        const { bySource, errors, total } = await fetchRealListings(searchTerm);
 
-        if (prices.length >= 1) {
+        if (total >= 1) {
+          // On aplatit les 3 sources en gardant l'étiquette d'origine sur
+          // chaque annonce, pour ne jamais les mélanger dans l'affichage
+          // ni perdre la traçabilité de la source.
+          const allListings = [
+            ...bySource.leboncoin.map((r) => ({ ...r, source: "leboncoin" })),
+            ...bySource.vinted.map((r) => ({ ...r, source: "vinted" })),
+            ...bySource.ebay.map((r) => ({ ...r, source: "ebay" })),
+          ];
+
           // Filtrage de pertinence: on ne garde que les annonces qui
           // correspondent vraiment au même produit (même format/taille/
           // modèle), pour éviter de mélanger un parfum 30ml avec un 100ml
           // par exemple.
-          const listingsForReview = results
-            .map((r, i) => `${i}: "${r.title}" — ${r.price || r.extracted_price + " €"}`)
+          const listingsForReview = allListings
+            .map((r, i) => `${i}: [${r.source}] "${r.title}" — ${r.price || r.extracted_price + " €"}`)
             .join("\n");
 
           const filterText = await callClaude([
@@ -733,7 +757,7 @@ export default function App() {
               role: "user",
               content:
                 `Objet identifié avec précision: "${identification.objet}" (${identification.etat_note}). ` +
-                `Voici des annonces trouvées en ligne pour une recherche proche:\n${listingsForReview}\n\n` +
+                `Voici des annonces d'occasion trouvées sur Leboncoin, Vinted et eBay pour une recherche proche:\n${listingsForReview}\n\n` +
                 "Indique UNIQUEMENT les numéros des annonces qui correspondent vraiment au MÊME produit " +
                 "(même modèle, même taille/format/volume si applicable — pas juste la même marque ou catégorie). " +
                 "Exclus tout ce qui est un format, coloris ou modèle différent. " +
@@ -746,7 +770,7 @@ export default function App() {
             : [];
 
           const relevantResults = relevantIndices
-            .map((i) => results[i])
+            .map((i) => allListings[i])
             .filter((r) => r && typeof r.extracted_price === "number" && r.extracted_price > 0);
           const relevantPrices = relevantResults
             .map((r) => r.extracted_price)
@@ -761,32 +785,47 @@ export default function App() {
           const usedResults = relevantResults;
           const usedPrices = relevantPrices;
           const usedSource =
-            "estimation basée sur " + usedPrices.length + " prix neuf(s) correspondant vraiment au produit";
+            "estimation basée sur " + usedPrices.length + " annonce(s) d'occasion réelle(s) (Leboncoin/Vinted/eBay)";
 
-          const prix_neuf_bas = usedPrices[0];
-          const prix_neuf_haut = usedPrices[usedPrices.length - 1];
+          const prix_bas = usedPrices[0];
+          const prix_haut = usedPrices[usedPrices.length - 1];
+
+          // Détail par plateforme (uniquement les annonces retenues comme
+          // pertinentes), pour un affichage séparé "sans se mélanger".
+          const breakdown = {};
+          for (const key of ["leboncoin", "vinted", "ebay"]) {
+            const forSource = usedResults.filter((r) => r.source === key);
+            if (forSource.length > 0) {
+              const pricesForSource = forSource.map((r) => r.extracted_price).sort((a, b) => a - b);
+              breakdown[key] = {
+                count: pricesForSource.length,
+                min: pricesForSource[0],
+                max: pricesForSource[pricesForSource.length - 1],
+              };
+            } else if (errors[key]) {
+              breakdown[key] = { count: 0, error: errors[key] };
+            }
+          }
 
           const conseilText = await callClaude([
             {
               role: "user",
               content:
                 `Objet: ${identification.objet}, état: ${identification.etat_note}. ` +
-                `Prix neufs trouvés en ligne pour ce produit précis (référence marché, pas spécifiquement occasion): ${usedPrices.join(", ")} €` +
+                `Prix d'occasion réels trouvés en ligne pour ce produit précis (Leboncoin/Vinted/eBay): ${usedPrices.join(", ")} €` +
                 ` (${usedPrices.length} annonce(s) au total). ` +
-                "À partir de ce prix neuf de référence et de l'état de l'objet, estime une fourchette de revente d'OCCASION réaliste (Leboncoin/Vinted), " +
-                "une estimation pour la revente en brocante/vide-grenier (souvent moins cher), et un conseil de vente pratique en une phrase. " +
-                "Compare aussi ce prix neuf trouvé à ta connaissance générale du prix de vente officiel/habituel de ce produit: s'il te semble anormalement bas ou haut " +
-                "(ex: promo exceptionnelle, erreur de prix, produit différent malgré le nom), signale-le brièvement dans \"alerte\" (sinon renvoie une chaîne vide). " +
-                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "prix_brocante": "...", "conseil": "...", "alerte": "..."}',
+                "À partir de ces prix d'occasion réels et de l'état de l'objet, donne une estimation pour la revente en brocante/vide-grenier (souvent moins cher que ces annonces), " +
+                "et un conseil de vente pratique en une phrase. " +
+                "Si ces prix te semblent anormalement bas ou hauts par rapport à ta connaissance générale du produit " +
+                "(ex: erreur de prix, produit différent malgré le nom), signale-le brièvement dans \"alerte\" (sinon renvoie une chaîne vide). " +
+                'Réponds UNIQUEMENT en JSON: {"prix_brocante": "...", "conseil": "...", "alerte": "..."}',
             },
           ], "claude-haiku-4-5-20251001");
           const extra = extractJson(conseilText);
 
           pricing = {
-            prix_bas: extra.prix_bas,
-            prix_haut: extra.prix_haut,
-            prix_neuf_bas,
-            prix_neuf_haut,
+            prix_bas,
+            prix_haut,
             prix_brocante: extra.prix_brocante,
             conseil: extra.conseil,
             alerte: extra.alerte || null,
@@ -794,6 +833,7 @@ export default function App() {
               usedPrices.length >= 4 ? "haute" : usedPrices.length >= 2 ? "moyenne" : "basse",
             source: usedSource,
             listings: usedResults,
+            breakdown,
           };
         } else {
           throw new Error("Pas assez d'annonces trouvées pour cet objet.");
@@ -815,6 +855,7 @@ export default function App() {
           confiance: "basse",
           source: "estimation IA (annonces réelles indisponibles: " + marketError.message + ")",
           listings: [],
+          breakdown: {},
         };
       }
 
@@ -1579,8 +1620,6 @@ export default function App() {
                 </div>
                 <div style={{ fontSize: 13, color: "#6B6154", marginBottom: 14 }}>
                   estimation d'occasion
-                  {result.prix_neuf_bas != null &&
-                    ` (basée sur un neuf à ${result.prix_neuf_bas}–${result.prix_neuf_haut} € en ligne)`}
                 </div>
 
                 {result.alerte && (
@@ -1598,6 +1637,47 @@ export default function App() {
                     }}
                   >
                     ⚠ {result.alerte}
+                  </div>
+                )}
+
+                {result.breakdown && Object.keys(result.breakdown).length > 0 && (
+                  <div
+                    style={{
+                      borderTop: "1px dashed #C9BD9F",
+                      paddingTop: 12,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: "#8A7C63", marginBottom: 6 }}>
+                      détail par plateforme :
+                    </div>
+                    {["leboncoin", "vinted", "ebay"].map((key) => {
+                      const b = result.breakdown[key];
+                      if (!b) return null;
+                      const label = SOURCE_LABELS[key] || key;
+                      return (
+                        <div
+                          key={key}
+                          style={{
+                            fontSize: 12,
+                            color: "#4A4335",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            padding: "3px 0",
+                          }}
+                        >
+                          <span>{label}</span>
+                          {b.count > 0 ? (
+                            <span className="mono" style={{ color: "#B4432C" }}>
+                              {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count} annonce{b.count > 1 ? "s" : ""})
+                            </span>
+                          ) : (
+                            <span style={{ color: "#8A7C63", fontStyle: "italic" }}>indisponible</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -1624,8 +1704,25 @@ export default function App() {
                           padding: "3px 0",
                         }}
                       >
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {l.title}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", gap: 6, alignItems: "baseline" }}>
+                          {l.source && (
+                            <span
+                              className="mono"
+                              style={{
+                                flexShrink: 0,
+                                fontSize: 10,
+                                color: "#8A7C63",
+                                border: "1px solid #C9BD9F",
+                                borderRadius: 3,
+                                padding: "1px 4px",
+                              }}
+                            >
+                              {SOURCE_LABELS[l.source] || l.source}
+                            </span>
+                          )}
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {l.title}
+                          </span>
                         </span>
                         <span className="mono" style={{ flexShrink: 0, color: "#B4432C" }}>
                           {l.price}
