@@ -253,6 +253,18 @@ function planKeyFromPriceId(priceId) {
   return null;
 }
 
+// Avec le "Flexible billing mode" de Stripe (actif sur ce compte), les
+// champs current_period_start/end n'existent plus sur l'objet Subscription
+// lui-même : ils sont désormais portés par chaque ligne d'abonnement
+// (subscription_item), dans items.data[0]. On garde quand même un repli sur
+// l'ancien emplacement au cas où un abonnement plus ancien les ait encore.
+function subPeriod(sub) {
+  const item = sub.items && sub.items.data && sub.items.data[0];
+  const start = (item && item.current_period_start) || sub.current_period_start;
+  const end = (item && item.current_period_end) || sub.current_period_end;
+  return { start, end };
+}
+
 async function handleCreateCheckoutSession(request, env) {
   if (!env.STRIPE_SECRET_KEY) {
     return jsonResponse({ error: "STRIPE_SECRET_KEY non configurée côté serveur." }, 500);
@@ -411,6 +423,7 @@ async function handleStripeWebhook(request, env) {
         const priceId = sub.data.items.data[0].price.id;
         const planKey = planKeyFromPriceId(priceId);
         const quota = parseInt(sub.data.items.data[0].price.metadata.quota_mensuel || "0", 10);
+        const { start, end } = subPeriod(sub.data);
 
         await supabaseServiceRequest(env, "PATCH", `profiles?id=eq.${userId}`, {
           stripe_customer_id: session.customer,
@@ -418,8 +431,8 @@ async function handleStripeWebhook(request, env) {
           plan: planKey || "gratuit",
           subscription_status: "active",
           quota_mensuel: quota,
-          periode_debut: new Date(sub.data.current_period_start * 1000).toISOString(),
-          periode_fin: new Date(sub.data.current_period_end * 1000).toISOString(),
+          periode_debut: new Date(start * 1000).toISOString(),
+          periode_fin: new Date(end * 1000).toISOString(),
           estimations_utilisees: 0,
           estimations_depuis_derniere_pub: 0,
           bonus_pub_disponible: false,
@@ -466,11 +479,12 @@ async function handleStripeWebhook(request, env) {
         if (!subId) break;
         const sub = await stripeRequest(env, "GET", `subscriptions/${subId}`);
         if (sub.status !== 200) break;
+        const { start, end } = subPeriod(sub.data);
 
         await supabaseServiceRequest(env, "PATCH", `profiles?stripe_subscription_id=eq.${subId}`, {
           subscription_status: "active",
-          periode_debut: new Date(sub.data.current_period_start * 1000).toISOString(),
-          periode_fin: new Date(sub.data.current_period_end * 1000).toISOString(),
+          periode_debut: new Date(start * 1000).toISOString(),
+          periode_fin: new Date(end * 1000).toISOString(),
           estimations_utilisees: 0,
           estimations_depuis_derniere_pub: 0,
           bonus_pub_disponible: false,
