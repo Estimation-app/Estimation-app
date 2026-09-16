@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard } from "lucide-react";
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
 // blocage CORS d'un appel direct depuis le navigateur.
@@ -14,6 +14,14 @@ const PROXY_URL = "https://dark-lake-8ef1.dyloo999.workers.dev";
 const SUPABASE_URL = "https://heykndklprjuvooqztmi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_HFixMx_zGtcvHw6wqAUKBA_66uuJkBZ";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Les 3 abonnements payants (voir STRIPE_PRICES dans worker.js pour les IDs
+// de prix réels côté serveur — le front n'envoie que la clé du plan).
+const PLANS = [
+  { key: "debutant", label: "Débutant", price: "2,99 €/mois", quota: 20 },
+  { key: "pro", label: "Pro", price: "9,99 €/mois", quota: 100 },
+  { key: "premium", label: "Premium", price: "19,99 €/mois", quota: 300 },
+];
 
 export default function App() {
   const [image, setImage] = useState(null); // { dataUrl, mediaType, base64 }
@@ -89,6 +97,15 @@ export default function App() {
   const [authStatus, setAuthStatus] = useState("idle"); // idle | sending | sent | signup_sent
   const [authError, setAuthError] = useState(null);
 
+  // Abonnement / quota (rempli depuis la table "profiles", tenue à jour
+  // côté serveur par le Worker via les webhooks Stripe).
+  const [profile, setProfile] = useState(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallInfo, setPaywallInfo] = useState(null);
+  const [adWatching, setAdWatching] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(null); // clé du plan en cours de traitement
+  const [portalLoading, setPortalLoading] = useState(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -96,6 +113,98 @@ export default function App() {
     });
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  async function loadProfile(userId) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(
+        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id"
+      )
+      .eq("id", userId)
+      .maybeSingle();
+    if (!error && data) setProfile(data);
+  }
+
+  useEffect(() => {
+    if (user) {
+      loadProfile(user.id);
+    } else {
+      setProfile(null);
+    }
+  }, [user]);
+
+  // Vérifie et consomme un crédit d'estimation côté serveur (impossible à
+  // tricher depuis le navigateur). Renvoie {allowed: true} si l'estimation
+  // peut continuer, sinon {allowed: false, ...} avec de quoi afficher le
+  // paywall (quota épuisé, offre de pub bonus, etc.).
+  async function checkQuota(watchedAd = false) {
+    const { data, error } = await supabase.rpc("consume_estimation", { p_watched_ad: watchedAd });
+    if (user) loadProfile(user.id);
+    if (error) {
+      return { allowed: false, reason: "erreur", message: error.message };
+    }
+    return data;
+  }
+
+  async function startCheckout(planKey) {
+    if (!user) return;
+    setCheckoutLoading(planKey);
+    try {
+      const res = await fetch(PROXY_URL + "/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: planKey,
+          user_id: user.id,
+          email: user.email,
+          return_url: window.location.origin,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de la création du paiement.");
+      window.location.href = data.url;
+    } catch (e) {
+      console.error(e);
+      setPaywallInfo((prev) => ({ ...(prev || {}), message: e.message || "Erreur lors de la création du paiement." }));
+      setCheckoutLoading(null);
+    }
+  }
+
+  async function openBillingPortal() {
+    if (!user) return;
+    setPortalLoading(true);
+    try {
+      const res = await fetch(PROXY_URL + "/create-portal-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: user.id, return_url: window.location.origin }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de l'ouverture du portail.");
+      window.location.href = data.url;
+    } catch (e) {
+      console.error(e);
+      setError(e.message || "Erreur lors de l'ouverture du portail d'abonnement.");
+      setPortalLoading(false);
+    }
+  }
+
+  // Pas encore de vraie régie publicitaire branchée: simulation d'un
+  // visionnage de pub (3 secondes) qui débloque ensuite le bonus/crédit
+  // gratuit côté serveur, exactement comme le ferait une vraie pub validée.
+  async function watchAdForBonus() {
+    setAdWatching(true);
+    await new Promise((r) => setTimeout(r, 3000));
+    const quota = await checkQuota(true);
+    setAdWatching(false);
+    if (quota.allowed) {
+      setShowPaywall(false);
+      setPaywallInfo(null);
+      await runEstimationCore();
+    } else {
+      setPaywallInfo(quota);
+    }
+  }
 
   async function sendMagicLink() {
     if (!authEmail.trim()) return;
@@ -477,7 +586,29 @@ export default function App() {
     return { ...second, queryUsed: query + " occasion" };
   }
 
+  // Point d'entrée du bouton "Estimer": vérifie/consomme le quota côté
+  // serveur avant de dépenser un appel IA. runEstimationCore() ci-dessous
+  // contient l'estimation elle-même (inchangée) et est aussi appelée
+  // directement après le visionnage d'une pub bonus, puisque le crédit est
+  // alors déjà consommé par checkQuota(true).
   async function estimate() {
+    if (!image) return;
+    setError(null);
+    if (!user) {
+      setError("Connecte-toi pour lancer une estimation (3 gratuites par mois, sans carte bancaire).");
+      setShowHistory(true);
+      return;
+    }
+    const quota = await checkQuota(false);
+    if (!quota.allowed) {
+      setPaywallInfo(quota);
+      setShowPaywall(true);
+      return;
+    }
+    await runEstimationCore();
+  }
+
+  async function runEstimationCore() {
     if (!image) return;
     setError(null);
     try {
@@ -982,6 +1113,35 @@ export default function App() {
             Prends l'objet en photo. Estimation du prix de revente en France,
             façon Leboncoin ou brocante.
           </p>
+
+          {user && profile && (
+            <div
+              className="mono"
+              style={{
+                marginTop: 10,
+                fontSize: 11,
+                color: "#8A7C63",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                cursor: "pointer",
+              }}
+              onClick={() => setShowHistory(true)}
+            >
+              <Sparkles size={12} />
+              {profile.plan !== "gratuit" && profile.subscription_status === "active" ? (
+                <span>
+                  {PLANS.find((p) => p.key === profile.plan)?.label || profile.plan} ·{" "}
+                  {Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/{profile.quota_mensuel}{" "}
+                  estimations restantes
+                </span>
+              ) : (
+                <span>
+                  Gratuit · {Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) restante(s) ce mois
+                </span>
+              )}
+            </div>
+          )}
         </header>
 
         {!image && (
@@ -1593,6 +1753,47 @@ export default function App() {
                     </button>
                   </div>
 
+                  {profile && (
+                    <div style={{ borderTop: "1px dashed #C9BD9F", marginTop: 10, paddingTop: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <div style={{ fontSize: 12, color: "#4A4335" }}>
+                          Plan :{" "}
+                          <strong>
+                            {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                              ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
+                              : "Gratuit"}
+                          </strong>
+                          <div className="mono" style={{ fontSize: 11, color: "#8A7C63", marginTop: 2 }}>
+                            {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                              ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} estimations restantes ce mois`
+                              : `${Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) gratuite(s) restante(s) ce mois`}
+                          </div>
+                        </div>
+                        {profile.stripe_customer_id ? (
+                          <button
+                            className="btn-ghost"
+                            onClick={openBillingPortal}
+                            disabled={portalLoading}
+                            style={{ flexShrink: 0 }}
+                          >
+                            <CreditCard size={14} /> {portalLoading ? "…" : "gérer"}
+                          </button>
+                        ) : (
+                          <button
+                            className="btn-ghost"
+                            onClick={() => {
+                              setPaywallInfo(null);
+                              setShowPaywall(true);
+                            }}
+                            style={{ flexShrink: 0 }}
+                          >
+                            <Sparkles size={14} /> s'abonner
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ borderTop: "1px dashed #C9BD9F", marginTop: 10, paddingTop: 10 }}>
                     {passwordStatus === "done" ? (
                       <p style={{ fontSize: 12, color: "#4A4335", margin: 0 }}>
@@ -1812,6 +2013,106 @@ export default function App() {
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPaywall && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 20,
+          }}
+          onClick={() => setShowPaywall(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#E4DCC8",
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "8px 8px 0 0",
+              padding: "20px 16px 32px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0 }}>
+                Quota atteint
+              </h2>
+              <button
+                onClick={() => setShowPaywall(false)}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color="#6B6154" />
+              </button>
+            </div>
+
+            <p style={{ fontSize: 13, color: "#4A4335", lineHeight: 1.5, marginTop: 0 }}>
+              {paywallInfo?.reason === "quota_epuise" &&
+                "Tu as utilisé toutes les estimations comprises dans ton abonnement ce mois-ci."}
+              {paywallInfo?.reason === "gratuit_epuise" &&
+                "Tu as utilisé tes estimations gratuites de ce mois-ci."}
+              {!paywallInfo?.reason && "Impossible de continuer l'estimation pour l'instant."}
+            </p>
+            {paywallInfo?.message && (
+              <p style={{ fontSize: 12, color: "#B4432C", marginTop: 0 }}>{paywallInfo.message}</p>
+            )}
+
+            {(paywallInfo?.bonus_pub_disponible ||
+              (paywallInfo?.reason === "gratuit_epuise" && paywallInfo?.pubs_restantes > 0)) && (
+              <button
+                className="btn-ghost"
+                onClick={watchAdForBonus}
+                disabled={adWatching}
+                style={{ width: "100%", justifyContent: "center", marginBottom: 16 }}
+              >
+                {adWatching ? (
+                  <>
+                    <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> visionnage en cours…
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle size={14} /> regarder une pub pour 1 estimation gratuite
+                  </>
+                )}
+              </button>
+            )}
+
+            <div style={{ borderTop: "1px dashed #C9BD9F", paddingTop: 14 }}>
+              <p className="mono" style={{ fontSize: 11, color: "#8A7C63", marginTop: 0, marginBottom: 10 }}>
+                ou passe à un abonnement pour beaucoup plus d'estimations :
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {PLANS.map((plan) => (
+                  <button
+                    key={plan.key}
+                    className="btn-primary"
+                    onClick={() => startCheckout(plan.key)}
+                    disabled={checkoutLoading !== null}
+                    style={{ justifyContent: "space-between", width: "100%" }}
+                  >
+                    <span>
+                      {plan.label} — {plan.quota}/mois
+                    </span>
+                    <span>
+                      {checkoutLoading === plan.key ? (
+                        <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                      ) : (
+                        plan.price
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
