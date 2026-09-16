@@ -5,12 +5,20 @@
 //    via le moteur "google_shopping_light" (version allégée, plus rapide
 //    que le moteur complet — utile pour les produits très demandés qui
 //    faisaient parfois traîner le scraping jusqu'à 90s).
-//    Les résultats sont mis en cache (Cloudflare KV) pendant 7 jours par
-//    terme de recherche, pour éviter de repayer une recherche SerpAPI
-//    quand plusieurs utilisateurs cherchent le même produit.
-//    La recherche SerpAPI est abandonnée après 15 secondes si elle traîne
-//    quand même — l'appli bascule alors sur l'estimation par IA plutôt que
-//    de faire attendre l'utilisateur.
+//    Conservé pour compatibilité mais plus utilisé par l'appli depuis
+//    l'ajout de /prices-multi (voir ci-dessous), qui donne de vraies
+//    annonces d'occasion au lieu d'un prix neuf de référence.
+// 1bis. /prices-multi → interroge en parallèle de VRAIES annonces
+//    d'occasion sur Leboncoin et Vinted (scrapers Apify) et sur eBay
+//    (moteur dédié SerpAPI), pour une estimation basée sur le marché de
+//    l'occasion réel plutôt que sur un prix neuf que l'IA doit ensuite
+//    transposer. Chaque source est plafonnée à MAX_ITEMS_PER_SOURCE
+//    annonces (maîtrise du coût: Leboncoin/Vinted sont facturés au
+//    résultat chez Apify) et mise en cache KV 7 jours par terme de
+//    recherche ET par plateforme, pour mutualiser le coût entre
+//    utilisateurs qui cherchent le même produit. Une source qui échoue
+//    (timeout, clé manquante...) n'empêche pas les deux autres de
+//    répondre (Promise.allSettled côté handlePricesMulti).
 // 2. /claude  → interroge l'API Anthropic (clé cachée) pour identifier
 //    l'objet et écrire les conseils. Nécessaire car l'astuce gratuite
 //    utilisée pendant les tests dans Claude ne fonctionne que là-bas, pas
@@ -28,6 +36,7 @@
 // d'environnement configurées dans le dashboard Cloudflare (Settings >
 // Variables and Secrets) :
 //   - SERPAPI_KEY
+//   - APIFY_API_KEY   (scrapers Leboncoin + Vinted, voir /prices-multi)
 //   - ANTHROPIC_API_KEY
 //   - STRIPE_SECRET_KEY
 //   - STRIPE_WEBHOOK_SECRET
@@ -38,6 +47,20 @@
 
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 jours
 const SERPAPI_TIMEOUT_MS = 15000; // 15 secondes max avant d'abandonner
+const APIFY_TIMEOUT_MS = 25000; // les scrapers Apify sont plus lents qu'un simple appel API
+// Plafond d'annonces récupérées par plateforme sur /prices-multi. Leboncoin
+// et Vinted sont facturés au résultat chez Apify (~1 à 1,50$ / 1000
+// annonces) : 15 annonces par plateforme ≈ 0,03$ par estimation NON mise en
+// cache, ce qui reste largement absorbé par les abonnements (voir la marge
+// détaillée discutée avec l'utilisateur avant l'implémentation).
+const MAX_ITEMS_PER_SOURCE = 15;
+
+// Actors Apify utilisés (format "propriétaire~nom-actor" attendu par l'API
+// Apify pour l'appel run-sync-get-dataset-items).
+const APIFY_ACTORS = {
+  leboncoin: "piotrv1001~leboncoin-listings-scraper",
+  vinted: "sourabhbgp~vinted-scraper",
+};
 
 const SUPABASE_URL = "https://heykndklprjuvooqztmi.supabase.co";
 
@@ -60,6 +83,9 @@ export default {
 
     if (url.pathname === "/prices") {
       return handlePrices(url, env);
+    }
+    if (url.pathname === "/prices-multi") {
+      return handlePricesMulti(url, env);
     }
     if (url.pathname === "/claude") {
       return handleClaude(request, env);
@@ -84,11 +110,11 @@ function normalizeQuery(query) {
 // fetch() avec une limite de temps: si SerpAPI ne répond pas assez vite
 // (produit très demandé, scraping lent côté Google), on abandonne plutôt
 // que de faire attendre l'utilisateur 90 secondes.
-async function fetchWithTimeout(url, timeoutMs) {
+async function fetchWithTimeout(url, timeoutMs, init) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { signal: controller.signal });
+    return await fetch(url, { ...(init || {}), signal: controller.signal });
   } finally {
     clearTimeout(timeoutId);
   }
@@ -168,6 +194,152 @@ async function handlePrices(url, env) {
       timedOut ? 504 : 502
     );
   }
+}
+
+// ============================================================================
+// Recherche multi-sources (annonces d'occasion réelles) : /prices-multi
+// ============================================================================
+
+// Wrapper de cache générique, réutilisé par les 3 sources ci-dessous. Une
+// clé de cache différente par plateforme (préfixe) évite qu'une recherche
+// Leboncoin et une recherche Vinted sur le même terme ne se marchent dessus.
+async function cachedSearch(env, cacheKeyPrefix, query, fetcher) {
+  const cacheKey = cacheKeyPrefix + ":" + normalizeQuery(query);
+  if (env.PRICE_CACHE) {
+    try {
+      const cached = await env.PRICE_CACHE.get(cacheKey, { type: "json" });
+      if (cached) return { results: cached, cached: true };
+    } catch (e) {
+      // souci de lecture du cache: on continue simplement vers la vraie recherche
+    }
+  }
+  const results = await fetcher();
+  if (env.PRICE_CACHE && results.length > 0) {
+    try {
+      await env.PRICE_CACHE.put(cacheKey, JSON.stringify(results), {
+        expirationTtl: CACHE_TTL_SECONDS,
+      });
+    } catch (e) {
+      // échec d'écriture du cache: pas grave, la recherche a quand même été faite
+    }
+  }
+  return { results, cached: false };
+}
+
+// Lance un actor Apify en mode synchrone et renvoie directement les items du
+// dataset (pas besoin de poller un run asynchrone séparément).
+async function runApifyActor(env, actorSlug, input) {
+  const apifyUrl =
+    "https://api.apify.com/v2/acts/" + actorSlug + "/run-sync-get-dataset-items?token=" + env.APIFY_API_KEY;
+  const res = await fetchWithTimeout(apifyUrl, APIFY_TIMEOUT_MS, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error("Apify (" + actorSlug + ") a répondu " + res.status + ": " + text.slice(0, 200));
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function searchLeboncoin(query, env) {
+  if (!env.APIFY_API_KEY) throw new Error("APIFY_API_KEY non configurée côté serveur.");
+  const { results, cached } = await cachedSearch(env, "leboncoin", query, async () => {
+    const items = await runApifyActor(env, APIFY_ACTORS.leboncoin, {
+      searchQueries: [query],
+      maxItems: MAX_ITEMS_PER_SOURCE,
+    });
+    return items
+      .map((it) => ({
+        title: it.title,
+        extracted_price: typeof it.price === "number" ? it.price : null,
+        price: typeof it.price === "number" ? it.price + " €" : null,
+        link: it.url,
+      }))
+      .filter((r) => typeof r.extracted_price === "number" && r.extracted_price > 0);
+  });
+  return { source: "leboncoin", results, cached };
+}
+
+async function searchVinted(query, env) {
+  if (!env.APIFY_API_KEY) throw new Error("APIFY_API_KEY non configurée côté serveur.");
+  const { results, cached } = await cachedSearch(env, "vinted", query, async () => {
+    const searchUrl = "https://www.vinted.fr/catalog?search_text=" + encodeURIComponent(query);
+    const items = await runApifyActor(env, APIFY_ACTORS.vinted, {
+      mode: "search",
+      country: "fr",
+      startUrls: [searchUrl],
+      searchText: query,
+      maxItems: MAX_ITEMS_PER_SOURCE,
+    });
+    return items
+      .map((it) => ({
+        title: it.title,
+        extracted_price: typeof it.price === "number" ? it.price : null,
+        price: typeof it.price === "number" ? it.price + " " + (it.currency || "EUR") : null,
+        link: it.url,
+        condition: it.condition || null,
+      }))
+      .filter((r) => typeof r.extracted_price === "number" && r.extracted_price > 0);
+  });
+  return { source: "vinted", results, cached };
+}
+
+async function searchEbay(query, env) {
+  if (!env.SERPAPI_KEY) throw new Error("SERPAPI_KEY non configurée côté serveur.");
+  const { results, cached } = await cachedSearch(env, "ebay", query, async () => {
+    const serpUrl =
+      "https://serpapi.com/search.json?engine=ebay&ebay_domain=ebay.fr&_nkw=" +
+      encodeURIComponent(query) +
+      "&api_key=" +
+      env.SERPAPI_KEY;
+    const res = await fetchWithTimeout(serpUrl, SERPAPI_TIMEOUT_MS);
+    const data = await res.json();
+    if (data.error) throw new Error("SerpAPI eBay: " + data.error);
+    return (data.organic_results || [])
+      .slice(0, MAX_ITEMS_PER_SOURCE)
+      .map((r) => ({
+        title: r.title,
+        extracted_price: r.price && r.price.from ? r.price.from.extracted : null,
+        price: r.price && r.price.from ? r.price.from.raw : null,
+        link: r.link,
+      }))
+      .filter((r) => typeof r.extracted_price === "number" && r.extracted_price > 0);
+  });
+  return { source: "ebay", results, cached };
+}
+
+// Point d'entrée /prices-multi: lance les 3 recherches en parallèle et
+// renvoie chaque source séparément (jamais mélangées), avec un message
+// d'erreur par source si l'une d'elles échoue — les deux autres répondent
+// quand même normalement.
+async function handlePricesMulti(url, env) {
+  const query = url.searchParams.get("q");
+  if (!query) return jsonResponse({ error: "Paramètre 'q' manquant" }, 400);
+
+  const [leboncoin, vinted, ebay] = await Promise.allSettled([
+    searchLeboncoin(query, env),
+    searchVinted(query, env),
+    searchEbay(query, env),
+  ]);
+
+  const pack = (settled, label) => {
+    if (settled.status === "fulfilled") return settled.value;
+    return {
+      source: label,
+      results: [],
+      cached: false,
+      error: settled.reason ? String(settled.reason.message || settled.reason) : "Erreur inconnue.",
+    };
+  };
+
+  return jsonResponse({
+    leboncoin: pack(leboncoin, "leboncoin"),
+    vinted: pack(vinted, "vinted"),
+    ebay: pack(ebay, "ebay"),
+  });
 }
 
 async function handleClaude(request, env) {
