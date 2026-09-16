@@ -1,9 +1,5 @@
 // Serveur relais complet pour l'estimateur — à coller dans Cloudflare Workers.
 //
-// Deux rôles :
-// 1. /prices  → interroge SerpAPI (clé cachée) pour de vrais prix en ligne,
-// Serveur relais complet pour l'estimateur — à coller dans Cloudflare Workers.
-//
 // Rôles :
 // 1. /prices  → interroge SerpAPI (clé cachée) pour de vrais prix en ligne,
 //    via le moteur "google_shopping_light" (version allégée, plus rapide
@@ -513,5 +509,4 @@ function jsonResponse(obj, status = 200) {
     headers: { "Content-Type": "application/json", ...corsHeaders() },
   });
 }
-
 
