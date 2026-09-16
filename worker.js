@@ -397,12 +397,17 @@ async function handleStripeWebhook(request, env) {
       case "checkout.session.completed": {
         const session = event.data.object;
         if (session.mode !== "subscription") break;
-        const userId = session.metadata && session.metadata.supabase_user_id;
         const subId = session.subscription;
-        if (!userId || !subId) break;
+        if (!subId) break;
 
         const sub = await stripeRequest(env, "GET", `subscriptions/${subId}`);
         if (sub.status !== 200) break;
+        // Le user_id est stocké dans les metadata de l'abonnement (subscription_data.metadata
+        // à la création), pas dans les metadata de la session elle-même, qui sont vides ici.
+        const userId =
+          (session.metadata && session.metadata.supabase_user_id) ||
+          (sub.data.metadata && sub.data.metadata.supabase_user_id);
+        if (!userId) break;
         const priceId = sub.data.items.data[0].price.id;
         const planKey = planKeyFromPriceId(priceId);
         const quota = parseInt(sub.data.items.data[0].price.metadata.quota_mensuel || "0", 10);
