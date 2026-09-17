@@ -26,7 +26,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Les 3 abonnements payants (voir STRIPE_PRICES dans worker.js pour les IDs
 // de prix réels côté serveur — le front n'envoie que la clé du plan).
 const PLANS = [
-  { key: "debutant", label: "Débutant", price: "2,99 €/mois", quota: 20 },
+  { key: "debutant", label: "Starter", price: "2,99 €/mois", quota: 20 },
   { key: "pro", label: "Pro", price: "9,99 €/mois", quota: 100 },
   { key: "premium", label: "Premium", price: "19,99 €/mois", quota: 300 },
 ];
@@ -81,6 +81,8 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [resultTab, setResultTab] = useState("estimation"); // estimation | statistiques
+  const [correctionOpen, setCorrectionOpen] = useState(false); // affiche le champ "corriger un détail"
+  const [correctionInput, setCorrectionInput] = useState(""); // texte de la correction en cours de saisie
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
 
   // Message vocal pour dicter les précisions (Web Speech API, native au
@@ -446,6 +448,8 @@ export default function App() {
     setError(null);
     setResult(null);
     setResultTab("estimation");
+    setCorrectionOpen(false);
+    setCorrectionInput("");
     setStatus("idle");
 
     const isHeic =
@@ -651,7 +655,7 @@ export default function App() {
   // contient l'estimation elle-même (inchangée) et est aussi appelée
   // directement après le visionnage d'une pub bonus, puisque le crédit est
   // alors déjà consommé par checkQuota(true).
-  async function estimate() {
+  async function estimate(detailsOverride) {
     if (!image) return;
     setError(null);
     if (!user) {
@@ -665,11 +669,34 @@ export default function App() {
       setShowPaywall(true);
       return;
     }
-    await runEstimationCore();
+    await runEstimationCore(detailsOverride);
   }
 
-  async function runEstimationCore() {
+  // Permet de corriger un détail après coup (ex: l'IA a estimé "grande
+  // taille" alors que c'est une petite peluche) sans reprendre de photo:
+  // on ajoute la précision au texte existant et on relance une estimation
+  // complète (nouvelle identification + nouvelle recherche de prix), pour
+  // que le prix reste cohérent avec le détail corrigé. Consomme un crédit
+  // d'estimation comme un nouvel essai, via estimate().
+  async function applyCorrection() {
+    const text = correctionInput.trim();
+    if (!text) return;
+    const merged = (details.trim() ? details.trim() + " " : "") + text;
+    setDetails(merged);
+    setCorrectionInput("");
+    setCorrectionOpen(false);
+    await estimate(merged);
+  }
+
+  // detailsOverride permet de relancer immédiatement une estimation avec un
+  // texte de précisions à jour sans dépendre du state React "details" (qui
+  // ne serait pas encore mis à jour au moment de l'appel si on vient de
+  // faire setDetails juste avant, à cause du batching des mises à jour de
+  // state) — utilisé par la correction post-résultat ("ce n'est pas tout à
+  // fait ça").
+  async function runEstimationCore(detailsOverride) {
     if (!image) return;
+    const effectiveDetails = detailsOverride !== undefined ? detailsOverride : details;
     setError(null);
     try {
       setStatus("analyzing");
@@ -687,8 +714,8 @@ export default function App() {
                 "Tu regardes une photo. D'abord détermine le type de sujet: (a) un objet du quotidien à estimer pour une revente d'occasion, (b) un être vivant (humain ou animal), (c) un véhicule (voiture, moto, scooter...), (d) un bien immobilier (maison ou appartement, vu de l'extérieur ou l'intérieur). " +
                 "Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
                 '{"type_sujet": "objet" ou "etre_vivant" ou "vehicule" ou "immobilier", "objet": "nom précis de l\'objet (marque/modèle si visible) OU description brève et neutre de l\'être vivant OU description du véhicule OU description du bien immobilier", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (vide si pas type objet)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé", "marque": "marque du véhicule si type_sujet=vehicule, sinon vide", "modele": "modèle du véhicule si type_sujet=vehicule, sinon vide", "annee": nombre (année du véhicule si clairement identifiable, sinon null), "type_bien": "maison ou appartement si type_sujet=immobilier, sinon vide"}' +
-                (details.trim()
-                  ? ` L'utilisateur précise en plus: "${details.trim()}". Utilise ces précisions en priorité sur ce que tu vois sur la photo si elles se contredisent (ex: la contenance exacte, un défaut caché), et intègre-les dans "objet" et "recherche".`
+                (effectiveDetails.trim()
+                  ? ` L'utilisateur précise en plus: "${effectiveDetails.trim()}". Utilise ces précisions en priorité sur ce que tu vois sur la photo si elles se contredisent (ex: la contenance exacte, un défaut caché), et intègre-les dans "objet" et "recherche".`
                   : ""),
             },
           ],
@@ -965,6 +992,8 @@ export default function App() {
     setResult(null);
     setError(null);
     setResultTab("estimation");
+    setCorrectionOpen(false);
+    setCorrectionInput("");
     setStatus("idle");
     setPendingIdentification(null);
     setVehicleForm({ annee: "", kilometrage: "", etat: "bon état" });
@@ -1376,7 +1405,7 @@ export default function App() {
 
             {status !== "done" && status !== "vehicule_form" && status !== "immobilier_form" && (
               <div style={{ display: "flex", gap: 10 }}>
-                <button className="btn-primary" onClick={estimate} disabled={status === "analyzing" || status === "pricing"}>
+                <button className="btn-primary" onClick={() => estimate()} disabled={status === "analyzing" || status === "pricing"}>
                   {status === "analyzing" && (
                     <>
                       <Loader2 size={16} className="spin" style={{ animation: "spin 1s linear infinite" }} />
@@ -1818,43 +1847,60 @@ export default function App() {
                     <div style={{ fontSize: 12, color: "#8A7C63", marginBottom: 6 }}>
                       annonces retenues (même produit) :
                     </div>
-                    {result.listings.map((l, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          fontSize: 12,
-                          color: "#4A4335",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 8,
-                          padding: "3px 0",
-                        }}
-                      >
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", gap: 6, alignItems: "baseline" }}>
-                          {l.source && (
+                    {result.listings.map((l, i) => {
+                      const RowTag = l.link ? "a" : "div";
+                      const rowProps = l.link
+                        ? { href: l.link, target: "_blank", rel: "noopener noreferrer" }
+                        : {};
+                      return (
+                        <RowTag
+                          key={i}
+                          {...rowProps}
+                          style={{
+                            fontSize: 12,
+                            color: "#4A4335",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 8,
+                            padding: "3px 0",
+                            textDecoration: "none",
+                            cursor: l.link ? "pointer" : "default",
+                          }}
+                        >
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", gap: 6, alignItems: "baseline" }}>
+                            {l.source && (
+                              <span
+                                className="mono"
+                                style={{
+                                  flexShrink: 0,
+                                  fontSize: 10,
+                                  color: "#8A7C63",
+                                  border: "1px solid #C9BD9F",
+                                  borderRadius: 3,
+                                  padding: "1px 4px",
+                                }}
+                              >
+                                {SOURCE_LABELS[l.source] || l.source}
+                              </span>
+                            )}
                             <span
-                              className="mono"
                               style={{
-                                flexShrink: 0,
-                                fontSize: 10,
-                                color: "#8A7C63",
-                                border: "1px solid #C9BD9F",
-                                borderRadius: 3,
-                                padding: "1px 4px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                textDecoration: l.link ? "underline" : "none",
                               }}
                             >
-                              {SOURCE_LABELS[l.source] || l.source}
+                              {l.title}
                             </span>
-                          )}
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {l.title}
                           </span>
-                        </span>
-                        <span className="mono" style={{ flexShrink: 0, color: "#B4432C" }}>
-                          {l.price}
-                        </span>
-                      </div>
-                    ))}
+                          <span className="mono" style={{ flexShrink: 0, color: "#B4432C", display: "flex", alignItems: "center", gap: 3 }}>
+                            {l.price}
+                            {l.link && <span style={{ fontSize: 10 }}>↗</span>}
+                          </span>
+                        </RowTag>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -1874,6 +1920,98 @@ export default function App() {
                 </div>
                   </>
                 )}
+
+                <div
+                  style={{
+                    borderTop: "1px dashed #C9BD9F",
+                    paddingTop: 12,
+                    marginTop: 14,
+                  }}
+                >
+                  {!correctionOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setCorrectionOpen(true)}
+                      className="mono"
+                      style={{
+                        fontSize: 12,
+                        color: "#8A7C63",
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Un détail est faux ? Corriger et recalculer
+                    </button>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 12, color: "#8A7C63", marginBottom: 6 }}>
+                        Précise ce qui ne va pas (ex : "en fait c'est une petite taille"), l'estimation sera
+                        relancée avec cette info :
+                      </div>
+                      <textarea
+                        value={correctionInput}
+                        onChange={(e) => setCorrectionInput(e.target.value)}
+                        placeholder="ex : petite taille, pas grande"
+                        rows={2}
+                        style={{
+                          width: "100%",
+                          fontSize: 13,
+                          color: "#4A4335",
+                          background: "#FBF6EC",
+                          border: "1px solid #C9BD9F",
+                          borderRadius: 4,
+                          padding: "8px 10px",
+                          marginBottom: 8,
+                          resize: "vertical",
+                          fontFamily: "inherit",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={applyCorrection}
+                          disabled={!correctionInput.trim() || status === "analyzing" || status === "pricing"}
+                          className="mono"
+                          style={{
+                            fontSize: 12,
+                            padding: "8px 12px",
+                            borderRadius: 4,
+                            border: "1px solid #B4432C",
+                            background: "#B4432C",
+                            color: "#FBF6EC",
+                            cursor: correctionInput.trim() ? "pointer" : "default",
+                            opacity: correctionInput.trim() ? 1 : 0.5,
+                          }}
+                        >
+                          Recalculer l'estimation
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCorrectionOpen(false);
+                            setCorrectionInput("");
+                          }}
+                          className="mono"
+                          style={{
+                            fontSize: 12,
+                            padding: "8px 12px",
+                            borderRadius: 4,
+                            border: "1px solid #C9BD9F",
+                            background: "transparent",
+                            color: "#8A7C63",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <div
                   className="mono"
