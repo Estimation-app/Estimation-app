@@ -98,6 +98,7 @@ export default function App() {
   const [adLoading, setAdLoading] = useState(false);
   const [adError, setAdError] = useState(null);
   const [adCopied, setAdCopied] = useState(false);
+  const [adGenCount, setAdGenCount] = useState(0); // nb de générations/régénérations d'annonce pour l'estimation en cours (max 3, pour éviter un abus d'appels IA gratuits)
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
 
   // Message vocal pour dicter les précisions (Web Speech API, native au
@@ -469,6 +470,7 @@ export default function App() {
     setAdLoading(false);
     setAdError(null);
     setAdCopied(false);
+    setAdGenCount(0);
     setStatus("idle");
 
     const isHeic =
@@ -715,6 +717,8 @@ export default function App() {
   // tierce sans partenariat, donc on ne peut pas publier automatiquement).
   async function generateAd() {
     if (!result) return;
+    if (adGenCount >= 3) return; // limite de 3 générations/régénérations par estimation
+    setAdGenCount((c) => c + 1);
     setAdLoading(true);
     setAdError(null);
     setAdCopied(false);
@@ -768,6 +772,14 @@ export default function App() {
     if (!image) return;
     const effectiveDetails = detailsOverride !== undefined ? detailsOverride : details;
     setError(null);
+    // Une nouvelle estimation (y compris via une correction) porte sur un
+    // résultat potentiellement différent : on repart d'une annonce vierge
+    // et d'un compteur de générations à zéro plutôt que de garder le texte
+    // (et la limite déjà consommée) de l'estimation précédente.
+    setAdText(null);
+    setAdError(null);
+    setAdCopied(false);
+    setAdGenCount(0);
     try {
       setStatus("analyzing");
       const idText = await callClaude([
@@ -1068,6 +1080,7 @@ export default function App() {
     setAdLoading(false);
     setAdError(null);
     setAdCopied(false);
+    setAdGenCount(0);
     setStatus("idle");
     setPendingIdentification(null);
     setVehicleForm({ annee: "", kilometrage: "", etat: "bon état" });
@@ -2094,7 +2107,7 @@ export default function App() {
                     marginTop: 14,
                   }}
                 >
-                  {!adText && !adLoading && (
+                  {!adText && !adLoading && adGenCount < 3 && (
                     <button
                       type="button"
                       onClick={generateAd}
@@ -2111,6 +2124,12 @@ export default function App() {
                     >
                       Générer une annonce à publier
                     </button>
+                  )}
+
+                  {!adText && !adLoading && adGenCount >= 3 && (
+                    <div style={{ fontSize: 12, color: "#8A7C63" }}>
+                      Limite de 3 générations atteinte pour cette estimation.
+                    </div>
                   )}
 
                   {adLoading && (
@@ -2178,23 +2197,31 @@ export default function App() {
                         >
                           {adCopied ? "Copié !" : "Copier le texte"}
                         </button>
-                        <button
-                          type="button"
-                          onClick={generateAd}
-                          className="mono"
-                          style={{
-                            fontSize: 12,
-                            padding: "8px 12px",
-                            borderRadius: 4,
-                            border: "1px solid #C9BD9F",
-                            background: "transparent",
-                            color: "#8A7C63",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Régénérer
-                        </button>
+                        {adGenCount < 3 && (
+                          <button
+                            type="button"
+                            onClick={generateAd}
+                            className="mono"
+                            style={{
+                              fontSize: 12,
+                              padding: "8px 12px",
+                              borderRadius: 4,
+                              border: "1px solid #C9BD9F",
+                              background: "transparent",
+                              color: "#8A7C63",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Régénérer ({3 - adGenCount} restante{3 - adGenCount > 1 ? "s" : ""})
+                          </button>
+                        )}
                       </div>
+                      {adGenCount >= 3 && (
+                        <div style={{ fontSize: 11, color: "#8A7C63", marginBottom: 8 }}>
+                          Limite de 3 générations atteinte pour cette estimation — tu peux encore modifier le texte
+                          à la main juste au-dessus.
+                        </div>
+                      )}
                       <div style={{ fontSize: 11, color: "#8A7C63", marginBottom: 6, lineHeight: 1.5 }}>
                         Copie le texte ci-dessus, puis clique sur une plateforme pour créer ton annonce (colle le
                         texte une fois sur la page) :
