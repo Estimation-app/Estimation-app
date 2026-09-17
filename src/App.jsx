@@ -832,8 +832,16 @@ export default function App() {
           const usedSource =
             "estimation basée sur " + usedPrices.length + " annonce(s) d'occasion réelle(s) (Leboncoin/Vinted/eBay)";
 
-          const prix_bas = usedPrices[0];
-          const prix_haut = usedPrices[usedPrices.length - 1];
+          // Fourchette "brute" (min/max des annonces trouvées), gardée en
+          // repli si jamais l'IA ne renvoie pas prix_bas/prix_haut. Ce n'est
+          // PAS la fourchette finale affichée: avec très peu d'annonces
+          // (surtout une seule), un simple min=max donnerait un prix
+          // artificiellement précis alors que ce sont des prix affichés/
+          // demandés, pas des prix de vente confirmés. La vraie fourchette
+          // est calculée par l'IA juste après, en mélangeant ces prix réels
+          // avec sa connaissance générale du marché.
+          const rawPrixBas = usedPrices[0];
+          const rawPrixHaut = usedPrices[usedPrices.length - 1];
 
           // Détail par plateforme (uniquement les annonces retenues comme
           // pertinentes), pour un affichage séparé "sans se mélanger".
@@ -857,19 +865,29 @@ export default function App() {
               role: "user",
               content:
                 `Objet: ${identification.objet}, état: ${identification.etat_note}. ` +
-                `Prix d'occasion réels trouvés en ligne pour ce produit précis (Leboncoin/Vinted/eBay): ${usedPrices.join(", ")} €` +
+                `Prix affichés trouvés en ligne pour ce produit précis (Leboncoin/Vinted/eBay): ${usedPrices.join(", ")} €` +
                 ` (${usedPrices.length} annonce(s) au total). ` +
-                "À partir de ces prix d'occasion réels et de l'état de l'objet, donne une estimation pour la revente en brocante/vide-grenier (souvent moins cher que ces annonces), " +
-                "et un conseil de vente pratique en une phrase. " +
+                "Important: ce sont des prix DEMANDÉS par des vendeurs (annonces actives), pas des prix de vente confirmés — le produit a pu se vendre moins cher, ou ne pas se vendre du tout à ce prix. " +
+                "À partir de ces prix réels ET de ta connaissance générale du marché de l'occasion pour ce type de produit et son état, donne une fourchette de revente réaliste : \"prix_bas\" et \"prix_haut\" (nombres en euros, prix_bas strictement inférieur à prix_haut). " +
+                "Ne renvoie JAMAIS prix_bas égal à prix_haut, même s'il n'y a qu'une seule annonce trouvée : élargis intelligemment la fourchette autour du/des prix observés (par exemple ±10 à 25% selon ton incertitude) en tenant compte du nombre d'annonces disponibles (moins il y en a, plus la fourchette doit être large) et de l'état de l'objet. " +
+                "Donne aussi une estimation pour la revente en brocante/vide-grenier (\"prix_brocante\", souvent moins cher que ces annonces), " +
+                "et un conseil de vente pratique en une phrase (\"conseil\"). " +
                 "Si ces prix te semblent anormalement bas ou hauts par rapport à ta connaissance générale du produit " +
                 "(ex: erreur de prix, produit différent malgré le nom), signale-le brièvement dans \"alerte\" (sinon renvoie une chaîne vide). " +
                 "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
                 "\"facilite_vente\" (0 = très difficile à vendre car peu de demande sur ce type de plateformes d'occasion, 10 = se vend très facilement/vite, en te basant sur le nombre d'annonces trouvées et ta connaissance générale de la demande pour ce type de produit), " +
                 "\"rarete\" (0 = produit courant qu'on trouve facilement partout, 10 = produit très rare/recherché/difficile à trouver). " +
-                'Réponds UNIQUEMENT en JSON: {"prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10}',
+                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10}',
             },
           ], "claude-haiku-4-5-20251001");
           const extra = extractJson(conseilText);
+
+          const prix_bas =
+            typeof extra.prix_bas === "number" && !isNaN(extra.prix_bas) ? extra.prix_bas : rawPrixBas;
+          const prix_haut =
+            typeof extra.prix_haut === "number" && !isNaN(extra.prix_haut) && extra.prix_haut > prix_bas
+              ? extra.prix_haut
+              : Math.max(rawPrixHaut, Math.round(prix_bas * 1.15));
 
           pricing = {
             prix_bas,
@@ -903,8 +921,15 @@ export default function App() {
           },
         ], "claude-haiku-4-5-20251001");
         const fallback = extractJson(priceText);
+        const fbBas = typeof fallback.prix_bas === "number" ? fallback.prix_bas : 0;
+        const fbHaut =
+          typeof fallback.prix_haut === "number" && fallback.prix_haut > fbBas
+            ? fallback.prix_haut
+            : Math.round(fbBas * 1.15);
         pricing = {
           ...fallback,
+          prix_bas: fbBas,
+          prix_haut: fbHaut,
           facilite_vente: typeof fallback.facilite_vente === "number" ? fallback.facilite_vente : null,
           rarete: typeof fallback.rarete === "number" ? fallback.rarete : null,
           confiance: "basse",
