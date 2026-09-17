@@ -59,7 +59,14 @@ const MAX_ITEMS_PER_SOURCE = 15;
 // Apify pour l'appel run-sync-get-dataset-items).
 const APIFY_ACTORS = {
   leboncoin: "piotrv1001~leboncoin-listings-scraper",
-  vinted: "sourabhbgp~vinted-scraper",
+  // L'actor "sourabhbgp~vinted-scraper" utilisé initialement renvoyait
+  // systématiquement 0 résultat pour le marché "fr" (confirmé dans les logs
+  // Apify : "No items matched. Vinted answered normally.") même avec un
+  // input strictement conforme à sa doc — bug/limitation propre à cet actor,
+  // très peu utilisé (18 utilisateurs). Remplacé le 2026-09-17 par
+  // "scrape.badger~vinted-scraper", plus utilisé (120+) et avec une doc
+  // beaucoup plus précise sur le format de sortie.
+  vinted: "scrape.badger~vinted-scraper",
 };
 
 const SUPABASE_URL = "https://heykndklprjuvooqztmi.supabase.co";
@@ -266,22 +273,27 @@ async function searchLeboncoin(query, env) {
 async function searchVinted(query, env) {
   if (!env.APIFY_API_KEY) throw new Error("APIFY_API_KEY non configurée côté serveur.");
   const { results, cached } = await cachedSearch(env, "vinted", query, async () => {
-    const searchUrl = "https://www.vinted.fr/catalog?search_text=" + encodeURIComponent(query);
     const items = await runApifyActor(env, APIFY_ACTORS.vinted, {
-      mode: "search",
-      country: "fr",
-      startUrls: [searchUrl],
-      searchText: query,
-      maxItems: MAX_ITEMS_PER_SOURCE,
+      mode: "Search Items",
+      query: query,
+      market: "fr",
+      max_results: MAX_ITEMS_PER_SOURCE,
     });
     return items
-      .map((it) => ({
-        title: it.title,
-        extracted_price: typeof it.price === "number" ? it.price : null,
-        price: typeof it.price === "number" ? it.price + " " + (it.currency || "EUR") : null,
-        link: it.url,
-        condition: it.condition || null,
-      }))
+      .map((it) => {
+        // price_amount est une chaîne ("45.00"), pas un nombre.
+        const extracted =
+          typeof it.price_amount === "string" || typeof it.price_amount === "number"
+            ? parseFloat(it.price_amount)
+            : NaN;
+        return {
+          title: it.title,
+          extracted_price: !isNaN(extracted) && extracted > 0 ? extracted : null,
+          price: it.price_amount != null ? it.price_amount + " " + (it.price_currency || "EUR") : null,
+          link: it.url,
+          condition: it.status || null,
+        };
+      })
       .filter((r) => typeof r.extracted_price === "number" && r.extracted_price > 0);
   });
   return { source: "vinted", results, cached };
@@ -300,12 +312,27 @@ async function searchEbay(query, env) {
     if (data.error) throw new Error("SerpAPI eBay: " + data.error);
     return (data.organic_results || [])
       .slice(0, MAX_ITEMS_PER_SOURCE)
-      .map((r) => ({
-        title: r.title,
-        extracted_price: r.price && r.price.from ? r.price.from.extracted : null,
-        price: r.price && r.price.from ? r.price.from.raw : null,
-        link: r.link,
-      }))
+      .map((r) => {
+        // SerpAPI renvoie le plus souvent un prix "à plat" {raw, extracted}
+        // (cas normal, un seul prix). Le format {from:{...}, to:{...}} n'est
+        // utilisé que pour les rares annonces à fourchette de prix. Le code
+        // précédent ne lisait que ce second cas et perdait donc quasiment
+        // tous les résultats (bug corrigé le 2026-09-16).
+        const extracted =
+          r.price && typeof r.price.extracted === "number"
+            ? r.price.extracted
+            : r.price && r.price.from && typeof r.price.from.extracted === "number"
+            ? r.price.from.extracted
+            : null;
+        const raw =
+          (r.price && r.price.raw) || (r.price && r.price.from && r.price.from.raw) || null;
+        return {
+          title: r.title,
+          extracted_price: extracted,
+          price: raw,
+          link: r.link,
+        };
+      })
       .filter((r) => typeof r.extracted_price === "number" && r.extracted_price > 0);
   });
   return { source: "ebay", results, cached };
