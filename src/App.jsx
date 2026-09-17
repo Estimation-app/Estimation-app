@@ -31,12 +31,56 @@ const PLANS = [
   { key: "premium", label: "Premium", price: "19,99 €/mois", quota: 300 },
 ];
 
+// Petite jauge 0–10 réutilisée dans l'onglet "statistiques" du résultat.
+// `value` peut être null/undefined si l'IA ne l'a pas renvoyée (ex: anciens
+// résultats de l'historique) — dans ce cas on affiche la jauge à vide.
+function Gauge({ label, value }) {
+  const v = typeof value === "number" && !isNaN(value) ? Math.max(0, Math.min(10, value)) : null;
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          marginBottom: 6,
+        }}
+      >
+        <span style={{ fontSize: 13, color: "#4A4335" }}>{label}</span>
+        <span className="mono" style={{ fontSize: 13, fontWeight: 700, color: "#B4432C" }}>
+          {v !== null ? `${v}/10` : "—"}
+        </span>
+      </div>
+      <div
+        style={{
+          height: 8,
+          borderRadius: 4,
+          background: "#E4DCC8",
+          border: "1px solid #C9BD9F",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: v !== null ? `${v * 10}%` : "0%",
+            background: "#B4432C",
+            borderRadius: 4,
+            transition: "width 0.3s ease",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [image, setImage] = useState(null); // { dataUrl, mediaType, base64 }
   const [details, setDetails] = useState(""); // précisions manuelles optionnelles
   const [status, setStatus] = useState("idle"); // idle | analyzing | pricing | done | error
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [resultTab, setResultTab] = useState("estimation"); // estimation | statistiques
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
 
   // Message vocal pour dicter les précisions (Web Speech API, native au
@@ -401,6 +445,7 @@ export default function App() {
     e.target.value = "";
     setError(null);
     setResult(null);
+    setResultTab("estimation");
     setStatus("idle");
 
     const isHeic =
@@ -818,7 +863,10 @@ export default function App() {
                 "et un conseil de vente pratique en une phrase. " +
                 "Si ces prix te semblent anormalement bas ou hauts par rapport à ta connaissance générale du produit " +
                 "(ex: erreur de prix, produit différent malgré le nom), signale-le brièvement dans \"alerte\" (sinon renvoie une chaîne vide). " +
-                'Réponds UNIQUEMENT en JSON: {"prix_brocante": "...", "conseil": "...", "alerte": "..."}',
+                "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
+                "\"facilite_vente\" (0 = très difficile à vendre car peu de demande sur ce type de plateformes d'occasion, 10 = se vend très facilement/vite, en te basant sur le nombre d'annonces trouvées et ta connaissance générale de la demande pour ce type de produit), " +
+                "\"rarete\" (0 = produit courant qu'on trouve facilement partout, 10 = produit très rare/recherché/difficile à trouver). " +
+                'Réponds UNIQUEMENT en JSON: {"prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10}',
             },
           ], "claude-haiku-4-5-20251001");
           const extra = extractJson(conseilText);
@@ -829,6 +877,8 @@ export default function App() {
             prix_brocante: extra.prix_brocante,
             conseil: extra.conseil,
             alerte: extra.alerte || null,
+            facilite_vente: typeof extra.facilite_vente === "number" ? extra.facilite_vente : null,
+            rarete: typeof extra.rarete === "number" ? extra.rarete : null,
             confiance:
               usedPrices.length >= 4 ? "haute" : usedPrices.length >= 2 ? "moyenne" : "basse",
             source: usedSource,
@@ -846,12 +896,17 @@ export default function App() {
               `Objet d'occasion identifié: ${identification.objet} (catégorie: ${identification.categorie}). ` +
               `État: ${identification.etat} (${identification.etat_note}). ` +
               "En te basant sur ta connaissance générale du marché de l'occasion en France, donne une estimation de prix réaliste. " +
-              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "..."}',
+              "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
+              "\"facilite_vente\" (0 = très difficile à vendre car peu de demande, 10 = se vend très facilement/vite) et " +
+              "\"rarete\" (0 = produit courant, 10 = produit très rare/recherché), en te basant sur ta connaissance générale du marché de l'occasion. " +
+              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10}',
           },
         ], "claude-haiku-4-5-20251001");
         const fallback = extractJson(priceText);
         pricing = {
           ...fallback,
+          facilite_vente: typeof fallback.facilite_vente === "number" ? fallback.facilite_vente : null,
+          rarete: typeof fallback.rarete === "number" ? fallback.rarete : null,
           confiance: "basse",
           source: "estimation IA (annonces réelles indisponibles: " + marketError.message + ")",
           listings: [],
@@ -884,6 +939,7 @@ export default function App() {
     setDetails("");
     setResult(null);
     setError(null);
+    setResultTab("estimation");
     setStatus("idle");
     setPendingIdentification(null);
     setVehicleForm({ annee: "", kilometrage: "", etat: "bon état" });
@@ -1607,6 +1663,51 @@ export default function App() {
                   {result.etat} · <em>{result.etat_note}</em>
                 </div>
 
+                <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+                  {[
+                    { key: "estimation", label: "Estimation" },
+                    { key: "statistiques", label: "Statistiques" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setResultTab(tab.key)}
+                      className="mono"
+                      style={{
+                        flex: 1,
+                        fontSize: 12,
+                        padding: "8px 10px",
+                        borderRadius: 4,
+                        border: "1px solid " + (resultTab === tab.key ? "#B4432C" : "#C9BD9F"),
+                        background: resultTab === tab.key ? "#B4432C" : "transparent",
+                        color: resultTab === tab.key ? "#FBF6EC" : "#8A7C63",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {resultTab === "statistiques" && (
+                  <div
+                    style={{
+                      borderTop: "1px dashed #C9BD9F",
+                      paddingTop: 14,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Gauge label="Facilité à vendre" value={result.facilite_vente} />
+                    <Gauge label="Rareté" value={result.rarete} />
+                    <div style={{ fontSize: 11, color: "#8A7C63", lineHeight: 1.5 }}>
+                      Évaluation par l'IA à partir de la demande observée sur Leboncoin, Vinted et eBay pour ce
+                      produit précis.
+                    </div>
+                  </div>
+                )}
+
+                {resultTab === "estimation" && (
+                  <>
                 <div
                   className="mono"
                   style={{
@@ -1746,6 +1847,8 @@ export default function App() {
                 <div style={{ fontSize: 13, color: "#4A4335", marginTop: 8, lineHeight: 1.5 }}>
                   <strong>Conseil :</strong> {result.conseil}
                 </div>
+                  </>
+                )}
 
                 <div
                   className="mono"
