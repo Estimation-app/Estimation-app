@@ -14,6 +14,17 @@ const SOURCE_LABELS = {
   ebay: "eBay",
 };
 
+// Plateformes vers lesquelles on renvoie pour créer une annonce (bouton
+// "Générer une annonce"). On n'utilise pas les logos officiels (fichiers
+// image sous droits/marque déposée) mais un petit badge rond dans la
+// couleur de marque de chaque site, pour un rendu "icône" reconnaissable
+// sans dépendre d'assets externes ni de droits d'image.
+const SELL_PLATFORMS = [
+  { label: "Leboncoin", url: "https://www.leboncoin.fr/deposer-une-annonce", color: "#EC5B23", mono: "lbc" },
+  { label: "Vinted", url: "https://www.vinted.fr/items/new", color: "#09B1BA", mono: "V" },
+  { label: "eBay", url: "https://www.ebay.fr/sl/sell", color: "#2D2A26", mono: "eB" },
+];
+
 // Identifiants Supabase (comptes + base de données). Contrairement aux clés
 // SerpAPI/Anthropic, la clé "anon" est PUBLIQUE par conception — elle est
 // protégée par les règles de sécurité (RLS) côté base de données, pas en
@@ -83,6 +94,10 @@ export default function App() {
   const [resultTab, setResultTab] = useState("estimation"); // estimation | statistiques
   const [correctionOpen, setCorrectionOpen] = useState(false); // affiche le champ "corriger un détail"
   const [correctionInput, setCorrectionInput] = useState(""); // texte de la correction en cours de saisie
+  const [adText, setAdText] = useState(null); // { titre, description } | null — annonce générée par l'IA
+  const [adLoading, setAdLoading] = useState(false);
+  const [adError, setAdError] = useState(null);
+  const [adCopied, setAdCopied] = useState(false);
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
 
   // Message vocal pour dicter les précisions (Web Speech API, native au
@@ -450,6 +465,10 @@ export default function App() {
     setResultTab("estimation");
     setCorrectionOpen(false);
     setCorrectionInput("");
+    setAdText(null);
+    setAdLoading(false);
+    setAdError(null);
+    setAdCopied(false);
     setStatus("idle");
 
     const isHeic =
@@ -686,6 +705,57 @@ export default function App() {
     setCorrectionInput("");
     setCorrectionOpen(false);
     await estimate(merged);
+  }
+
+  // Génère un titre + une description prêts à coller sur Leboncoin/Vinted/
+  // eBay, à partir du résultat déjà estimé (pas de nouvel appel de
+  // recherche d'annonces, juste un texte de vente). L'utilisateur copie le
+  // texte puis clique sur le lien du site pour créer son annonce lui-même
+  // (aucune de ces plateformes n'ouvre la création d'annonce à une appli
+  // tierce sans partenariat, donc on ne peut pas publier automatiquement).
+  async function generateAd() {
+    if (!result) return;
+    setAdLoading(true);
+    setAdError(null);
+    setAdCopied(false);
+    try {
+      const adTextRaw = await callClaude(
+        [
+          {
+            role: "user",
+            content:
+              `Objet: ${result.objet} (${result.categorie}). État: ${result.etat} (${result.etat_note}). ` +
+              `Estimation de revente d'occasion: ${result.prix_bas}–${result.prix_haut} €. ` +
+              "Rédige une annonce de vente prête à publier sur Leboncoin, Vinted ou eBay pour cet objet d'occasion : " +
+              "un titre court et accrocheur (60 caractères maximum), et une description de vente honnête et convaincante " +
+              "(3 à 5 phrases : mentionne l'état, met en avant les points forts, précise que le prix est à négocier). " +
+              "Ne jamais inventer de caractéristiques ou mentir sur l'état. " +
+              'Réponds UNIQUEMENT en JSON: {"titre": "...", "description": "..."}',
+          },
+        ],
+        "claude-haiku-4-5-20251001"
+      );
+      const parsed = extractJson(adTextRaw);
+      setAdText({ titre: parsed.titre || "", description: parsed.description || "" });
+    } catch (e) {
+      setAdError("Impossible de générer l'annonce, réessaie.");
+    } finally {
+      setAdLoading(false);
+    }
+  }
+
+  function copyAdText() {
+    if (!adText) return;
+    const full = `${adText.titre}\n\n${adText.description}`;
+    navigator.clipboard
+      .writeText(full)
+      .then(() => {
+        setAdCopied(true);
+        setTimeout(() => setAdCopied(false), 2000);
+      })
+      .catch(() => {
+        setAdError("Impossible de copier automatiquement, sélectionne le texte à la main.");
+      });
   }
 
   // detailsOverride permet de relancer immédiatement une estimation avec un
@@ -994,6 +1064,10 @@ export default function App() {
     setResultTab("estimation");
     setCorrectionOpen(false);
     setCorrectionInput("");
+    setAdText(null);
+    setAdLoading(false);
+    setAdError(null);
+    setAdCopied(false);
     setStatus("idle");
     setPendingIdentification(null);
     setVehicleForm({ annee: "", kilometrage: "", etat: "bon état" });
@@ -2008,6 +2082,165 @@ export default function App() {
                         >
                           Annuler
                         </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    borderTop: "1px dashed #C9BD9F",
+                    paddingTop: 12,
+                    marginTop: 14,
+                  }}
+                >
+                  {!adText && !adLoading && (
+                    <button
+                      type="button"
+                      onClick={generateAd}
+                      className="mono"
+                      style={{
+                        fontSize: 12,
+                        color: "#8A7C63",
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Générer une annonce à publier
+                    </button>
+                  )}
+
+                  {adLoading && (
+                    <div style={{ fontSize: 12, color: "#8A7C63" }}>Génération de l'annonce…</div>
+                  )}
+
+                  {adError && (
+                    <div style={{ fontSize: 12, color: "#B4432C", marginTop: adText ? 8 : 0 }}>{adError}</div>
+                  )}
+
+                  {adText && !adLoading && (
+                    <div>
+                      <div style={{ fontSize: 12, color: "#8A7C63", marginBottom: 6 }}>
+                        Annonce prête à coller (modifiable) :
+                      </div>
+                      <input
+                        value={adText.titre}
+                        onChange={(e) => setAdText({ ...adText, titre: e.target.value })}
+                        style={{
+                          width: "100%",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#4A4335",
+                          background: "#FBF6EC",
+                          border: "1px solid #C9BD9F",
+                          borderRadius: 4,
+                          padding: "8px 10px",
+                          marginBottom: 6,
+                          fontFamily: "inherit",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      <textarea
+                        value={adText.description}
+                        onChange={(e) => setAdText({ ...adText, description: e.target.value })}
+                        rows={4}
+                        style={{
+                          width: "100%",
+                          fontSize: 13,
+                          color: "#4A4335",
+                          background: "#FBF6EC",
+                          border: "1px solid #C9BD9F",
+                          borderRadius: 4,
+                          padding: "8px 10px",
+                          marginBottom: 8,
+                          resize: "vertical",
+                          fontFamily: "inherit",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                        <button
+                          type="button"
+                          onClick={copyAdText}
+                          className="mono"
+                          style={{
+                            fontSize: 12,
+                            padding: "8px 12px",
+                            borderRadius: 4,
+                            border: "1px solid #B4432C",
+                            background: "#B4432C",
+                            color: "#FBF6EC",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {adCopied ? "Copié !" : "Copier le texte"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={generateAd}
+                          className="mono"
+                          style={{
+                            fontSize: 12,
+                            padding: "8px 12px",
+                            borderRadius: 4,
+                            border: "1px solid #C9BD9F",
+                            background: "transparent",
+                            color: "#8A7C63",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Régénérer
+                        </button>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#8A7C63", marginBottom: 6, lineHeight: 1.5 }}>
+                        Copie le texte ci-dessus, puis clique sur une plateforme pour créer ton annonce (colle le
+                        texte une fois sur la page) :
+                      </div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {SELL_PLATFORMS.map((p) => (
+                          <a
+                            key={p.label}
+                            href={p.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 7,
+                              padding: "5px 12px 5px 5px",
+                              borderRadius: 20,
+                              border: "1px solid #C9BD9F",
+                              color: "#4A4335",
+                              textDecoration: "none",
+                              background: "#FBF6EC",
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: "50%",
+                                background: p.color,
+                                color: "#FFFFFF",
+                                fontSize: 10,
+                                fontWeight: 700,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                letterSpacing: "-0.02em",
+                              }}
+                            >
+                              {p.mono}
+                            </span>
+                            <span className="mono" style={{ fontSize: 12 }}>
+                              {p.label}
+                            </span>
+                          </a>
+                        ))}
                       </div>
                     </div>
                   )}
