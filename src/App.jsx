@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard } from "lucide-react";
+import logoWordmark from "./assets/logo-wordmark.png";
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
 // blocage CORS d'un appel direct depuis le navigateur.
@@ -57,8 +58,8 @@ function Gauge({ label, value }) {
           marginBottom: 6,
         }}
       >
-        <span style={{ fontSize: 13, color: "#4A4335" }}>{label}</span>
-        <span className="mono" style={{ fontSize: 13, fontWeight: 700, color: "#B4432C" }}>
+        <span style={{ fontSize: 13, color: "#29394F" }}>{label}</span>
+        <span className="mono" style={{ fontSize: 13, fontWeight: 700, color: "#F2662E" }}>
           {v !== null ? `${v}/10` : "—"}
         </span>
       </div>
@@ -66,8 +67,8 @@ function Gauge({ label, value }) {
         style={{
           height: 8,
           borderRadius: 4,
-          background: "#E4DCC8",
-          border: "1px solid #C9BD9F",
+          background: "#E9EDF2",
+          border: "1px solid #D7DEE6",
           overflow: "hidden",
         }}
       >
@@ -75,7 +76,7 @@ function Gauge({ label, value }) {
           style={{
             height: "100%",
             width: v !== null ? `${v * 10}%` : "0%",
-            background: "#B4432C",
+            background: "#F2662E",
             borderRadius: 4,
             transition: "width 0.3s ease",
           }}
@@ -1206,9 +1207,10 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#E4DCC8",
-        fontFamily: "'Courier New', monospace",
-        color: "#2B241C",
+        background: "#E9EDF2",
+        fontFamily:
+          "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        color: "#152238",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -1216,14 +1218,14 @@ export default function App() {
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
         * { box-sizing: border-box; }
         .brand { font-family: 'Fraunces', serif; }
         .mono { font-family: 'JetBrains Mono', monospace; }
         button { font-family: inherit; cursor: pointer; }
         .btn-primary {
-          background: #B4432C;
-          color: #F3EDDD;
+          background: #F2662E;
+          color: #EEF1F5;
           border: none;
           padding: 14px 22px;
           font-size: 15px;
@@ -1241,8 +1243,8 @@ export default function App() {
         .btn-primary:disabled { opacity: 0.55; }
         .btn-ghost {
           background: transparent;
-          color: #6B6154;
-          border: 1px solid #B7AC96;
+          color: #42536A;
+          border: 1px solid #A9B7C6;
           padding: 10px 16px;
           border-radius: 3px;
           font-size: 13px;
@@ -1252,8 +1254,8 @@ export default function App() {
         }
         .btn-mic {
           background: transparent;
-          color: #6B6154;
-          border: 1px solid #B7AC96;
+          color: #42536A;
+          border: 1px solid #A9B7C6;
           border-radius: 3px;
           width: 38px;
           height: 38px;
@@ -1263,9 +1265,9 @@ export default function App() {
           flex-shrink: 0;
         }
         .btn-mic.listening {
-          background: #B4432C;
-          color: #F3EDDD;
-          border-color: #B4432C;
+          background: #F2662E;
+          color: #EEF1F5;
+          border-color: #F2662E;
           animation: pulse 1.4s ease-in-out infinite;
         }
         @keyframes pulse {
@@ -1273,7 +1275,7 @@ export default function App() {
           50% { box-shadow: 0 0 0 6px rgba(180, 67, 44, 0); }
         }
         .drop-zone {
-          border: 2px dashed #A99C82;
+          border: 2px dashed #8C9CB0;
           border-radius: 4px;
           width: 100%;
           aspect-ratio: 4/3;
@@ -1282,13 +1284,13 @@ export default function App() {
           align-items: center;
           justify-content: center;
           gap: 10px;
-          color: #6B6154;
-          background: #EFE9D9;
+          color: #42536A;
+          background: #EAEEF3;
           text-align: center;
         }
         .tag-card {
-          background: #F6F1E3;
-          border: 1px solid #C9BD9F;
+          background: #F4F6F9;
+          border: 1px solid #D7DEE6;
           border-radius: 2px;
           position: relative;
           padding: 26px 22px 22px;
@@ -1301,8 +1303,8 @@ export default function App() {
           left: 24px;
           width: 18px;
           height: 18px;
-          background: #E4DCC8;
-          border: 1px solid #C9BD9F;
+          background: #E9EDF2;
+          border: 1px solid #D7DEE6;
           border-radius: 50%;
         }
         .password-field {
@@ -1319,7 +1321,7 @@ export default function App() {
           padding: 4px;
           display: flex;
           align-items: center;
-          color: #8A7C63;
+          color: #647A93;
         }
       `}</style>
 
@@ -1333,11 +1335,24 @@ export default function App() {
           >
             <History size={14} /> {history.length > 0 ? history.length : ""}
           </button>
-          <div
-            className="mono"
-            style={{ fontSize: 12, letterSpacing: "0.08em", color: "#8A7C63", marginBottom: 6 }}
-          >
-            estim' — v0
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <img src={logoWordmark} alt="estim'" style={{ height: 26, width: "auto", display: "block" }} />
+            <span
+              className="mono"
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "#F2662E",
+                background: "#FDECE3",
+                border: "1px solid #F3C6A9",
+                borderRadius: 20,
+                padding: "3px 9px",
+              }}
+            >
+              bêta
+            </span>
           </div>
           <h1
             className="brand"
@@ -1347,7 +1362,7 @@ export default function App() {
             <br />
             ce truc ?
           </h1>
-          <p style={{ marginTop: 10, fontSize: 14, color: "#6B6154", lineHeight: 1.5 }}>
+          <p style={{ marginTop: 10, fontSize: 14, color: "#42536A", lineHeight: 1.5 }}>
             Prends l'objet en photo. Estimation du prix de revente en France,
             façon Leboncoin ou brocante.
           </p>
@@ -1358,7 +1373,7 @@ export default function App() {
               style={{
                 marginTop: 10,
                 fontSize: 11,
-                color: "#8A7C63",
+                color: "#647A93",
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
@@ -1405,9 +1420,9 @@ export default function App() {
             className="mono"
             style={{
               fontSize: 12,
-              color: "#B4432C",
-              background: "#F6E4DE",
-              border: "1px solid #E0B5A8",
+              color: "#F2662E",
+              background: "#FDECE3",
+              border: "1px solid #F3C6A9",
               borderRadius: 3,
               padding: "10px 12px",
               wordBreak: "break-word",
@@ -1429,11 +1444,11 @@ export default function App() {
                 aspectRatio: "4/3",
                 objectFit: "cover",
                 borderRadius: 4,
-                border: "1px solid #C9BD9F",
+                border: "1px solid #D7DEE6",
               }}
             />
             {image.debug && (
-              <div className="mono" style={{ fontSize: 11, color: "#A99C82" }}>
+              <div className="mono" style={{ fontSize: 11, color: "#8C9CB0" }}>
                 debug: {image.debug} · type: {image.mediaType}
               </div>
             )}
@@ -1448,11 +1463,11 @@ export default function App() {
                     marginBottom: 6,
                   }}
                 >
-                  <label className="mono" style={{ fontSize: 12, color: "#6B6154" }}>
+                  <label className="mono" style={{ fontSize: 12, color: "#42536A" }}>
                     Précisions (optionnel) — contenance, état, modèle exact...
                   </label>
                   {isListening && (
-                    <span className="mono" style={{ fontSize: 11, color: "#B4432C" }}>
+                    <span className="mono" style={{ fontSize: 11, color: "#F2662E" }}>
                       ● écoute…
                     </span>
                   )}
@@ -1469,9 +1484,9 @@ export default function App() {
                       fontSize: 13,
                       padding: "10px 12px",
                       borderRadius: 3,
-                      border: "1px solid #B7AC96",
-                      background: "#F6F1E3",
-                      color: "#2B241C",
+                      border: "1px solid #A9B7C6",
+                      background: "#F4F6F9",
+                      color: "#152238",
                       resize: "vertical",
                     }}
                   />
@@ -1520,12 +1535,12 @@ export default function App() {
 
             {status === "vehicule_form" && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 10 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 10 }}>
                   🚗 quelques précisions sur le véhicule
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
                       Année
                     </label>
                     <input
@@ -1539,15 +1554,15 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #B7AC96",
-                        background: "#F6F1E3",
-                        color: "#2B241C",
+                        border: "1px solid #A9B7C6",
+                        background: "#F4F6F9",
+                        color: "#152238",
                         boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
                       Kilométrage
                     </label>
                     <input
@@ -1561,15 +1576,15 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #B7AC96",
-                        background: "#F6F1E3",
-                        color: "#2B241C",
+                        border: "1px solid #A9B7C6",
+                        background: "#F4F6F9",
+                        color: "#152238",
                         boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
                       État général
                     </label>
                     <select
@@ -1581,9 +1596,9 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #B7AC96",
-                        background: "#F6F1E3",
-                        color: "#2B241C",
+                        border: "1px solid #A9B7C6",
+                        background: "#F4F6F9",
+                        color: "#152238",
                         boxSizing: "border-box",
                       }}
                     >
@@ -1608,12 +1623,12 @@ export default function App() {
 
             {status === "immobilier_form" && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 10 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 10 }}>
                   🏠 quelques précisions sur le bien
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
                       Ville ou secteur
                     </label>
                     <input
@@ -1627,15 +1642,15 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #B7AC96",
-                        background: "#F6F1E3",
-                        color: "#2B241C",
+                        border: "1px solid #A9B7C6",
+                        background: "#F4F6F9",
+                        color: "#152238",
                         boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
                       Surface (m²)
                     </label>
                     <input
@@ -1649,15 +1664,15 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #B7AC96",
-                        background: "#F6F1E3",
-                        color: "#2B241C",
+                        border: "1px solid #A9B7C6",
+                        background: "#F4F6F9",
+                        color: "#152238",
                         boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#6B6154", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
                       Nombre de pièces (optionnel)
                     </label>
                     <input
@@ -1671,9 +1686,9 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #B7AC96",
-                        background: "#F6F1E3",
-                        color: "#2B241C",
+                        border: "1px solid #A9B7C6",
+                        background: "#F4F6F9",
+                        color: "#152238",
                         boxSizing: "border-box",
                       }}
                     />
@@ -1696,9 +1711,9 @@ export default function App() {
                 className="mono"
                 style={{
                   fontSize: 12,
-                  color: "#B4432C",
-                  background: "#F6E4DE",
-                  border: "1px solid #E0B5A8",
+                  color: "#F2662E",
+                  background: "#FDECE3",
+                  border: "1px solid #F3C6A9",
                   borderRadius: 3,
                   padding: "10px 12px",
                   wordBreak: "break-word",
@@ -1711,7 +1726,7 @@ export default function App() {
 
             {result && status === "done" && result.type_sujet === "etre_vivant" && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 4 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 4 }}>
                   🎭 mode "estimer tout, même n'importe quoi"
                 </div>
                 <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
@@ -1723,7 +1738,7 @@ export default function App() {
                   style={{
                     fontSize: 30,
                     fontWeight: 700,
-                    color: "#B4432C",
+                    color: "#F2662E",
                     marginBottom: 14,
                   }}
                 >
@@ -1732,17 +1747,17 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed #C9BD9F",
+                    borderTop: "1px dashed #D7DEE6",
                     paddingTop: 12,
                     fontSize: 14,
-                    color: "#2B241C",
+                    color: "#152238",
                     lineHeight: 1.6,
                     marginBottom: 10,
                   }}
                 >
                   {result.commentaire}
                 </div>
-                <div style={{ fontSize: 12, color: "#6B6154", fontStyle: "italic", lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: "#42536A", fontStyle: "italic", lineHeight: 1.5 }}>
                   {result.rappel}
                 </div>
               </div>
@@ -1750,7 +1765,7 @@ export default function App() {
 
             {result && status === "done" && (result.type_sujet === "vehicule" || result.type_sujet === "immobilier") && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 4 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 4 }}>
                   {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
                 </div>
                 <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
@@ -1762,7 +1777,7 @@ export default function App() {
                   style={{
                     fontSize: 30,
                     fontWeight: 700,
-                    color: "#B4432C",
+                    color: "#F2662E",
                     marginBottom: 14,
                   }}
                 >
@@ -1771,10 +1786,10 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed #C9BD9F",
+                    borderTop: "1px dashed #D7DEE6",
                     paddingTop: 12,
                     fontSize: 14,
-                    color: "#2B241C",
+                    color: "#152238",
                     lineHeight: 1.6,
                     marginBottom: result.hypothese ? 10 : 14,
                   }}
@@ -1782,11 +1797,11 @@ export default function App() {
                   {result.commentaire}
                 </div>
                 {result.hypothese && (
-                  <div style={{ fontSize: 12, color: "#8A7C63", fontStyle: "italic", lineHeight: 1.5, marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: "#647A93", fontStyle: "italic", lineHeight: 1.5, marginBottom: 10 }}>
                     Hypothèse : {result.hypothese}
                   </div>
                 )}
-                <div className="mono" style={{ fontSize: 11, color: "#A99C82", lineHeight: 1.6 }}>
+                <div className="mono" style={{ fontSize: 11, color: "#8C9CB0", lineHeight: 1.6 }}>
                   {result.source}
                 </div>
               </div>
@@ -1794,13 +1809,13 @@ export default function App() {
 
             {result && status === "done" && (!result.type_sujet || result.type_sujet === "objet") && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#8A7C63", marginBottom: 4 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 4 }}>
                   {result.categorie}
                 </div>
                 <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>
                   {result.objet}
                 </div>
-                <div style={{ fontSize: 13, color: "#6B6154", marginBottom: 16 }}>
+                <div style={{ fontSize: 13, color: "#42536A", marginBottom: 16 }}>
                   {result.etat} · <em>{result.etat_note}</em>
                 </div>
 
@@ -1819,9 +1834,9 @@ export default function App() {
                         fontSize: 12,
                         padding: "8px 10px",
                         borderRadius: 4,
-                        border: "1px solid " + (resultTab === tab.key ? "#B4432C" : "#C9BD9F"),
-                        background: resultTab === tab.key ? "#B4432C" : "transparent",
-                        color: resultTab === tab.key ? "#FBF6EC" : "#8A7C63",
+                        border: "1px solid " + (resultTab === tab.key ? "#F2662E" : "#D7DEE6"),
+                        background: resultTab === tab.key ? "#F2662E" : "transparent",
+                        color: resultTab === tab.key ? "#FFFFFF" : "#647A93",
                         cursor: "pointer",
                       }}
                     >
@@ -1833,14 +1848,14 @@ export default function App() {
                 {resultTab === "statistiques" && (
                   <div
                     style={{
-                      borderTop: "1px dashed #C9BD9F",
+                      borderTop: "1px dashed #D7DEE6",
                       paddingTop: 14,
                       marginBottom: 12,
                     }}
                   >
                     <Gauge label="Facilité à vendre" value={result.facilite_vente} />
                     <Gauge label="Rareté" value={result.rarete} />
-                    <div style={{ fontSize: 11, color: "#8A7C63", lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 11, color: "#647A93", lineHeight: 1.5 }}>
                       Évaluation par l'IA à partir de la demande observée sur Leboncoin, Vinted et eBay pour ce
                       produit précis.
                     </div>
@@ -1854,13 +1869,13 @@ export default function App() {
                   style={{
                     fontSize: 30,
                     fontWeight: 700,
-                    color: "#B4432C",
+                    color: "#F2662E",
                     marginBottom: 4,
                   }}
                 >
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
-                <div style={{ fontSize: 13, color: "#6B6154", marginBottom: 14 }}>
+                <div style={{ fontSize: 13, color: "#42536A", marginBottom: 14 }}>
                   estimation d'occasion
                 </div>
 
@@ -1869,9 +1884,9 @@ export default function App() {
                     className="mono"
                     style={{
                       fontSize: 12,
-                      color: "#B4432C",
-                      background: "#F6E4DE",
-                      border: "1px solid #E0B5A8",
+                      color: "#F2662E",
+                      background: "#FDECE3",
+                      border: "1px solid #F3C6A9",
                       borderRadius: 3,
                       padding: "10px 12px",
                       marginBottom: 14,
@@ -1885,12 +1900,12 @@ export default function App() {
                 {result.breakdown && Object.keys(result.breakdown).length > 0 && (
                   <div
                     style={{
-                      borderTop: "1px dashed #C9BD9F",
+                      borderTop: "1px dashed #D7DEE6",
                       paddingTop: 12,
                       marginBottom: 12,
                     }}
                   >
-                    <div style={{ fontSize: 12, color: "#8A7C63", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: "#647A93", marginBottom: 6 }}>
                       détail par plateforme :
                     </div>
                     {["leboncoin", "vinted", "ebay"].map((key) => {
@@ -1902,7 +1917,7 @@ export default function App() {
                           key={key}
                           style={{
                             fontSize: 12,
-                            color: "#4A4335",
+                            color: "#29394F",
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 8,
@@ -1911,11 +1926,11 @@ export default function App() {
                         >
                           <span>{label}</span>
                           {b.count > 0 ? (
-                            <span className="mono" style={{ color: "#B4432C" }}>
+                            <span className="mono" style={{ color: "#F2662E" }}>
                               {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count} annonce{b.count > 1 ? "s" : ""})
                             </span>
                           ) : (
-                            <span style={{ color: "#8A7C63", fontStyle: "italic" }}>indisponible</span>
+                            <span style={{ color: "#647A93", fontStyle: "italic" }}>indisponible</span>
                           )}
                         </div>
                       );
@@ -1926,12 +1941,12 @@ export default function App() {
                 {result.listings && result.listings.length > 0 && (
                   <div
                     style={{
-                      borderTop: "1px dashed #C9BD9F",
+                      borderTop: "1px dashed #D7DEE6",
                       paddingTop: 12,
                       marginBottom: 12,
                     }}
                   >
-                    <div style={{ fontSize: 12, color: "#8A7C63", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: "#647A93", marginBottom: 6 }}>
                       annonces retenues (même produit) :
                     </div>
                     {result.listings.map((l, i) => {
@@ -1945,7 +1960,7 @@ export default function App() {
                           {...rowProps}
                           style={{
                             fontSize: 12,
-                            color: "#4A4335",
+                            color: "#29394F",
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 8,
@@ -1961,8 +1976,8 @@ export default function App() {
                                 style={{
                                   flexShrink: 0,
                                   fontSize: 10,
-                                  color: "#8A7C63",
-                                  border: "1px solid #C9BD9F",
+                                  color: "#647A93",
+                                  border: "1px solid #D7DEE6",
                                   borderRadius: 3,
                                   padding: "1px 4px",
                                 }}
@@ -1981,7 +1996,7 @@ export default function App() {
                               {l.title}
                             </span>
                           </span>
-                          <span className="mono" style={{ flexShrink: 0, color: "#B4432C", display: "flex", alignItems: "center", gap: 3 }}>
+                          <span className="mono" style={{ flexShrink: 0, color: "#F2662E", display: "flex", alignItems: "center", gap: 3 }}>
                             {l.price}
                             {l.link && <span style={{ fontSize: 10 }}>↗</span>}
                           </span>
@@ -1993,16 +2008,16 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed #C9BD9F",
+                    borderTop: "1px dashed #D7DEE6",
                     paddingTop: 12,
                     fontSize: 13,
-                    color: "#4A4335",
+                    color: "#29394F",
                     lineHeight: 1.5,
                   }}
                 >
                   <strong>En brocante :</strong> {result.prix_brocante}
                 </div>
-                <div style={{ fontSize: 13, color: "#4A4335", marginTop: 8, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 13, color: "#29394F", marginTop: 8, lineHeight: 1.5 }}>
                   <strong>Conseil :</strong> {result.conseil}
                 </div>
                   </>
@@ -2010,7 +2025,7 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed #C9BD9F",
+                    borderTop: "1px dashed #D7DEE6",
                     paddingTop: 12,
                     marginTop: 14,
                   }}
@@ -2022,7 +2037,7 @@ export default function App() {
                       className="mono"
                       style={{
                         fontSize: 12,
-                        color: "#8A7C63",
+                        color: "#647A93",
                         background: "none",
                         border: "none",
                         padding: 0,
@@ -2034,7 +2049,7 @@ export default function App() {
                     </button>
                   ) : (
                     <div>
-                      <div style={{ fontSize: 12, color: "#8A7C63", marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, color: "#647A93", marginBottom: 6 }}>
                         Précise ce qui ne va pas (ex : "en fait c'est une petite taille"), l'estimation sera
                         relancée avec cette info :
                       </div>
@@ -2046,9 +2061,9 @@ export default function App() {
                         style={{
                           width: "100%",
                           fontSize: 13,
-                          color: "#4A4335",
-                          background: "#FBF6EC",
-                          border: "1px solid #C9BD9F",
+                          color: "#29394F",
+                          background: "#FFFFFF",
+                          border: "1px solid #D7DEE6",
                           borderRadius: 4,
                           padding: "8px 10px",
                           marginBottom: 8,
@@ -2067,9 +2082,9 @@ export default function App() {
                             fontSize: 12,
                             padding: "8px 12px",
                             borderRadius: 4,
-                            border: "1px solid #B4432C",
-                            background: "#B4432C",
-                            color: "#FBF6EC",
+                            border: "1px solid #F2662E",
+                            background: "#F2662E",
+                            color: "#FFFFFF",
                             cursor: correctionInput.trim() ? "pointer" : "default",
                             opacity: correctionInput.trim() ? 1 : 0.5,
                           }}
@@ -2087,9 +2102,9 @@ export default function App() {
                             fontSize: 12,
                             padding: "8px 12px",
                             borderRadius: 4,
-                            border: "1px solid #C9BD9F",
+                            border: "1px solid #D7DEE6",
                             background: "transparent",
-                            color: "#8A7C63",
+                            color: "#647A93",
                             cursor: "pointer",
                           }}
                         >
@@ -2102,7 +2117,7 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed #C9BD9F",
+                    borderTop: "1px dashed #D7DEE6",
                     paddingTop: 12,
                     marginTop: 14,
                   }}
@@ -2114,7 +2129,7 @@ export default function App() {
                       className="mono"
                       style={{
                         fontSize: 12,
-                        color: "#8A7C63",
+                        color: "#647A93",
                         background: "none",
                         border: "none",
                         padding: 0,
@@ -2127,22 +2142,22 @@ export default function App() {
                   )}
 
                   {!adText && !adLoading && adGenCount >= 3 && (
-                    <div style={{ fontSize: 12, color: "#8A7C63" }}>
+                    <div style={{ fontSize: 12, color: "#647A93" }}>
                       Limite de 3 générations atteinte pour cette estimation.
                     </div>
                   )}
 
                   {adLoading && (
-                    <div style={{ fontSize: 12, color: "#8A7C63" }}>Génération de l'annonce…</div>
+                    <div style={{ fontSize: 12, color: "#647A93" }}>Génération de l'annonce…</div>
                   )}
 
                   {adError && (
-                    <div style={{ fontSize: 12, color: "#B4432C", marginTop: adText ? 8 : 0 }}>{adError}</div>
+                    <div style={{ fontSize: 12, color: "#F2662E", marginTop: adText ? 8 : 0 }}>{adError}</div>
                   )}
 
                   {adText && !adLoading && (
                     <div>
-                      <div style={{ fontSize: 12, color: "#8A7C63", marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, color: "#647A93", marginBottom: 6 }}>
                         Annonce prête à coller (modifiable) :
                       </div>
                       <input
@@ -2152,9 +2167,9 @@ export default function App() {
                           width: "100%",
                           fontSize: 13,
                           fontWeight: 600,
-                          color: "#4A4335",
-                          background: "#FBF6EC",
-                          border: "1px solid #C9BD9F",
+                          color: "#29394F",
+                          background: "#FFFFFF",
+                          border: "1px solid #D7DEE6",
                           borderRadius: 4,
                           padding: "8px 10px",
                           marginBottom: 6,
@@ -2169,9 +2184,9 @@ export default function App() {
                         style={{
                           width: "100%",
                           fontSize: 13,
-                          color: "#4A4335",
-                          background: "#FBF6EC",
-                          border: "1px solid #C9BD9F",
+                          color: "#29394F",
+                          background: "#FFFFFF",
+                          border: "1px solid #D7DEE6",
                           borderRadius: 4,
                           padding: "8px 10px",
                           marginBottom: 8,
@@ -2189,9 +2204,9 @@ export default function App() {
                             fontSize: 12,
                             padding: "8px 12px",
                             borderRadius: 4,
-                            border: "1px solid #B4432C",
-                            background: "#B4432C",
-                            color: "#FBF6EC",
+                            border: "1px solid #F2662E",
+                            background: "#F2662E",
+                            color: "#FFFFFF",
                             cursor: "pointer",
                           }}
                         >
@@ -2206,9 +2221,9 @@ export default function App() {
                               fontSize: 12,
                               padding: "8px 12px",
                               borderRadius: 4,
-                              border: "1px solid #C9BD9F",
+                              border: "1px solid #D7DEE6",
                               background: "transparent",
-                              color: "#8A7C63",
+                              color: "#647A93",
                               cursor: "pointer",
                             }}
                           >
@@ -2217,12 +2232,12 @@ export default function App() {
                         )}
                       </div>
                       {adGenCount >= 3 && (
-                        <div style={{ fontSize: 11, color: "#8A7C63", marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: "#647A93", marginBottom: 8 }}>
                           Limite de 3 générations atteinte pour cette estimation — tu peux encore modifier le texte
                           à la main juste au-dessus.
                         </div>
                       )}
-                      <div style={{ fontSize: 11, color: "#8A7C63", marginBottom: 6, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 11, color: "#647A93", marginBottom: 6, lineHeight: 1.5 }}>
                         Copie le texte ci-dessus, puis clique sur une plateforme pour créer ton annonce (colle le
                         texte une fois sur la page) :
                       </div>
@@ -2239,10 +2254,10 @@ export default function App() {
                               gap: 7,
                               padding: "5px 12px 5px 5px",
                               borderRadius: 20,
-                              border: "1px solid #C9BD9F",
-                              color: "#4A4335",
+                              border: "1px solid #D7DEE6",
+                              color: "#29394F",
                               textDecoration: "none",
-                              background: "#FBF6EC",
+                              background: "#FFFFFF",
                             }}
                           >
                             <span
@@ -2275,7 +2290,7 @@ export default function App() {
 
                 <div
                   className="mono"
-                  style={{ fontSize: 11, color: "#A99C82", marginTop: 16, lineHeight: 1.6 }}
+                  style={{ fontSize: 11, color: "#8C9CB0", marginTop: 16, lineHeight: 1.6 }}
                 >
                   confiance: {result.confiance} · {result.source}
                 </div>
@@ -2301,7 +2316,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#E4DCC8",
+              background: "#E9EDF2",
               width: "100%",
               maxWidth: 420,
               maxHeight: "80vh",
@@ -2329,7 +2344,7 @@ export default function App() {
                     style={{
                       background: "none",
                       border: "none",
-                      color: "#8A7C63",
+                      color: "#647A93",
                       fontSize: 12,
                       textDecoration: "underline",
                     }}
@@ -2342,15 +2357,15 @@ export default function App() {
                   style={{ background: "none", border: "none", padding: 4 }}
                   aria-label="fermer"
                 >
-                  <X size={20} color="#6B6154" />
+                  <X size={20} color="#42536A" />
                 </button>
               </div>
             </div>
 
             <div
               style={{
-                background: "#F6F1E3",
-                border: "1px solid #C9BD9F",
+                background: "#F4F6F9",
+                border: "1px solid #D7DEE6",
                 borderRadius: 3,
                 padding: 12,
                 marginBottom: 16,
@@ -2365,9 +2380,9 @@ export default function App() {
                       alignItems: "center",
                     }}
                   >
-                    <div style={{ fontSize: 12, color: "#4A4335" }}>
+                    <div style={{ fontSize: 12, color: "#29394F" }}>
                       Connecté : <strong>{user.email}</strong>
-                      <div className="mono" style={{ fontSize: 11, color: "#8A7C63", marginTop: 2 }}>
+                      <div className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 2 }}>
                         historique illimité, synchronisé
                       </div>
                     </div>
@@ -2377,16 +2392,16 @@ export default function App() {
                   </div>
 
                   {profile && (
-                    <div style={{ borderTop: "1px dashed #C9BD9F", marginTop: 10, paddingTop: 10 }}>
+                    <div style={{ borderTop: "1px dashed #D7DEE6", marginTop: 10, paddingTop: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                        <div style={{ fontSize: 12, color: "#4A4335" }}>
+                        <div style={{ fontSize: 12, color: "#29394F" }}>
                           Plan :{" "}
                           <strong>
                             {profile.plan !== "gratuit" && profile.subscription_status === "active"
                               ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
                               : "Gratuit"}
                           </strong>
-                          <div className="mono" style={{ fontSize: 11, color: "#8A7C63", marginTop: 2 }}>
+                          <div className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 2 }}>
                             {profile.plan !== "gratuit" && profile.subscription_status === "active"
                               ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} estimations restantes ce mois`
                               : `${Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) gratuite(s) restante(s) ce mois`}
@@ -2417,14 +2432,14 @@ export default function App() {
                     </div>
                   )}
 
-                  <div style={{ borderTop: "1px dashed #C9BD9F", marginTop: 10, paddingTop: 10 }}>
+                  <div style={{ borderTop: "1px dashed #D7DEE6", marginTop: 10, paddingTop: 10 }}>
                     {passwordStatus === "done" ? (
-                      <p style={{ fontSize: 12, color: "#4A4335", margin: 0 }}>
+                      <p style={{ fontSize: 12, color: "#29394F", margin: 0 }}>
                         Mot de passe défini ! Tu peux maintenant l'utiliser pour te connecter.
                       </p>
                     ) : (
                       <div>
-                        <p style={{ fontSize: 11, color: "#8A7C63", marginTop: 0, marginBottom: 6 }}>
+                        <p style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 6 }}>
                           Définir un mot de passe (pour te reconnecter sans lien par email) :
                         </p>
                         <div style={{ display: "flex", gap: 6 }}>
@@ -2440,7 +2455,7 @@ export default function App() {
                                 fontSize: 12,
                                 padding: "8px 34px 8px 10px",
                                 borderRadius: 3,
-                                border: "1px solid #B7AC96",
+                                border: "1px solid #A9B7C6",
                                 background: "#fff",
                                 boxSizing: "border-box",
                               }}
@@ -2464,7 +2479,7 @@ export default function App() {
                           </button>
                         </div>
                         {passwordError && (
-                          <p style={{ fontSize: 11, color: "#B4432C", marginTop: 6, marginBottom: 0 }}>
+                          <p style={{ fontSize: 11, color: "#F2662E", marginTop: 6, marginBottom: 0 }}>
                             {passwordError}
                           </p>
                         )}
@@ -2473,17 +2488,17 @@ export default function App() {
                   </div>
                 </div>
               ) : authStatus === "sent" ? (
-                <p style={{ fontSize: 12, color: "#4A4335", margin: 0 }}>
+                <p style={{ fontSize: 12, color: "#29394F", margin: 0 }}>
                   Lien envoyé ! Vérifie ta boîte mail ({authEmail}) et clique dessus pour te connecter.
                 </p>
               ) : authStatus === "signup_sent" ? (
-                <p style={{ fontSize: 12, color: "#4A4335", margin: 0 }}>
+                <p style={{ fontSize: 12, color: "#29394F", margin: 0 }}>
                   Compte créé ! Vérifie ta boîte mail ({authEmail}) et clique sur le lien de confirmation pour
                   activer ton compte, puis reviens te connecter avec ton mot de passe.
                 </p>
               ) : (
                 <div>
-                  <p style={{ fontSize: 12, color: "#4A4335", marginTop: 0, marginBottom: 8 }}>
+                  <p style={{ fontSize: 12, color: "#29394F", marginTop: 0, marginBottom: 8 }}>
                     Connecte-toi pour un historique illimité, synchronisé entre appareils (optionnel).
                   </p>
                   <input
@@ -2497,7 +2512,7 @@ export default function App() {
                       fontSize: 12,
                       padding: "8px 10px",
                       borderRadius: 3,
-                      border: "1px solid #B7AC96",
+                      border: "1px solid #A9B7C6",
                       background: "#fff",
                       marginBottom: 6,
                       boxSizing: "border-box",
@@ -2515,7 +2530,7 @@ export default function App() {
                         fontSize: 12,
                         padding: "8px 34px 8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #B7AC96",
+                        border: "1px solid #A9B7C6",
                         background: "#fff",
                         boxSizing: "border-box",
                       }}
@@ -2553,13 +2568,13 @@ export default function App() {
                       alignItems: "center",
                       gap: 8,
                       margin: "10px 0",
-                      color: "#8A7C63",
+                      color: "#647A93",
                       fontSize: 11,
                     }}
                   >
-                    <div style={{ flex: 1, height: 1, background: "#C9BD9F" }} />
+                    <div style={{ flex: 1, height: 1, background: "#D7DEE6" }} />
                     ou
-                    <div style={{ flex: 1, height: 1, background: "#C9BD9F" }} />
+                    <div style={{ flex: 1, height: 1, background: "#D7DEE6" }} />
                   </div>
                   <button
                     className="btn-ghost"
@@ -2570,14 +2585,14 @@ export default function App() {
                     <Mail size={14} /> recevoir un lien de connexion (sans mot de passe)
                   </button>
                   {authError && (
-                    <p style={{ fontSize: 11, color: "#B4432C", marginTop: 6, marginBottom: 0 }}>{authError}</p>
+                    <p style={{ fontSize: 11, color: "#F2662E", marginTop: 6, marginBottom: 0 }}>{authError}</p>
                   )}
                 </div>
               )}
             </div>
 
             {history.length === 0 && (
-              <p className="mono" style={{ fontSize: 13, color: "#8A7C63" }}>
+              <p className="mono" style={{ fontSize: 13, color: "#647A93" }}>
                 Aucune estimation pour l'instant.
               </p>
             )}
@@ -2590,8 +2605,8 @@ export default function App() {
                     display: "flex",
                     gap: 10,
                     alignItems: "center",
-                    background: "#F6F1E3",
-                    border: "1px solid #C9BD9F",
+                    background: "#F4F6F9",
+                    border: "1px solid #D7DEE6",
                     borderRadius: 3,
                     padding: 8,
                   }}
@@ -2619,7 +2634,7 @@ export default function App() {
                     >
                       {h.objet}
                     </div>
-                    <div className="mono" style={{ fontSize: 12, color: "#8A7C63" }}>
+                    <div className="mono" style={{ fontSize: 12, color: "#647A93" }}>
                       {h.prix_bas}–{h.prix_haut} € ·{" "}
                       {new Date(h.date).toLocaleDateString("fr-FR", {
                         day: "numeric",
@@ -2632,7 +2647,7 @@ export default function App() {
                     style={{ background: "none", border: "none", padding: 4, flexShrink: 0 }}
                     aria-label="supprimer"
                   >
-                    <Trash2 size={16} color="#B4432C" />
+                    <Trash2 size={16} color="#F2662E" />
                   </button>
                 </div>
               ))}
@@ -2657,7 +2672,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#E4DCC8",
+              background: "#E9EDF2",
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
@@ -2675,11 +2690,11 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#6B6154" />
+                <X size={20} color="#42536A" />
               </button>
             </div>
 
-            <p style={{ fontSize: 13, color: "#4A4335", lineHeight: 1.5, marginTop: 0 }}>
+            <p style={{ fontSize: 13, color: "#29394F", lineHeight: 1.5, marginTop: 0 }}>
               {paywallInfo?.reason === "quota_epuise" &&
                 "Tu as utilisé toutes les estimations comprises dans ton abonnement ce mois-ci."}
               {paywallInfo?.reason === "gratuit_epuise" &&
@@ -2687,7 +2702,7 @@ export default function App() {
               {!paywallInfo?.reason && "Impossible de continuer l'estimation pour l'instant."}
             </p>
             {paywallInfo?.message && (
-              <p style={{ fontSize: 12, color: "#B4432C", marginTop: 0 }}>{paywallInfo.message}</p>
+              <p style={{ fontSize: 12, color: "#F2662E", marginTop: 0 }}>{paywallInfo.message}</p>
             )}
 
             {(paywallInfo?.bonus_pub_disponible ||
@@ -2710,8 +2725,8 @@ export default function App() {
               </button>
             )}
 
-            <div style={{ borderTop: "1px dashed #C9BD9F", paddingTop: 14 }}>
-              <p className="mono" style={{ fontSize: 11, color: "#8A7C63", marginTop: 0, marginBottom: 10 }}>
+            <div style={{ borderTop: "1px dashed #D7DEE6", paddingTop: 14 }}>
+              <p className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 10 }}>
                 ou passe à un abonnement pour beaucoup plus d'estimations :
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
