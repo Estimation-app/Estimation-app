@@ -1217,6 +1217,18 @@ export default function App() {
         padding: "28px 16px 60px",
       }}
     >
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          background: "linear-gradient(90deg, #152238 0%, #29394F 35%, #F2662E 100%)",
+          zIndex: 50,
+        }}
+      />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
         * { box-sizing: border-box; }
@@ -1271,12 +1283,32 @@ export default function App() {
           animation: pulse 1.4s ease-in-out infinite;
         }
         @keyframes pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(180, 67, 44, 0.4); }
-          50% { box-shadow: 0 0 0 6px rgba(180, 67, 44, 0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(242, 102, 46, 0.4); }
+          50% { box-shadow: 0 0 0 6px rgba(242, 102, 46, 0); }
+        }
+        .tag-swing-wrap {
+          transform-origin: top center;
+          animation: tagSwing 1.6s ease-in-out infinite;
+        }
+        @keyframes tagSwing {
+          0%, 100% { transform: rotate(-12deg); }
+          50% { transform: rotate(12deg); }
+        }
+        .pulse-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #F2662E;
+          display: inline-block;
+          animation: pulseDot 1.2s ease-in-out infinite;
+        }
+        @keyframes pulseDot {
+          0%, 80%, 100% { opacity: 0.25; transform: scale(0.7); }
+          40% { opacity: 1; transform: scale(1.2); }
         }
         .drop-zone {
-          border: 2px dashed #8C9CB0;
-          border-radius: 4px;
+          border: 2px dashed #F2662E;
+          border-radius: 18px;
           width: 100%;
           aspect-ratio: 4/3;
           display: flex;
@@ -1284,13 +1316,26 @@ export default function App() {
           align-items: center;
           justify-content: center;
           gap: 10px;
-          color: #42536A;
-          background: #EAEEF3;
+          color: #EEF1F5;
+          background: radial-gradient(circle at 50% 32%, #29394F 0%, #152238 72%);
           text-align: center;
+          position: relative;
+          overflow: hidden;
+          transition: transform 0.15s ease, border-color 0.15s ease;
         }
+        .drop-zone::before {
+          content: "";
+          position: absolute;
+          inset: 8px;
+          border: 1px solid rgba(242, 102, 46, 0.35);
+          border-radius: 12px;
+          pointer-events: none;
+        }
+        .drop-zone:active { transform: scale(0.99); }
         .tag-card {
           background: #F4F6F9;
           border: 1px solid #D7DEE6;
+          border-top: 3px solid #F2662E;
           border-radius: 2px;
           position: relative;
           padding: 26px 22px 22px;
@@ -1399,9 +1444,9 @@ export default function App() {
 
         {!image && (
           <label className="drop-zone" htmlFor="photo-input">
-            <Camera size={30} strokeWidth={1.5} />
-            <div style={{ fontSize: 14 }}>Ajouter une photo</div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>appareil photo ou galerie</div>
+            <Camera size={30} strokeWidth={1.5} style={{ color: "#F2662E" }} />
+            <div style={{ fontSize: 14, fontWeight: 600 }}>Ajouter une photo</div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>appareil photo ou galerie</div>
             <input
               id="photo-input"
               type="file"
@@ -1409,7 +1454,15 @@ export default function App() {
               onChange={handleFile}
               style={{ display: "none" }}
             />
-            <span className="btn-ghost" style={{ marginTop: 6, pointerEvents: "none" }}>
+            <span
+              className="btn-ghost"
+              style={{
+                marginTop: 6,
+                pointerEvents: "none",
+                borderColor: "rgba(238, 241, 245, 0.4)",
+                color: "#EEF1F5",
+              }}
+            >
               <Upload size={14} /> choisir un fichier
             </span>
           </label>
@@ -1450,6 +1503,50 @@ export default function App() {
             {image.debug && (
               <div className="mono" style={{ fontSize: 11, color: "#8C9CB0" }}>
                 debug: {image.debug} · type: {image.mediaType}
+              </div>
+            )}
+
+            {(status === "analyzing" || status === "pricing") && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: "28px 20px",
+                  borderRadius: 12,
+                  background: "linear-gradient(160deg, #1B2A45 0%, #152238 100%)",
+                  border: "1px solid #29394F",
+                }}
+              >
+                <div className="tag-swing-wrap">
+                  <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
+                    <path
+                      d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+                      fill="#F2662E"
+                    />
+                    <circle cx="7.5" cy="7.5" r="1.7" fill="#152238" />
+                  </svg>
+                </div>
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#EEF1F5",
+                    letterSpacing: "0.02em",
+                    textAlign: "center",
+                  }}
+                >
+                  {status === "analyzing"
+                    ? "Identification de l'objet…"
+                    : "Recherche des prix sur Leboncoin, Vinted, eBay…"}
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <span className="pulse-dot" style={{ animationDelay: "0s" }} />
+                  <span className="pulse-dot" style={{ animationDelay: "0.15s" }} />
+                  <span className="pulse-dot" style={{ animationDelay: "0.3s" }} />
+                </div>
               </div>
             )}
 
@@ -1535,7 +1632,7 @@ export default function App() {
 
             {status === "vehicule_form" && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 10 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 10 }}>
                   🚗 quelques précisions sur le véhicule
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1623,7 +1720,7 @@ export default function App() {
 
             {status === "immobilier_form" && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 10 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 10 }}>
                   🏠 quelques précisions sur le bien
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1726,7 +1823,7 @@ export default function App() {
 
             {result && status === "done" && result.type_sujet === "etre_vivant" && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 4 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4 }}>
                   🎭 mode "estimer tout, même n'importe quoi"
                 </div>
                 <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
@@ -1765,7 +1862,7 @@ export default function App() {
 
             {result && status === "done" && (result.type_sujet === "vehicule" || result.type_sujet === "immobilier") && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 4 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4 }}>
                   {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
                 </div>
                 <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
@@ -1809,7 +1906,7 @@ export default function App() {
 
             {result && status === "done" && (!result.type_sujet || result.type_sujet === "objet") && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#647A93", marginBottom: 4 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4 }}>
                   {result.categorie}
                 </div>
                 <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>
