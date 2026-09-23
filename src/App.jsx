@@ -203,6 +203,10 @@ const TRANSLATIONS = {
     contact_title: "Contact",
     contact_text: "Une question, un souci, une suggestion ? Écris-nous :",
     language_title: "Langue",
+    card_estimate_button: "Estimer",
+    card_estimate_title: "Générer une estimation à partir de cette annonce",
+    listing_seed_badge: "Estimation basée sur une annonce en ligne",
+    listing_seed_link: "Voir l'annonce d'origine",
   },
   en: {
     hero_title_1: "One photo. One price.",
@@ -254,6 +258,10 @@ const TRANSLATIONS = {
     contact_title: "Contact",
     contact_text: "A question, an issue, a suggestion? Write to us:",
     language_title: "Language",
+    card_estimate_button: "Estimate",
+    card_estimate_title: "Generate an estimate from this listing",
+    listing_seed_badge: "Estimate based on an online listing",
+    listing_seed_link: "View the original listing",
   },
   es: {
     hero_title_1: "Una foto. Un precio.",
@@ -305,6 +313,10 @@ const TRANSLATIONS = {
     contact_title: "Contacto",
     contact_text: "¿Una pregunta, un problema, una sugerencia? Escríbenos:",
     language_title: "Idioma",
+    card_estimate_button: "Estimar",
+    card_estimate_title: "Generar una estimación a partir de este anuncio",
+    listing_seed_badge: "Estimación basada en un anuncio en línea",
+    listing_seed_link: "Ver el anuncio original",
   },
 };
 
@@ -402,90 +414,130 @@ function Gauge({ label, value, lowLabel, highLabel }) {
 // plateforme), utilisée à la fois par "Rechercher un produit" et "Produits
 // du moment" — clique = ouvre la vraie annonce d'origine dans un nouvel
 // onglet (aucune donnée n'est recréée/fabriquée, on relie juste vers elle).
-function ProductCard({ item, theme = "dark" }) {
+function ProductCard({ item, theme = "dark", onEstimate, estimateLabel, estimateTitle }) {
   if (!item || !item.link) return null;
   const pt = PANEL_THEMES[theme] || PANEL_THEMES.dark;
   return (
-    <a
-      href={item.link}
-      target="_blank"
-      rel="noopener noreferrer"
+    <div
       style={{
-        display: "block",
-        textDecoration: "none",
+        display: "flex",
+        flexDirection: "column",
         background: pt.cardBg,
         border: pt.cardBorder,
         borderRadius: 10,
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "relative", width: "100%", paddingTop: "100%", background: pt.cardImgBg }}>
-        {item.image ? (
-          <img
-            src={item.image}
-            alt={item.title || ""}
-            loading="lazy"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        ) : (
+      <a
+        href={item.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: "block",
+          textDecoration: "none",
+        }}
+      >
+        <div style={{ position: "relative", width: "100%", paddingTop: "100%", background: pt.cardImgBg }}>
+          {item.image ? (
+            <img
+              src={item.image}
+              alt={item.title || ""}
+              loading="lazy"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Tag size={22} color={pt.cardImgIcon} />
+            </div>
+          )}
+          {item.source && SOURCE_LABELS[item.source] && (
+            <span
+              className="mono"
+              style={{
+                position: "absolute",
+                top: 6,
+                left: 6,
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                color: "#FFFFFF",
+                background: "rgba(21, 34, 56, 0.78)",
+                borderRadius: 4,
+                padding: "2px 6px",
+              }}
+            >
+              {SOURCE_LABELS[item.source]}
+            </span>
+          )}
+        </div>
+        <div style={{ padding: "8px 9px 6px" }}>
           <div
             style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              fontSize: 12,
+              color: pt.cardTitleColor,
+              lineHeight: 1.3,
+              marginBottom: 4,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
             }}
           >
-            <Tag size={22} color={pt.cardImgIcon} />
+            {item.title}
           </div>
-        )}
-        {item.source && SOURCE_LABELS[item.source] && (
-          <span
-            className="mono"
-            style={{
-              position: "absolute",
-              top: 6,
-              left: 6,
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              color: "#FFFFFF",
-              background: "rgba(21, 34, 56, 0.78)",
-              borderRadius: 4,
-              padding: "2px 6px",
-            }}
-          >
-            {SOURCE_LABELS[item.source]}
-          </span>
-        )}
-      </div>
-      <div style={{ padding: "8px 9px 10px" }}>
-        <div
+          <div className="mono" style={{ fontSize: 13, fontWeight: 800, color: "#F2662E" }}>
+            {item.price || (item.extracted_price ? item.extracted_price + " €" : "")}
+          </div>
+        </div>
+      </a>
+      {onEstimate && (
+        <button
+          type="button"
+          onClick={() => onEstimate(item)}
+          title={estimateTitle}
+          className="mono"
           style={{
-            fontSize: 12,
-            color: pt.cardTitleColor,
-            lineHeight: 1.3,
-            marginBottom: 4,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 5,
+            margin: "0 9px 9px",
+            padding: "6px 8px",
+            borderRadius: 7,
+            border: pt.chipBorder,
+            background: pt.chipBg,
+            color: pt.chipText,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.02em",
+            cursor: "pointer",
           }}
         >
-          {item.title}
-        </div>
-        <div className="mono" style={{ fontSize: 13, fontWeight: 800, color: "#F2662E" }}>
-          {item.price || (item.extracted_price ? item.extracted_price + " €" : "")}
-        </div>
-      </div>
-    </a>
+          <Sparkles size={11} /> {estimateLabel}
+        </button>
+      )}
+    </div>
   );
 }
 
 export default function App() {
   const [image, setImage] = useState(null); // { dataUrl, mediaType, base64 }
+  // Quand une estimation est lancée depuis une annonce déjà en ligne (bouton
+  // "Estimer" sur une carte de résultat) plutôt que depuis une photo prise
+  // par l'utilisateur: on garde ici le titre/prix/source/lien de cette
+  // annonce d'origine, pour sauter l'étape d'identification par photo et
+  // pour rappeler à l'IA de prix que ce prix affiché n'est pas forcément un
+  // prix de vente réel.
+  const [listingSeed, setListingSeed] = useState(null); // { title, price, sourcePlatform, link, image, category }
   const [details, setDetails] = useState(""); // précisions manuelles optionnelles
   const [status, setStatus] = useState("idle"); // idle | analyzing | pricing | done | error
   const [result, setResult] = useState(null);
@@ -1000,6 +1052,7 @@ export default function App() {
     setAdCopied(false);
     setAdGenCount(0);
     setStatus("idle");
+    setListingSeed(null); // on repart d'une vraie photo, plus d'une annonce
 
     const isHeic =
       /\.hei[cf]$/i.test(file.name || "") || /heic|heif/i.test(file.type || "");
@@ -1206,7 +1259,7 @@ export default function App() {
   // directement après le visionnage d'une pub bonus, puisque le crédit est
   // alors déjà consommé par checkQuota(true).
   async function estimate(detailsOverride) {
-    if (!image) return;
+    if (!image && !listingSeed) return;
     setError(null);
     if (!user) {
       setError("Connecte-toi pour lancer une estimation (3 gratuites par mois, sans carte bancaire).");
@@ -1220,6 +1273,61 @@ export default function App() {
       return;
     }
     await runEstimationCore(detailsOverride);
+  }
+
+  // Point d'entrée du bouton "Estimer" affiché sur une carte de résultat
+  // (Rechercher un produit / Produits du moment): au lieu de partir d'une
+  // photo, on part d'une annonce déjà en ligne (titre, prix demandé,
+  // plateforme). On ferme tous les panneaux de menu ouverts pour révéler
+  // l'écran principal (même écran de résultat qu'une estimation photo),
+  // on mémorise l'annonce d'origine dans listingSeed, et on lance
+  // directement runEstimationCore — en lui passant l'annonce en paramètre
+  // plutôt que de compter sur le state "listingSeed"/"image" (qui ne
+  // seraient pas encore à jour à ce point à cause du batching de React).
+  async function estimateFromListing(item) {
+    if (!item) return;
+    setError(null);
+    if (!user) {
+      setError("Connecte-toi pour lancer une estimation (3 gratuites par mois, sans carte bancaire).");
+      setShowHistory(true);
+      return;
+    }
+    const quota = await checkQuota(false);
+    if (!quota.allowed) {
+      setPaywallInfo(quota);
+      setShowPaywall(true);
+      return;
+    }
+
+    setShowMenu(false);
+    setShowProductSearch(false);
+    setShowTrending(false);
+    setShowSubscriptionPanel(false);
+    setShowContact(false);
+    setDetails("");
+    setResult(null);
+    setResultTab("estimation");
+    setCorrectionOpen(false);
+    setCorrectionInput("");
+    setAdText(null);
+    setAdLoading(false);
+    setAdError(null);
+    setAdCopied(false);
+    setAdGenCount(0);
+
+    const seed = {
+      title: item.title || "",
+      price:
+        typeof item.extracted_price === "number" && item.extracted_price > 0 ? item.extracted_price : null,
+      sourcePlatform: item.source || null,
+      link: item.link || null,
+      image: item.image || null,
+      category: (searchCategory && searchCategory.label) || null,
+    };
+    setListingSeed(seed);
+    setImage({ dataUrl: item.image || null, mediaType: null, base64: null, debug: null });
+
+    await runEstimationCore("", seed);
   }
 
   // Permet de corriger un détail après coup (ex: l'IA a estimé "grande
@@ -1297,8 +1405,13 @@ export default function App() {
   // faire setDetails juste avant, à cause du batching des mises à jour de
   // state) — utilisé par la correction post-résultat ("ce n'est pas tout à
   // fait ça").
-  async function runEstimationCore(detailsOverride) {
-    if (!image) return;
+  async function runEstimationCore(detailsOverride, listingSeedOverride) {
+    // listingSeedOverride permet, comme detailsOverride, d'éviter de lire
+    // "listingSeed" depuis le state React juste après l'avoir défini avec
+    // setListingSeed() dans le même événement: le state ne serait pas
+    // encore à jour au moment de cet appel à cause du batching.
+    const effectiveListingSeed = listingSeedOverride !== undefined ? listingSeedOverride : listingSeed;
+    if (!image && !effectiveListingSeed) return;
     const effectiveDetails = detailsOverride !== undefined ? detailsOverride : details;
     setError(null);
     // Une nouvelle estimation (y compris via une correction) porte sur un
@@ -1310,38 +1423,57 @@ export default function App() {
     setAdCopied(false);
     setAdGenCount(0);
     try {
-      setStatus("analyzing");
-      const idText = await callClaude([
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: { type: "base64", media_type: image.mediaType, data: image.base64 },
-            },
-            {
-              type: "text",
-              text:
-                "Tu regardes une photo. D'abord détermine le type de sujet: (a) un objet du quotidien à estimer pour une revente d'occasion, (b) un être vivant (humain ou animal), (c) un véhicule (voiture, moto, scooter...), (d) un bien immobilier (maison ou appartement, vu de l'extérieur ou l'intérieur). " +
-                "Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
-                '{"type_sujet": "objet" ou "etre_vivant" ou "vehicule" ou "immobilier", "objet": "nom précis de l\'objet (marque/modèle si visible) OU description brève et neutre de l\'être vivant OU description du véhicule OU description du bien immobilier", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (vide si pas type objet)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé", "marque": "marque du véhicule si type_sujet=vehicule, sinon vide", "modele": "modèle du véhicule si type_sujet=vehicule, sinon vide", "annee": nombre (année du véhicule si clairement identifiable, sinon null), "type_bien": "maison ou appartement si type_sujet=immobilier, sinon vide"}' +
-                (effectiveDetails.trim()
-                  ? ` L'utilisateur précise en plus: "${effectiveDetails.trim()}". Utilise ces précisions en priorité sur ce que tu vois sur la photo si elles se contredisent (ex: la contenance exacte, un défaut caché), et intègre-les dans "objet" et "recherche".`
-                  : ""),
-            },
-          ],
-        },
-      ], "claude-sonnet-4-6", 0.2);
-      // temperature basse (0.2) ici: c'est cette étape qui fixe "recherche"/
-      // "objet", donc les mots-clés utilisés pour chercher de vraies
-      // annonces. Au défaut (température ~1), la même photo pouvait donner
-      // des mots-clés légèrement différents d'une estimation à l'autre, donc
-      // une recherche différente et des annonces différentes trouvées —
-      // c'était la cause du "ça ne trouve pas la même annonce que la
-      // dernière fois" remonté par l'utilisateur. Une température basse
-      // rend l'identification beaucoup plus stable d'un essai à l'autre sur
-      // la même photo, sans la rendre totalement figée.
-      const identification = extractJson(idText);
+      let identification;
+      if (effectiveListingSeed) {
+        // Estimation lancée depuis une annonce déjà en ligne (bouton
+        // "Estimer" sur une carte de résultat): pas de photo à analyser,
+        // donc pas d'appel de vision — on construit directement
+        // l'identification à partir du titre de l'annonce elle-même (+
+        // d'éventuelles précisions ajoutées via "corriger").
+        setStatus("pricing");
+        const seedTitle = effectiveListingSeed.title || "objet";
+        identification = {
+          type_sujet: "objet",
+          objet: effectiveDetails.trim() ? `${seedTitle} (${effectiveDetails.trim()})` : seedTitle,
+          recherche: effectiveDetails.trim() ? `${seedTitle} ${effectiveDetails.trim()}` : seedTitle,
+          categorie: effectiveListingSeed.category || "",
+          etat: "État non vérifiable à distance : estimation basée sur une annonce en ligne, pas sur une photo.",
+          etat_note: "occasion (état non vérifié)",
+        };
+      } else {
+        setStatus("analyzing");
+        const idText = await callClaude([
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: { type: "base64", media_type: image.mediaType, data: image.base64 },
+              },
+              {
+                type: "text",
+                text:
+                  "Tu regardes une photo. D'abord détermine le type de sujet: (a) un objet du quotidien à estimer pour une revente d'occasion, (b) un être vivant (humain ou animal), (c) un véhicule (voiture, moto, scooter...), (d) un bien immobilier (maison ou appartement, vu de l'extérieur ou l'intérieur). " +
+                  "Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
+                  '{"type_sujet": "objet" ou "etre_vivant" ou "vehicule" ou "immobilier", "objet": "nom précis de l\'objet (marque/modèle si visible) OU description brève et neutre de l\'être vivant OU description du véhicule OU description du bien immobilier", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (vide si pas type objet)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé", "marque": "marque du véhicule si type_sujet=vehicule, sinon vide", "modele": "modèle du véhicule si type_sujet=vehicule, sinon vide", "annee": nombre (année du véhicule si clairement identifiable, sinon null), "type_bien": "maison ou appartement si type_sujet=immobilier, sinon vide"}' +
+                  (effectiveDetails.trim()
+                    ? ` L'utilisateur précise en plus: "${effectiveDetails.trim()}". Utilise ces précisions en priorité sur ce que tu vois sur la photo si elles se contredisent (ex: la contenance exacte, un défaut caché), et intègre-les dans "objet" et "recherche".`
+                    : ""),
+              },
+            ],
+          },
+        ], "claude-sonnet-4-6", 0.2);
+        // temperature basse (0.2) ici: c'est cette étape qui fixe "recherche"/
+        // "objet", donc les mots-clés utilisés pour chercher de vraies
+        // annonces. Au défaut (température ~1), la même photo pouvait donner
+        // des mots-clés légèrement différents d'une estimation à l'autre, donc
+        // une recherche différente et des annonces différentes trouvées —
+        // c'était la cause du "ça ne trouve pas la même annonce que la
+        // dernière fois" remonté par l'utilisateur. Une température basse
+        // rend l'identification beaucoup plus stable d'un essai à l'autre sur
+        // la même photo, sans la rendre totalement figée.
+        identification = extractJson(idText);
+      }
 
       // Mode humoristique: un être vivant n'est pas à vendre. On saute la
       // recherche de vraies annonces et on demande à Claude une estimation
@@ -1426,7 +1558,12 @@ export default function App() {
         const searchTerm = identification.recherche || identification.objet;
         const { bySource, errors, total } = await fetchRealListings(searchTerm);
 
-        if (total >= 1) {
+        // Quand l'estimation part d'une annonce déjà en ligne, on continue
+        // même si la recherche fraîche ne retrouve aucun comparable: le
+        // prix de cette annonce elle-même (injecté plus bas) sert alors de
+        // donnée de base, plutôt que de tomber dans le repli IA générale
+        // ci-dessous qui perdrait cette information.
+        if (total >= 1 || effectiveListingSeed) {
           // On aplatit les 3 sources en gardant l'étiquette d'origine sur
           // chaque annonce, pour ne jamais les mélanger dans l'affichage
           // ni perdre la traçabilité de la source.
@@ -1472,14 +1609,38 @@ export default function App() {
             .map((r) => r.extracted_price)
             .sort((a, b) => a - b);
 
-          if (relevantPrices.length === 0) {
+          let usedResults = relevantResults;
+          let usedPrices = relevantPrices;
+
+          // L'annonce d'origine (quand l'estimation part d'un bouton
+          // "Estimer" sur une carte de résultat) est par définition
+          // exactement le même produit: on l'ajoute directement comme
+          // donnée de prix demandé, sans passer par le filtre de
+          // pertinence IA ci-dessus (qui ne connaît que les nouveaux
+          // résultats de recherche, pas cette annonce précise).
+          if (
+            effectiveListingSeed &&
+            typeof effectiveListingSeed.price === "number" &&
+            effectiveListingSeed.price > 0
+          ) {
+            usedResults = [
+              ...usedResults,
+              {
+                title: effectiveListingSeed.title,
+                extracted_price: effectiveListingSeed.price,
+                source: effectiveListingSeed.sourcePlatform || "annonce",
+                link: effectiveListingSeed.link,
+              },
+            ];
+            usedPrices = [...usedPrices, effectiveListingSeed.price].sort((a, b) => a - b);
+          }
+
+          if (usedPrices.length === 0) {
             throw new Error(
               "Des annonces ont été trouvées mais aucune ne correspond précisément au même produit (même format/modèle)."
             );
           }
 
-          const usedResults = relevantResults;
-          const usedPrices = relevantPrices;
           // Les ventes eBay confirmées sont un signal beaucoup plus fiable
           // qu'une simple annonce active (prix réellement payé, pas juste
           // demandé) — on les distingue pour le prompt IA juste en dessous.
@@ -1535,11 +1696,26 @@ export default function App() {
                 )} € (${soldPrices.length} vente(s)). `
               : "";
 
+          // Cas "estimation depuis une annonce déjà en ligne": on rappelle
+          // explicitement à l'IA que le point de départ est le prix demandé
+          // par CETTE annonce précise, pas une vente confirmée — le simple
+          // fait qu'elle soit encore en ligne ne prouve pas qu'elle se
+          // vendra à ce prix (elle peut être surestimée ou traîner depuis
+          // un moment). On lui demande explicitement de pencher vers un
+          // prix plus bas et plus réaliste si les comparables le suggèrent,
+          // plutôt que de valider ce prix affiché par défaut.
+          const seedPart = effectiveListingSeed
+            ? `Point de départ: l'utilisateur a cliqué "Estimer" sur une annonce précise, encore en ligne sur ${
+                SOURCE_LABELS[effectiveListingSeed.sourcePlatform] || "une plateforme d'occasion"
+              }${effectiveListingSeed.price ? ` à ${effectiveListingSeed.price} €` : ""}. Cette annonce n'est PAS une vente confirmée: elle est simplement affichée, on ne sait pas depuis combien de temps ni si elle se vendra à ce prix — un vendeur particulier surestime souvent son prix de départ. Ne prends donc pas ce prix demandé pour argent comptant: si les ventes confirmées ou les autres comparables suggèrent une valeur de revente réaliste plus basse, ta fourchette doit clairement pencher vers ce prix plus bas plutôt que de valider le prix de cette annonce, et dis-le dans "conseil" ou "alerte" si l'écart est notable. `
+            : "";
+
           const conseilText = await callClaude([
             {
               role: "user",
               content:
                 `Objet: ${identification.objet}, état: ${identification.etat_note}. ` +
+                seedPart +
                 askingPart +
                 soldPart +
                 "Pour fixer ta fourchette de revente réaliste (\"prix_bas\" et \"prix_haut\", nombres en euros, prix_bas strictement inférieur à prix_haut), mélange VRAIMENT trois sources, sans te reposer sur une seule : " +
@@ -1593,12 +1769,18 @@ export default function App() {
           throw new Error("Pas assez d'annonces trouvées pour cet objet.");
         }
       } catch (marketError) {
+        const seedFallbackPart = effectiveListingSeed
+          ? `L'utilisateur a cliqué "Estimer" sur une annonce précise, encore en ligne sur ${
+              SOURCE_LABELS[effectiveListingSeed.sourcePlatform] || "une plateforme d'occasion"
+            }${effectiveListingSeed.price ? ` à ${effectiveListingSeed.price} €` : ""} (ni vendue, ni confirmée à ce prix). Ne valide pas ce prix par défaut: si ta connaissance générale du marché suggère une valeur de revente réaliste plus basse, penche vers ce prix plus bas. `
+          : "";
         const priceText = await callClaude([
           {
             role: "user",
             content:
               `Objet d'occasion identifié: ${identification.objet} (catégorie: ${identification.categorie}). ` +
               `État: ${identification.etat} (${identification.etat_note}). ` +
+              seedFallbackPart +
               "En te basant sur ta connaissance générale du marché de l'occasion en France, donne une estimation de prix réaliste (aucune annonce réelle trouvée pour ce produit, donc uniquement ta connaissance générale ici). " +
               "Donne aussi une estimation SÉPARÉE et prudente pour la revente en brocante/vide-grenier (\"prix_brocante\") : à ces endroits, les acheteurs marchandent presque systématiquement le prix affiché à la baisse (souvent -20 à -40%), donc donne un prix réaliste APRÈS ce marchandage typique, pas le prix de départ espéré. " +
               "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
@@ -1632,7 +1814,12 @@ export default function App() {
       addToHistory({
         id: Date.now(),
         date: new Date().toISOString(),
-        image: image.dataUrl,
+        // effectiveListingSeed.image plutôt que image.dataUrl: au moment de
+        // cet appel, le state React "image" peut ne pas encore refléter le
+        // setImage() fait juste avant d'appeler runEstimationCore() (React
+        // regroupe les mises à jour), donc on utilise directement l'annonce
+        // d'origine passée en paramètre pour ce cas.
+        image: effectiveListingSeed ? effectiveListingSeed.image : image.dataUrl,
         objet: finalResult.objet,
         categorie: finalResult.categorie,
         prix_bas: finalResult.prix_bas,
@@ -1648,6 +1835,7 @@ export default function App() {
 
   function reset() {
     setImage(null);
+    setListingSeed(null);
     setDetails("");
     setResult(null);
     setError(null);
@@ -2576,6 +2764,39 @@ export default function App() {
                 <div style={{ fontSize: 13, color: "#B9C3D1", marginBottom: 16, position: "relative" }}>
                   {result.etat} · <em>{result.etat_note}</em>
                 </div>
+
+                {listingSeed && (
+                  <div
+                    className="mono"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      flexWrap: "wrap",
+                      fontSize: 10,
+                      color: "#B9C3D1",
+                      background: "rgba(255, 255, 255, 0.06)",
+                      border: "1px solid rgba(255, 255, 255, 0.14)",
+                      borderRadius: 8,
+                      padding: "7px 10px",
+                      marginBottom: 16,
+                      position: "relative",
+                    }}
+                  >
+                    <Sparkles size={11} color="#F2662E" style={{ flexShrink: 0 }} />
+                    <span>{t("listing_seed_badge")}</span>
+                    {listingSeed.link && (
+                      <a
+                        href={listingSeed.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#F2662E", textDecoration: "underline" }}
+                      >
+                        {t("listing_seed_link")}
+                      </a>
+                    )}
+                  </div>
+                )}
 
                 <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
                   {[
@@ -3836,7 +4057,14 @@ export default function App() {
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                           {sorted.map((it, i) => (
-                            <ProductCard key={i} item={it} theme={menuTheme} />
+                            <ProductCard
+                              key={i}
+                              item={it}
+                              theme={menuTheme}
+                              onEstimate={estimateFromListing}
+                              estimateLabel={t("card_estimate_button")}
+                              estimateTitle={t("card_estimate_title")}
+                            />
                           ))}
                         </div>
                       </div>
@@ -3923,7 +4151,14 @@ export default function App() {
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                         {pageItems.map((it, i) => (
-                          <ProductCard key={(page - 1) * TRENDING_PAGE_SIZE + i} item={it} theme={menuTheme} />
+                          <ProductCard
+                            key={(page - 1) * TRENDING_PAGE_SIZE + i}
+                            item={it}
+                            theme={menuTheme}
+                            onEstimate={estimateFromListing}
+                            estimateLabel={t("card_estimate_button")}
+                            estimateTitle={t("card_estimate_title")}
+                          />
                         ))}
                       </div>
                       {totalPages > 1 && (
