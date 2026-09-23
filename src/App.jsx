@@ -44,44 +44,91 @@ const PLANS = [
   { key: "premium", label: "Premium", price: "19,99 €/mois", quota: 300 },
 ];
 
-// Petite jauge 0–10 réutilisée dans l'onglet "statistiques" du résultat.
+// Petite jauge 0–10 réutilisée dans l'onglet "statistiques" du résultat :
+// titre centré en haut, un rail au milieu, et un curseur (avec sa note)
+// qui se positionne le long du rail selon la valeur — de "difficile" côté
+// gauche à "facile" côté droit (ou "pas rare" / "rare" pour la rareté).
 // `value` peut être null/undefined si l'IA ne l'a pas renvoyée (ex: anciens
-// résultats de l'historique) — dans ce cas on affiche la jauge à vide.
-function Gauge({ label, value }) {
+// résultats de l'historique) — dans ce cas on affiche le rail vide, sans curseur.
+function Gauge({ label, value, lowLabel, highLabel }) {
   const v = typeof value === "number" && !isNaN(value) ? Math.max(0, Math.min(10, value)) : null;
+  const pct = v !== null ? v * 10 : null;
   return (
-    <div style={{ marginBottom: 18 }}>
+    <div style={{ marginBottom: 26 }}>
       <div
+        className="mono"
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          marginBottom: 6,
+          textAlign: "center",
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "#FFFFFF",
+          marginBottom: 18,
         }}
       >
-        <span style={{ fontSize: 13, color: "#29394F" }}>{label}</span>
-        <span className="mono" style={{ fontSize: 13, fontWeight: 700, color: "#F2662E" }}>
-          {v !== null ? `${v}/10` : "—"}
-        </span>
+        {label}
       </div>
-      <div
-        style={{
-          height: 8,
-          borderRadius: 4,
-          background: "#E9EDF2",
-          border: "1px solid #D7DEE6",
-          overflow: "hidden",
-        }}
-      >
+
+      <div style={{ position: "relative", height: 30, margin: "0 9px" }}>
         <div
           style={{
-            height: "100%",
-            width: v !== null ? `${v * 10}%` : "0%",
-            background: "#F2662E",
-            borderRadius: 4,
-            transition: "width 0.3s ease",
+            position: "absolute",
+            top: 12,
+            left: 0,
+            right: 0,
+            height: 6,
+            borderRadius: 3,
+            background: "linear-gradient(90deg, rgba(255,255,255,0.16) 0%, rgba(242,102,46,0.45) 100%)",
+            border: "1px solid rgba(255,255,255,0.2)",
           }}
         />
+        {pct !== null && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: `${pct}%`,
+              transform: "translateX(-50%)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            <span
+              className="mono"
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                color: "#FFFFFF",
+                background: "#F2662E",
+                borderRadius: 8,
+                padding: "2px 6px",
+                whiteSpace: "nowrap",
+                boxShadow: "0 2px 6px rgba(21, 34, 56, 0.25)",
+              }}
+            >
+              {v}/10
+            </span>
+            <span
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: "#F2662E",
+                border: "3px solid #FFFFFF",
+                boxShadow: "0 2px 6px rgba(21, 34, 56, 0.35)",
+                display: "block",
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", margin: "2px 0 0" }}>
+        <span className="mono" style={{ fontSize: 11, color: "#93A4BC" }}>{lowLabel}</span>
+        <span className="mono" style={{ fontSize: 11, color: "#93A4BC" }}>{highLabel}</span>
       </div>
     </div>
   );
@@ -1016,12 +1063,15 @@ export default function App() {
                 `Objet: ${identification.objet}, état: ${identification.etat_note}. ` +
                 askingPart +
                 soldPart +
-                "À partir de ces prix réels ET de ta connaissance générale du marché de l'occasion pour ce type de produit et son état, donne une fourchette de revente réaliste : \"prix_bas\" et \"prix_haut\" (nombres en euros, prix_bas strictement inférieur à prix_haut). " +
+                "Pour fixer ta fourchette de revente réaliste (\"prix_bas\" et \"prix_haut\", nombres en euros, prix_bas strictement inférieur à prix_haut), mélange VRAIMENT trois sources, sans te reposer sur une seule : " +
+                "1) les prix de VENTE confirmés quand il y en a — le signal le plus fiable, un prix réellement payé ; " +
+                "2) les prix DEMANDÉS dans les annonces actives — indicatif, mais un vendeur peut demander plus cher que ce que ça se vend vraiment ; " +
+                "3) ta connaissance générale du marché de l'occasion pour ce type de produit et son état — utile pour recadrer si les annonces trouvées semblent atypiques, ou pour combler le manque de données. " +
                 (soldPrices.length > 0
-                  ? "Ancre ta fourchette en priorité sur les prix de vente confirmés (plus fiables qu'une simple annonce active), en te servant des prix demandés seulement comme repère complémentaire. "
-                  : "") +
+                  ? "Ici tu as des ventes confirmées : ancre ta fourchette en priorité dessus, les prix demandés ne servent que de repère complémentaire. "
+                  : "Ici tu n'as que des prix demandés, aucune vente confirmée : pondère-les avec ta connaissance générale du marché, car un prix affiché n'est pas toujours un prix de vente réel. ") +
                 "Ne renvoie JAMAIS prix_bas égal à prix_haut, même s'il n'y a qu'une seule annonce trouvée : élargis intelligemment la fourchette autour du/des prix observés (par exemple ±10 à 25% selon ton incertitude) en tenant compte du nombre d'annonces disponibles (moins il y en a, plus la fourchette doit être large) et de l'état de l'objet. " +
-                "Donne aussi une estimation pour la revente en brocante/vide-grenier (\"prix_brocante\", souvent moins cher que ces annonces), " +
+                "Donne aussi une estimation SÉPARÉE et prudente pour la revente en brocante/vide-grenier (\"prix_brocante\") : à ces endroits, les acheteurs marchandent presque systématiquement le prix affiché à la baisse (souvent -20 à -40%), donc donne un prix réaliste APRÈS ce marchandage typique, pas le prix de départ espéré — reste précautionneux plutôt qu'optimiste sur ce chiffre-là en particulier. " +
                 "et un conseil de vente pratique en une phrase (\"conseil\"). " +
                 "Si ces prix te semblent anormalement bas ou hauts par rapport à ta connaissance générale du produit " +
                 "(ex: erreur de prix, produit différent malgré le nom), signale-le brièvement dans \"alerte\" (sinon renvoie une chaîne vide). " +
@@ -1070,7 +1120,8 @@ export default function App() {
             content:
               `Objet d'occasion identifié: ${identification.objet} (catégorie: ${identification.categorie}). ` +
               `État: ${identification.etat} (${identification.etat_note}). ` +
-              "En te basant sur ta connaissance générale du marché de l'occasion en France, donne une estimation de prix réaliste. " +
+              "En te basant sur ta connaissance générale du marché de l'occasion en France, donne une estimation de prix réaliste (aucune annonce réelle trouvée pour ce produit, donc uniquement ta connaissance générale ici). " +
+              "Donne aussi une estimation SÉPARÉE et prudente pour la revente en brocante/vide-grenier (\"prix_brocante\") : à ces endroits, les acheteurs marchandent presque systématiquement le prix affiché à la baisse (souvent -20 à -40%), donc donne un prix réaliste APRÈS ce marchandage typique, pas le prix de départ espéré. " +
               "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
               "\"facilite_vente\" (0 = très difficile à vendre car peu de demande, 10 = se vend très facilement/vite) et " +
               "\"rarete\" (0 = produit courant, 10 = produit très rare/recherché), en te basant sur ta connaissance générale du marché de l'occasion. " +
@@ -1401,15 +1452,33 @@ export default function App() {
           border: 1px solid #D7DEE6;
           border-radius: 50%;
         }
+        .tag-card-result {
+          background: linear-gradient(135deg, #04060C 0%, #152238 52%, #2E4159 100%);
+          border-color: rgba(242, 102, 46, 0.4);
+          box-shadow: 0 14px 32px rgba(4, 6, 12, 0.35);
+          overflow: hidden;
+        }
+        .tag-card-result::before {
+          background: #152238;
+          border-color: rgba(242, 102, 46, 0.4);
+        }
+        .tag-card-result .tag-card-watermark {
+          position: absolute;
+          top: -20px;
+          right: -24px;
+          opacity: 0.1;
+          transform: rotate(18deg);
+          pointer-events: none;
+        }
         .price-pill {
           display: inline-flex;
           align-items: baseline;
           gap: 6px;
-          background: linear-gradient(135deg, #152238 0%, #29394F 55%, #F2662E 140%);
-          color: #FFFFFF;
+          background: linear-gradient(135deg, #F2662E 0%, #FF8A52 100%);
+          color: #152238;
           border-radius: 12px;
           padding: 10px 16px;
-          box-shadow: 0 8px 18px rgba(21, 34, 56, 0.22);
+          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
         }
         .password-field {
           position: relative;
@@ -1923,81 +1992,104 @@ export default function App() {
             )}
 
             {result && status === "done" && result.type_sujet === "etre_vivant" && (
-              <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4 }}>
+              <div className="tag-card tag-card-result">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="180" height="180" fill="none" className="tag-card-watermark">
+                  <path
+                    d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+                    fill="#F2662E"
+                  />
+                  <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
+                </svg>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4, position: "relative" }}>
                   🎭 mode "estimer tout, même n'importe quoi"
                 </div>
-                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
+                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: "#FFFFFF", position: "relative" }}>
                   {result.objet}
                 </div>
 
-                <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 14 }}>
+                <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 14, position: "relative" }}>
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
 
                 <div
                   style={{
-                    borderTop: "1px dashed #D7DEE6",
+                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
                     paddingTop: 12,
                     fontSize: 14,
-                    color: "#152238",
+                    color: "#E4E9F0",
                     lineHeight: 1.6,
                     marginBottom: 10,
+                    position: "relative",
                   }}
                 >
                   {result.commentaire}
                 </div>
-                <div style={{ fontSize: 12, color: "#42536A", fontStyle: "italic", lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: "#93A4BC", fontStyle: "italic", lineHeight: 1.5, position: "relative" }}>
                   {result.rappel}
                 </div>
               </div>
             )}
 
             {result && status === "done" && (result.type_sujet === "vehicule" || result.type_sujet === "immobilier") && (
-              <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4 }}>
+              <div className="tag-card tag-card-result">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="180" height="180" fill="none" className="tag-card-watermark">
+                  <path
+                    d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+                    fill="#F2662E"
+                  />
+                  <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
+                </svg>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4, position: "relative" }}>
                   {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
                 </div>
-                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>
+                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: "#FFFFFF", position: "relative" }}>
                   {result.objet}
                 </div>
 
-                <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 14 }}>
+                <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 14, position: "relative" }}>
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
 
                 <div
                   style={{
-                    borderTop: "1px dashed #D7DEE6",
+                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
                     paddingTop: 12,
                     fontSize: 14,
-                    color: "#152238",
+                    color: "#E4E9F0",
                     lineHeight: 1.6,
                     marginBottom: result.hypothese ? 10 : 14,
+                    position: "relative",
                   }}
                 >
                   {result.commentaire}
                 </div>
                 {result.hypothese && (
-                  <div style={{ fontSize: 12, color: "#647A93", fontStyle: "italic", lineHeight: 1.5, marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: "#93A4BC", fontStyle: "italic", lineHeight: 1.5, marginBottom: 10, position: "relative" }}>
                     Hypothèse : {result.hypothese}
                   </div>
                 )}
-                <div className="mono" style={{ fontSize: 11, color: "#8C9CB0", lineHeight: 1.6 }}>
+                <div className="mono" style={{ fontSize: 11, color: "#93A4BC", lineHeight: 1.6, position: "relative" }}>
                   {result.source}
                 </div>
               </div>
             )}
 
             {result && status === "done" && (!result.type_sujet || result.type_sujet === "objet") && (
-              <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4 }}>
+              <div className="tag-card tag-card-result">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="180" height="180" fill="none" className="tag-card-watermark">
+                  <path
+                    d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+                    fill="#F2662E"
+                  />
+                  <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
+                </svg>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4, position: "relative" }}>
                   {result.categorie}
                 </div>
-                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>
+                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4, color: "#FFFFFF", position: "relative" }}>
                   {result.objet}
                 </div>
-                <div style={{ fontSize: 13, color: "#42536A", marginBottom: 16 }}>
+                <div style={{ fontSize: 13, color: "#B9C3D1", marginBottom: 16, position: "relative" }}>
                   {result.etat} · <em>{result.etat_note}</em>
                 </div>
 
@@ -2016,9 +2108,9 @@ export default function App() {
                         fontSize: 12,
                         padding: "8px 10px",
                         borderRadius: 4,
-                        border: "1px solid " + (resultTab === tab.key ? "#F2662E" : "#D7DEE6"),
+                        border: "1px solid " + (resultTab === tab.key ? "#F2662E" : "rgba(255, 255, 255, 0.2)"),
                         background: resultTab === tab.key ? "#F2662E" : "transparent",
-                        color: resultTab === tab.key ? "#FFFFFF" : "#647A93",
+                        color: resultTab === tab.key ? "#FFFFFF" : "#93A4BC",
                         cursor: "pointer",
                       }}
                     >
@@ -2030,14 +2122,14 @@ export default function App() {
                 {resultTab === "statistiques" && (
                   <div
                     style={{
-                      borderTop: "1px dashed #D7DEE6",
+                      borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
                       paddingTop: 14,
                       marginBottom: 12,
                     }}
                   >
-                    <Gauge label="Facilité à vendre" value={result.facilite_vente} />
-                    <Gauge label="Rareté" value={result.rarete} />
-                    <div style={{ fontSize: 11, color: "#647A93", lineHeight: 1.5 }}>
+                    <Gauge label="Facilité à vendre" value={result.facilite_vente} lowLabel="Difficile" highLabel="Facile" />
+                    <Gauge label="Rareté" value={result.rarete} lowLabel="Pas rare" highLabel="Rare" />
+                    <div style={{ fontSize: 11, color: "#93A4BC", lineHeight: 1.5 }}>
                       Évaluation par l'IA à partir de la demande observée sur Leboncoin, Vinted et eBay pour ce
                       produit précis.
                     </div>
@@ -2049,7 +2141,7 @@ export default function App() {
                 <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
-                <div style={{ fontSize: 13, color: "#42536A", marginBottom: 14 }}>
+                <div style={{ fontSize: 13, color: "#B9C3D1", marginBottom: 14 }}>
                   estimation d'occasion
                 </div>
 
@@ -2059,8 +2151,8 @@ export default function App() {
                     style={{
                       fontSize: 12,
                       color: "#F2662E",
-                      background: "#FDECE3",
-                      border: "1px solid #F3C6A9",
+                      background: "rgba(242, 102, 46, 0.15)",
+                      border: "1px solid rgba(242, 102, 46, 0.4)",
                       borderRadius: 3,
                       padding: "10px 12px",
                       marginBottom: 14,
@@ -2074,12 +2166,12 @@ export default function App() {
                 {result.breakdown && Object.keys(result.breakdown).length > 0 && (
                   <div
                     style={{
-                      borderTop: "1px dashed #D7DEE6",
+                      borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
                       paddingTop: 12,
                       marginBottom: 12,
                     }}
                   >
-                    <div style={{ fontSize: 12, color: "#647A93", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: "#93A4BC", marginBottom: 6 }}>
                       détail par plateforme :
                     </div>
                     {["leboncoin", "vinted", "ebay", "ebaySold"].map((key) => {
@@ -2091,7 +2183,7 @@ export default function App() {
                           key={key}
                           style={{
                             fontSize: 12,
-                            color: "#29394F",
+                            color: "#E4E9F0",
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 8,
@@ -2102,13 +2194,13 @@ export default function App() {
                           {b.count > 0 ? (
                             <span
                               className="mono"
-                              style={{ color: key === "ebaySold" ? "#1F7A4D" : "#F2662E" }}
+                              style={{ color: key === "ebaySold" ? "#4ADE80" : "#F2662E" }}
                             >
                               {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count} {key === "ebaySold" ? "vente" : "annonce"}
                               {b.count > 1 ? "s" : ""})
                             </span>
                           ) : (
-                            <span style={{ color: "#647A93", fontStyle: "italic" }}>indisponible</span>
+                            <span style={{ color: "#93A4BC", fontStyle: "italic" }}>indisponible</span>
                           )}
                         </div>
                       );
@@ -2119,12 +2211,12 @@ export default function App() {
                 {result.listings && result.listings.length > 0 && (
                   <div
                     style={{
-                      borderTop: "1px dashed #D7DEE6",
+                      borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
                       paddingTop: 12,
                       marginBottom: 12,
                     }}
                   >
-                    <div style={{ fontSize: 12, color: "#647A93", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: "#93A4BC", marginBottom: 6 }}>
                       annonces retenues (même produit) :
                     </div>
                     {result.listings.map((l, i) => {
@@ -2138,7 +2230,7 @@ export default function App() {
                           {...rowProps}
                           style={{
                             fontSize: 12,
-                            color: "#29394F",
+                            color: "#E4E9F0",
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 8,
@@ -2154,8 +2246,8 @@ export default function App() {
                                 style={{
                                   flexShrink: 0,
                                   fontSize: 10,
-                                  color: l.source === "ebaySold" ? "#1F7A4D" : "#647A93",
-                                  border: l.source === "ebaySold" ? "1px solid #1F7A4D" : "1px solid #D7DEE6",
+                                  color: l.source === "ebaySold" ? "#4ADE80" : "#93A4BC",
+                                  border: l.source === "ebaySold" ? "1px solid #4ADE80" : "1px solid rgba(255, 255, 255, 0.2)",
                                   borderRadius: 3,
                                   padding: "1px 4px",
                                 }}
@@ -2186,16 +2278,16 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed #D7DEE6",
+                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
                     paddingTop: 12,
                     fontSize: 13,
-                    color: "#29394F",
+                    color: "#E4E9F0",
                     lineHeight: 1.5,
                   }}
                 >
                   <strong>En brocante :</strong> {result.prix_brocante}
                 </div>
-                <div style={{ fontSize: 13, color: "#29394F", marginTop: 8, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 13, color: "#E4E9F0", marginTop: 8, lineHeight: 1.5 }}>
                   <strong>Conseil :</strong> {result.conseil}
                 </div>
                   </>
@@ -2203,7 +2295,7 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed #D7DEE6",
+                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
                     paddingTop: 12,
                     marginTop: 14,
                   }}
@@ -2215,7 +2307,7 @@ export default function App() {
                       className="mono"
                       style={{
                         fontSize: 12,
-                        color: "#647A93",
+                        color: "#93A4BC",
                         background: "none",
                         border: "none",
                         padding: 0,
@@ -2227,7 +2319,7 @@ export default function App() {
                     </button>
                   ) : (
                     <div>
-                      <div style={{ fontSize: 12, color: "#647A93", marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, color: "#93A4BC", marginBottom: 6 }}>
                         Précise ce qui ne va pas (ex : "en fait c'est une petite taille"), l'estimation sera
                         relancée avec cette info :
                       </div>
@@ -2239,9 +2331,9 @@ export default function App() {
                         style={{
                           width: "100%",
                           fontSize: 13,
-                          color: "#29394F",
-                          background: "#FFFFFF",
-                          border: "1px solid #D7DEE6",
+                          color: "#FFFFFF",
+                          background: "rgba(255, 255, 255, 0.08)",
+                          border: "1px solid rgba(255, 255, 255, 0.25)",
                           borderRadius: 4,
                           padding: "8px 10px",
                           marginBottom: 8,
@@ -2280,9 +2372,9 @@ export default function App() {
                             fontSize: 12,
                             padding: "8px 12px",
                             borderRadius: 4,
-                            border: "1px solid #D7DEE6",
+                            border: "1px solid rgba(255, 255, 255, 0.2)",
                             background: "transparent",
-                            color: "#647A93",
+                            color: "#93A4BC",
                             cursor: "pointer",
                           }}
                         >
@@ -2295,7 +2387,7 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed #D7DEE6",
+                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
                     paddingTop: 12,
                     marginTop: 14,
                   }}
@@ -2307,7 +2399,7 @@ export default function App() {
                       className="mono"
                       style={{
                         fontSize: 12,
-                        color: "#647A93",
+                        color: "#93A4BC",
                         background: "none",
                         border: "none",
                         padding: 0,
@@ -2320,13 +2412,13 @@ export default function App() {
                   )}
 
                   {!adText && !adLoading && adGenCount >= 3 && (
-                    <div style={{ fontSize: 12, color: "#647A93" }}>
+                    <div style={{ fontSize: 12, color: "#93A4BC" }}>
                       Limite de 3 générations atteinte pour cette estimation.
                     </div>
                   )}
 
                   {adLoading && (
-                    <div style={{ fontSize: 12, color: "#647A93" }}>Génération de l'annonce…</div>
+                    <div style={{ fontSize: 12, color: "#93A4BC" }}>Génération de l'annonce…</div>
                   )}
 
                   {adError && (
@@ -2335,7 +2427,7 @@ export default function App() {
 
                   {adText && !adLoading && (
                     <div>
-                      <div style={{ fontSize: 12, color: "#647A93", marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, color: "#93A4BC", marginBottom: 6 }}>
                         Annonce prête à coller (modifiable) :
                       </div>
                       <input
@@ -2345,9 +2437,9 @@ export default function App() {
                           width: "100%",
                           fontSize: 13,
                           fontWeight: 600,
-                          color: "#29394F",
-                          background: "#FFFFFF",
-                          border: "1px solid #D7DEE6",
+                          color: "#FFFFFF",
+                          background: "rgba(255, 255, 255, 0.08)",
+                          border: "1px solid rgba(255, 255, 255, 0.25)",
                           borderRadius: 4,
                           padding: "8px 10px",
                           marginBottom: 6,
@@ -2362,9 +2454,9 @@ export default function App() {
                         style={{
                           width: "100%",
                           fontSize: 13,
-                          color: "#29394F",
-                          background: "#FFFFFF",
-                          border: "1px solid #D7DEE6",
+                          color: "#FFFFFF",
+                          background: "rgba(255, 255, 255, 0.08)",
+                          border: "1px solid rgba(255, 255, 255, 0.25)",
                           borderRadius: 4,
                           padding: "8px 10px",
                           marginBottom: 8,
@@ -2399,9 +2491,9 @@ export default function App() {
                               fontSize: 12,
                               padding: "8px 12px",
                               borderRadius: 4,
-                              border: "1px solid #D7DEE6",
+                              border: "1px solid rgba(255, 255, 255, 0.2)",
                               background: "transparent",
-                              color: "#647A93",
+                              color: "#93A4BC",
                               cursor: "pointer",
                             }}
                           >
@@ -2410,12 +2502,12 @@ export default function App() {
                         )}
                       </div>
                       {adGenCount >= 3 && (
-                        <div style={{ fontSize: 11, color: "#647A93", marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: "#93A4BC", marginBottom: 8 }}>
                           Limite de 3 générations atteinte pour cette estimation — tu peux encore modifier le texte
                           à la main juste au-dessus.
                         </div>
                       )}
-                      <div style={{ fontSize: 11, color: "#647A93", marginBottom: 6, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 11, color: "#93A4BC", marginBottom: 6, lineHeight: 1.5 }}>
                         Copie le texte ci-dessus, puis clique sur une plateforme pour créer ton annonce (colle le
                         texte une fois sur la page) :
                       </div>
@@ -2432,10 +2524,10 @@ export default function App() {
                               gap: 7,
                               padding: "5px 12px 5px 5px",
                               borderRadius: 20,
-                              border: "1px solid #D7DEE6",
-                              color: "#29394F",
+                              border: "1px solid rgba(255, 255, 255, 0.25)",
+                              color: "#FFFFFF",
                               textDecoration: "none",
-                              background: "#FFFFFF",
+                              background: "rgba(255, 255, 255, 0.08)",
                             }}
                           >
                             <span
@@ -2468,7 +2560,7 @@ export default function App() {
 
                 <div
                   className="mono"
-                  style={{ fontSize: 11, color: "#8C9CB0", marginTop: 16, lineHeight: 1.6 }}
+                  style={{ fontSize: 11, color: "#93A4BC", marginTop: 16, lineHeight: 1.6 }}
                 >
                   confiance: {result.confiance} · {result.source}
                 </div>
