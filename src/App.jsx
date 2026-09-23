@@ -117,6 +117,8 @@ const TRANSLATIONS = {
     trending_subtitle: "Les annonces les plus vues sur Leboncoin, Vinted et eBay, sélectionnées par l'IA.",
     trending_loading: "Chargement des produits du moment…",
     trending_empty: "Rien à afficher pour l'instant.",
+    trending_count_suffix: "produits trouvés",
+    trending_page_label: "Page",
     subscription_title: "Abonnement",
     subscription_current: "Abonnement en cours",
     subscription_free: "Gratuit",
@@ -163,6 +165,8 @@ const TRANSLATIONS = {
     trending_subtitle: "The most viewed listings on Leboncoin, Vinted and eBay, curated by AI.",
     trending_loading: "Loading trending products…",
     trending_empty: "Nothing to show yet.",
+    trending_count_suffix: "products found",
+    trending_page_label: "Page",
     subscription_title: "Subscription",
     subscription_current: "Current plan",
     subscription_free: "Free",
@@ -209,6 +213,8 @@ const TRANSLATIONS = {
     trending_subtitle: "Los anuncios más vistos en Leboncoin, Vinted y eBay, seleccionados por IA.",
     trending_loading: "Cargando productos del momento…",
     trending_empty: "Nada que mostrar por ahora.",
+    trending_count_suffix: "productos encontrados",
+    trending_page_label: "Página",
     subscription_title: "Suscripción",
     subscription_current: "Plan actual",
     subscription_free: "Gratis",
@@ -754,6 +760,11 @@ export default function App() {
   const [trendingItems, setTrendingItems] = useState(null);
   const [trendingLoading, setTrendingLoading] = useState(false);
   const [trendingError, setTrendingError] = useState(null);
+  // Pagination côté front — la liste renvoyée par le serveur est déjà
+  // classée des produits les plus demandés aux moins demandés (voir
+  // handleTrending dans worker.js), on la découpe simplement par pages.
+  const [trendingPage, setTrendingPage] = useState(1);
+  const TRENDING_PAGE_SIZE = 12;
 
   async function loadTrending() {
     if (trendingItems !== null || trendingLoading) return;
@@ -764,6 +775,7 @@ export default function App() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur de chargement.");
       setTrendingItems(data.items || []);
+      setTrendingPage(1);
     } catch (e) {
       console.error(e);
       setTrendingError(e.message || "Erreur de chargement.");
@@ -3804,11 +3816,60 @@ export default function App() {
                   {t("trending_empty")}
                 </p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  {trendingItems.map((it, i) => (
-                    <ProductCard key={i} item={it} />
-                  ))}
-                </div>
+                (() => {
+                  const totalPages = Math.max(1, Math.ceil(trendingItems.length / TRENDING_PAGE_SIZE));
+                  const page = Math.min(trendingPage, totalPages);
+                  const pageItems = trendingItems.slice((page - 1) * TRENDING_PAGE_SIZE, page * TRENDING_PAGE_SIZE);
+                  return (
+                    <div>
+                      <div className="mono" style={{ fontSize: 11, color: "#B9C3D1", marginBottom: 10 }}>
+                        {trendingItems.length} {t("trending_count_suffix")}
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                        {pageItems.map((it, i) => (
+                          <ProductCard key={(page - 1) * TRENDING_PAGE_SIZE + i} item={it} />
+                        ))}
+                      </div>
+                      {totalPages > 1 && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+                          <button
+                            onClick={() => setTrendingPage((p) => Math.max(1, p - 1))}
+                            disabled={page <= 1}
+                            className="btn-ghost"
+                            style={{
+                              padding: "8px 12px",
+                              borderColor: "rgba(255, 255, 255, 0.25)",
+                              color: "#EEF1F5",
+                              background: "rgba(255, 255, 255, 0.06)",
+                              opacity: page <= 1 ? 0.4 : 1,
+                            }}
+                            aria-label={t("back")}
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+                          <span className="mono" style={{ fontSize: 12, color: "#EEF1F5" }}>
+                            {t("trending_page_label")} {page} / {totalPages}
+                          </span>
+                          <button
+                            onClick={() => setTrendingPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={page >= totalPages}
+                            className="btn-ghost"
+                            style={{
+                              padding: "8px 12px",
+                              borderColor: "rgba(255, 255, 255, 0.25)",
+                              color: "#EEF1F5",
+                              background: "rgba(255, 255, 255, 0.06)",
+                              opacity: page >= totalPages ? 0.4 : 1,
+                            }}
+                            aria-label="suivant"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
               ))}
           </div>
         </div>
