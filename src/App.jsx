@@ -1283,29 +1283,30 @@ export default function App() {
         .mono { font-family: 'JetBrains Mono', monospace; }
         button { font-family: inherit; cursor: pointer; }
         .btn-primary {
-          background: #F2662E;
-          color: #EEF1F5;
+          background: linear-gradient(135deg, #F2662E 0%, #E0501D 100%);
+          color: #FFFFFF;
           border: none;
           padding: 14px 22px;
           font-size: 15px;
-          font-weight: 600;
+          font-weight: 700;
           letter-spacing: 0.02em;
-          border-radius: 3px;
+          border-radius: 14px;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
           width: 100%;
-          transition: transform 0.15s ease;
+          box-shadow: 0 6px 16px rgba(242, 102, 46, 0.32);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-        .btn-primary:active { transform: scale(0.98); }
-        .btn-primary:disabled { opacity: 0.55; }
+        .btn-primary:active { transform: scale(0.98); box-shadow: 0 3px 10px rgba(242, 102, 46, 0.28); }
+        .btn-primary:disabled { opacity: 0.55; box-shadow: none; }
         .btn-ghost {
           background: transparent;
           color: #42536A;
           border: 1px solid #A9B7C6;
           padding: 10px 16px;
-          border-radius: 3px;
+          border-radius: 12px;
           font-size: 13px;
           display: flex;
           align-items: center;
@@ -1315,7 +1316,7 @@ export default function App() {
           background: transparent;
           color: #42536A;
           border: 1px solid #A9B7C6;
-          border-radius: 3px;
+          border-radius: 12px;
           width: 38px;
           height: 38px;
           display: flex;
@@ -1383,10 +1384,11 @@ export default function App() {
           background: #F4F6F9;
           border: 1px solid #D7DEE6;
           border-top: 3px solid #F2662E;
-          border-radius: 2px;
+          border-radius: 16px;
           position: relative;
           padding: 26px 22px 22px;
           width: 100%;
+          box-shadow: 0 10px 24px rgba(21, 34, 56, 0.08);
         }
         .tag-card::before {
           content: "";
@@ -1398,6 +1400,16 @@ export default function App() {
           background: #E9EDF2;
           border: 1px solid #D7DEE6;
           border-radius: 50%;
+        }
+        .price-pill {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 6px;
+          background: linear-gradient(135deg, #152238 0%, #29394F 55%, #F2662E 140%);
+          color: #FFFFFF;
+          border-radius: 12px;
+          padding: 10px 16px;
+          box-shadow: 0 8px 18px rgba(21, 34, 56, 0.22);
         }
         .password-field {
           position: relative;
@@ -1919,15 +1931,7 @@ export default function App() {
                   {result.objet}
                 </div>
 
-                <div
-                  className="mono"
-                  style={{
-                    fontSize: 30,
-                    fontWeight: 700,
-                    color: "#F2662E",
-                    marginBottom: 14,
-                  }}
-                >
+                <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 14 }}>
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
 
@@ -1958,15 +1962,7 @@ export default function App() {
                   {result.objet}
                 </div>
 
-                <div
-                  className="mono"
-                  style={{
-                    fontSize: 30,
-                    fontWeight: 700,
-                    color: "#F2662E",
-                    marginBottom: 14,
-                  }}
-                >
+                <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 14 }}>
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
 
@@ -2050,15 +2046,7 @@ export default function App() {
 
                 {resultTab === "estimation" && (
                   <>
-                <div
-                  className="mono"
-                  style={{
-                    fontSize: 30,
-                    fontWeight: 700,
-                    color: "#F2662E",
-                    marginBottom: 4,
-                  }}
-                >
+                <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
                 <div style={{ fontSize: 13, color: "#42536A", marginBottom: 14 }}>
@@ -2511,10 +2499,21 @@ export default function App() {
               maxWidth: 420,
               maxHeight: "80vh",
               overflowY: "auto",
-              borderRadius: "8px 8px 0 0",
+              borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
+              boxShadow: "0 -10px 30px rgba(21, 34, 56, 0.18)",
             }}
           >
+            <div
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 3,
+                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                margin: "0 auto 16px",
+              }}
+            />
             <div
               style={{
                 display: "flex",
@@ -2523,7 +2522,8 @@ export default function App() {
                 marginBottom: 16,
               }}
             >
-              <h2 className="brand" style={{ fontSize: 20, margin: 0 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <Tag size={16} color="#F2662E" style={{ transform: "rotate(90deg)" }} />
                 Historique
               </h2>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
