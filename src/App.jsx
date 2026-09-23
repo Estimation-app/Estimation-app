@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, Globe, ChevronRight, ChevronLeft, ExternalLink } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
@@ -43,6 +43,174 @@ const PLANS = [
   { key: "pro", label: "Pro", price: "9,99 €/mois", quota: 100 },
   { key: "premium", label: "Premium", price: "19,99 €/mois", quota: 300 },
 ];
+
+// Sous-catégories affichées (triées de A à Z) dans le menu "Rechercher un
+// produit". Purement pour orienter la recherche — le texte de la catégorie
+// est simplement ajouté à la requête envoyée au serveur, qui interroge les
+// mêmes sources (Leboncoin / Vinted / eBay) que le reste de l'app.
+const PRODUCT_CATEGORIES = [
+  { key: "bijoux", label: "Bijoux" },
+  { key: "chaussures", label: "Chaussures" },
+  { key: "cuisine", label: "Cuisine (électroménager & ustensiles)" },
+  { key: "decoration", label: "Décoration" },
+  { key: "electronique", label: "Électronique & high-tech" },
+  { key: "immobilier", label: "Immobilier" },
+  { key: "instruments", label: "Instruments de musique" },
+  { key: "jeux", label: "Jeux & jouets" },
+  { key: "livres", label: "Livres & BD" },
+  { key: "maroquinerie", label: "Maroquinerie & sacs" },
+  { key: "mobilier", label: "Mobilier" },
+  { key: "montres", label: "Montres" },
+  { key: "objets_quotidien", label: "Objets du quotidien" },
+  { key: "outillage", label: "Outillage & bricolage" },
+  { key: "puericulture", label: "Puériculture" },
+  { key: "sport", label: "Sport & loisirs" },
+  { key: "vehicules", label: "Véhicules (voiture, moto…)" },
+  { key: "velos", label: "Vélos" },
+  { key: "vetements", label: "Vêtements" },
+  { key: "vin", label: "Vin & spiritueux" },
+];
+
+// Adresse de contact du support client, affichée dans le menu.
+const CONTACT_EMAIL = "estim.app.contact@gmail.com";
+
+// Traductions : volet volontairement limité au nouveau menu/panneaux et à
+// une poignée de textes très visibles (accroche, écran de chargement,
+// libellé "estimation d'occasion") plutôt qu'à l'intégralité de l'app.
+const LANGUAGES = [
+  { key: "fr", label: "Français", flag: "🇫🇷" },
+  { key: "en", label: "English", flag: "🇬🇧" },
+  { key: "es", label: "Español", flag: "🇪🇸" },
+];
+
+const TRANSLATIONS = {
+  fr: {
+    hero_title_1: "Une photo. Un prix.",
+    hero_title_2: "Direct.",
+    hero_subtitle:
+      "Dégaine ton téléphone : le prix de revente réel, façon Leboncoin ou brocante, en quelques secondes chrono.",
+    drop_zone_title: "Ajouter une photo",
+    drop_zone_sub: "appareil photo ou galerie",
+    loading_analyzing: "Identification de l'objet…",
+    loading_pricing: "Recherche des prix sur Leboncoin, Vinted, eBay…",
+    used_price_label: "estimation d'occasion",
+    menu_title: "Menu",
+    menu_my_estimates: "Mes estimes",
+    menu_search_product: "Rechercher un produit",
+    menu_trending: "Produits du moment",
+    menu_subscription: "Abonnement",
+    menu_contact: "Contact",
+    menu_language: "Langue",
+    menu_logout: "Déconnexion",
+    search_choose_category: "Choisis une catégorie",
+    search_placeholder: "Rechercher un produit…",
+    search_button: "Rechercher",
+    search_loading: "Recherche en cours…",
+    search_empty: "Aucun résultat pour l'instant. Essaie une autre recherche.",
+    search_error: "Erreur pendant la recherche.",
+    back: "Retour",
+    trending_title: "Produits du moment",
+    trending_subtitle: "Les annonces les plus vues sur Leboncoin, Vinted et eBay, sélectionnées par l'IA.",
+    trending_loading: "Chargement des produits du moment…",
+    trending_empty: "Rien à afficher pour l'instant.",
+    subscription_title: "Abonnement",
+    subscription_current: "Abonnement en cours",
+    subscription_free: "Gratuit",
+    subscription_manage: "gérer",
+    subscription_subscribe: "s'abonner",
+    subscription_login_required: "Connecte-toi (depuis « Mes estimes ») pour gérer ton abonnement.",
+    subscription_remaining_paid: "estimations restantes ce mois",
+    subscription_remaining_free: "estimation(s) gratuite(s) restante(s) ce mois",
+    subscription_plans_title: "Nos abonnements :",
+    contact_title: "Contact",
+    contact_text: "Une question, un souci, une suggestion ? Écris-nous :",
+    language_title: "Langue",
+  },
+  en: {
+    hero_title_1: "One photo. One price.",
+    hero_title_2: "Instantly.",
+    hero_subtitle:
+      "Grab your phone: the real resale price, flea-market or classifieds style, in a few seconds.",
+    drop_zone_title: "Add a photo",
+    drop_zone_sub: "camera or gallery",
+    loading_analyzing: "Identifying the item…",
+    loading_pricing: "Searching prices on Leboncoin, Vinted, eBay…",
+    used_price_label: "second-hand estimate",
+    menu_title: "Menu",
+    menu_my_estimates: "My estimates",
+    menu_search_product: "Search a product",
+    menu_trending: "Trending products",
+    menu_subscription: "Subscription",
+    menu_contact: "Contact",
+    menu_language: "Language",
+    menu_logout: "Log out",
+    search_choose_category: "Choose a category",
+    search_placeholder: "Search a product…",
+    search_button: "Search",
+    search_loading: "Searching…",
+    search_empty: "No results yet. Try another search.",
+    search_error: "Search error.",
+    back: "Back",
+    trending_title: "Trending products",
+    trending_subtitle: "The most viewed listings on Leboncoin, Vinted and eBay, curated by AI.",
+    trending_loading: "Loading trending products…",
+    trending_empty: "Nothing to show yet.",
+    subscription_title: "Subscription",
+    subscription_current: "Current plan",
+    subscription_free: "Free",
+    subscription_manage: "manage",
+    subscription_subscribe: "subscribe",
+    subscription_login_required: "Sign in (from “My estimates”) to manage your subscription.",
+    subscription_remaining_paid: "estimates left this month",
+    subscription_remaining_free: "free estimate(s) left this month",
+    subscription_plans_title: "Our plans:",
+    contact_title: "Contact",
+    contact_text: "A question, an issue, a suggestion? Write to us:",
+    language_title: "Language",
+  },
+  es: {
+    hero_title_1: "Una foto. Un precio.",
+    hero_title_2: "Al instante.",
+    hero_subtitle:
+      "Saca el móvil: el precio real de reventa, estilo mercadillo o anuncios, en pocos segundos.",
+    drop_zone_title: "Añadir una foto",
+    drop_zone_sub: "cámara o galería",
+    loading_analyzing: "Identificando el objeto…",
+    loading_pricing: "Buscando precios en Leboncoin, Vinted, eBay…",
+    used_price_label: "estimación de segunda mano",
+    menu_title: "Menú",
+    menu_my_estimates: "Mis estimaciones",
+    menu_search_product: "Buscar un producto",
+    menu_trending: "Productos del momento",
+    menu_subscription: "Suscripción",
+    menu_contact: "Contacto",
+    menu_language: "Idioma",
+    menu_logout: "Cerrar sesión",
+    search_choose_category: "Elige una categoría",
+    search_placeholder: "Buscar un producto…",
+    search_button: "Buscar",
+    search_loading: "Buscando…",
+    search_empty: "Sin resultados por ahora. Prueba otra búsqueda.",
+    search_error: "Error en la búsqueda.",
+    back: "Volver",
+    trending_title: "Productos del momento",
+    trending_subtitle: "Los anuncios más vistos en Leboncoin, Vinted y eBay, seleccionados por IA.",
+    trending_loading: "Cargando productos del momento…",
+    trending_empty: "Nada que mostrar por ahora.",
+    subscription_title: "Suscripción",
+    subscription_current: "Plan actual",
+    subscription_free: "Gratis",
+    subscription_manage: "gestionar",
+    subscription_subscribe: "suscribirse",
+    subscription_login_required: "Inicia sesión (desde «Mis estimaciones») para gestionar tu suscripción.",
+    subscription_remaining_paid: "estimaciones restantes este mes",
+    subscription_remaining_free: "estimación(es) gratuita(s) restante(s) este mes",
+    subscription_plans_title: "Nuestros planes:",
+    contact_title: "Contacto",
+    contact_text: "¿Una pregunta, un problema, una sugerencia? Escríbenos:",
+    language_title: "Idioma",
+  },
+};
 
 // Petite jauge 0–10 réutilisée dans l'onglet "statistiques" du résultat :
 // titre centré en haut, un rail au milieu, et un curseur (avec sa note)
@@ -131,6 +299,91 @@ function Gauge({ label, value, lowLabel, highLabel }) {
         <span className="mono" style={{ fontSize: 11, color: "#93A4BC" }}>{highLabel}</span>
       </div>
     </div>
+  );
+}
+
+// Carte cliquable pour une annonce réelle (image + titre + prix + badge de
+// plateforme), utilisée à la fois par "Rechercher un produit" et "Produits
+// du moment" — clique = ouvre la vraie annonce d'origine dans un nouvel
+// onglet (aucune donnée n'est recréée/fabriquée, on relie juste vers elle).
+function ProductCard({ item }) {
+  if (!item || !item.link) return null;
+  return (
+    <a
+      href={item.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: "block",
+        textDecoration: "none",
+        background: "#F4F6F9",
+        border: "1px solid #D7DEE6",
+        borderRadius: 10,
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ position: "relative", width: "100%", paddingTop: "100%", background: "#E9EDF2" }}>
+        {item.image ? (
+          <img
+            src={item.image}
+            alt={item.title || ""}
+            loading="lazy"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Tag size={22} color="#B9C3D1" />
+          </div>
+        )}
+        {item.source && SOURCE_LABELS[item.source] && (
+          <span
+            className="mono"
+            style={{
+              position: "absolute",
+              top: 6,
+              left: 6,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "#FFFFFF",
+              background: "rgba(21, 34, 56, 0.78)",
+              borderRadius: 4,
+              padding: "2px 6px",
+            }}
+          >
+            {SOURCE_LABELS[item.source]}
+          </span>
+        )}
+      </div>
+      <div style={{ padding: "8px 9px 10px" }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: "#29394F",
+            lineHeight: 1.3,
+            marginBottom: 4,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {item.title}
+        </div>
+        <div className="mono" style={{ fontSize: 13, fontWeight: 800, color: "#F2662E" }}>
+          {item.price || (item.extracted_price ? item.extracted_price + " €" : "")}
+        </div>
+      </div>
+    </a>
   );
 }
 
@@ -405,6 +658,86 @@ export default function App() {
       setNewPassword("");
     }
   }
+
+  // Menu principal (☰) : historique, recherche produit, tendances,
+  // abonnement, contact, langue, déconnexion.
+  const [showMenu, setShowMenu] = useState(false);
+
+  // Langue de l'interface (persistée localement) — volet de traduction
+  // volontairement limité, voir TRANSLATIONS plus haut.
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem("estim_lang") || "fr";
+    } catch (e) {
+      return "fr";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("estim_lang", lang);
+    } catch (e) {}
+  }, [lang]);
+  function t(key) {
+    return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.fr[key] || key;
+  }
+
+  // "Rechercher un produit" : catégorie choisie puis recherche texte libre,
+  // résultats = vraies annonces (image cliquable → lien direct vers
+  // Leboncoin / Vinted / eBay), via le même moteur de recherche que le
+  // reste de l'app (worker.js : /search-products).
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [searchCategory, setSearchCategory] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+
+  async function runProductSearch(query) {
+    const q = (query || "").trim();
+    if (!q) return;
+    setSearchLoading(true);
+    setSearchError(null);
+    try {
+      const res = await fetch(PROXY_URL + "/search-products?q=" + encodeURIComponent(q));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur de recherche.");
+      setSearchResults(data);
+    } catch (e) {
+      console.error(e);
+      setSearchError(e.message || t("search_error"));
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  // "Produits du moment" : sélection IA des annonces les plus vues,
+  // rafraîchie côté serveur toutes les 12h (worker.js : /trending).
+  const [showTrending, setShowTrending] = useState(false);
+  const [trendingItems, setTrendingItems] = useState(null);
+  const [trendingLoading, setTrendingLoading] = useState(false);
+  const [trendingError, setTrendingError] = useState(null);
+
+  async function loadTrending() {
+    if (trendingItems !== null || trendingLoading) return;
+    setTrendingLoading(true);
+    setTrendingError(null);
+    try {
+      const res = await fetch(PROXY_URL + "/trending");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur de chargement.");
+      setTrendingItems(data.items || []);
+    } catch (e) {
+      console.error(e);
+      setTrendingError(e.message || "Erreur de chargement.");
+    } finally {
+      setTrendingLoading(false);
+    }
+  }
+
+  // "Abonnement" (accessible à tout moment depuis le menu, pas seulement
+  // quand le quota est épuisé) et "Contact" (mail de support statique).
+  const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
+  const [showContact, setShowContact] = useState(false);
 
   const HISTORY_KEY = "estimateur_historique";
   const [history, setHistory] = useState(() => {
@@ -1541,6 +1874,21 @@ export default function App() {
 
           <button
             className="btn-ghost"
+            onClick={() => setShowMenu(true)}
+            style={{
+              position: "absolute",
+              top: 22,
+              left: 20,
+              borderColor: "rgba(238, 241, 245, 0.35)",
+              color: "#EEF1F5",
+              background: "rgba(255, 255, 255, 0.06)",
+            }}
+            aria-label={t("menu_title")}
+          >
+            <Menu size={16} />
+          </button>
+          <button
+            className="btn-ghost"
             onClick={() => setShowHistory(true)}
             style={{
               position: "absolute",
@@ -1554,7 +1902,7 @@ export default function App() {
           >
             <History size={14} /> {history.length > 0 ? history.length : ""}
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, marginLeft: 34, position: "relative" }}>
             <img src={logoWordmarkLight} alt="estim'" style={{ height: 26, width: "auto", display: "block" }} />
             <span
               className="mono"
@@ -1576,13 +1924,12 @@ export default function App() {
             className="brand"
             style={{ fontSize: 33, fontWeight: 600, margin: 0, lineHeight: 1.12, color: "#FFFFFF", position: "relative" }}
           >
-            Une photo. Un prix.
+            {t("hero_title_1")}
             <br />
-            <span style={{ color: "#F2662E" }}>Direct.</span>
+            <span style={{ color: "#F2662E" }}>{t("hero_title_2")}</span>
           </h1>
           <p style={{ marginTop: 10, fontSize: 14, color: "#B9C3D1", lineHeight: 1.5, position: "relative" }}>
-            Dégaine ton téléphone : le prix de revente réel, façon Leboncoin
-            ou brocante, en quelques secondes chrono.
+            {t("hero_subtitle")}
           </p>
 
           {user && profile && (
@@ -1619,8 +1966,8 @@ export default function App() {
         {!image && (
           <label className="drop-zone" htmlFor="photo-input">
             <Camera size={30} strokeWidth={1.5} style={{ color: "#F2662E" }} />
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Ajouter une photo</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>appareil photo ou galerie</div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{t("drop_zone_title")}</div>
+            <div style={{ fontSize: 12, opacity: 0.75 }}>{t("drop_zone_sub")}</div>
             <input
               id="photo-input"
               type="file"
@@ -1714,9 +2061,7 @@ export default function App() {
                     textAlign: "center",
                   }}
                 >
-                  {status === "analyzing"
-                    ? "Identification de l'objet…"
-                    : "Recherche des prix sur Leboncoin, Vinted, eBay…"}
+                  {status === "analyzing" ? t("loading_analyzing") : t("loading_pricing")}
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
                   <span className="pulse-dot" style={{ animationDelay: "0s" }} />
@@ -2148,7 +2493,7 @@ export default function App() {
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
                 <div style={{ fontSize: 13, color: "#B9C3D1", marginBottom: 14 }}>
-                  estimation d'occasion
+                  {t("used_price_label")}
                 </div>
 
                 {result.alerte && (
@@ -2947,6 +3292,621 @@ export default function App() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ Menu principal (☰) ============ */}
+      {showMenu && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 30,
+          }}
+          onClick={() => setShowMenu(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#E9EDF2",
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+              boxShadow: "0 -10px 30px rgba(21, 34, 56, 0.18)",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 3,
+                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                margin: "0 auto 16px",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <Menu size={16} color="#F2662E" />
+                {t("menu_title")}
+              </h2>
+              <button
+                onClick={() => setShowMenu(false)}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color="#42536A" />
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[
+                {
+                  icon: <History size={16} color="#F2662E" />,
+                  label: t("menu_my_estimates"),
+                  onClick: () => {
+                    setShowMenu(false);
+                    setShowHistory(true);
+                  },
+                },
+                {
+                  icon: <Search size={16} color="#F2662E" />,
+                  label: t("menu_search_product"),
+                  onClick: () => {
+                    setShowMenu(false);
+                    setShowProductSearch(true);
+                  },
+                },
+                {
+                  icon: <TrendingUp size={16} color="#F2662E" />,
+                  label: t("menu_trending"),
+                  onClick: () => {
+                    setShowMenu(false);
+                    setShowTrending(true);
+                    loadTrending();
+                  },
+                },
+                {
+                  icon: <Sparkles size={16} color="#F2662E" />,
+                  label: t("menu_subscription"),
+                  onClick: () => {
+                    setShowMenu(false);
+                    setShowSubscriptionPanel(true);
+                  },
+                },
+                {
+                  icon: <Mail size={16} color="#F2662E" />,
+                  label: t("menu_contact"),
+                  onClick: () => {
+                    setShowMenu(false);
+                    setShowContact(true);
+                  },
+                },
+              ].map((row, i) => (
+                <button
+                  key={i}
+                  onClick={row.onClick}
+                  className="mono"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    width: "100%",
+                    textAlign: "left",
+                    background: "#F4F6F9",
+                    border: "1px solid #D7DEE6",
+                    borderRadius: 10,
+                    padding: "12px 14px",
+                    fontSize: 13,
+                    color: "#29394F",
+                    cursor: "pointer",
+                  }}
+                >
+                  {row.icon}
+                  <span style={{ flex: 1 }}>{row.label}</span>
+                  <ChevronRight size={14} color="#93A4BC" />
+                </button>
+              ))}
+
+              <div style={{ background: "#F4F6F9", border: "1px solid #D7DEE6", borderRadius: 10, padding: "12px 14px" }}>
+                <div
+                  className="mono"
+                  style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: "#29394F", marginBottom: 10 }}
+                >
+                  <Globe size={16} color="#F2662E" />
+                  <span style={{ flex: 1 }}>{t("menu_language")}</span>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {LANGUAGES.map((l) => (
+                    <button
+                      key={l.key}
+                      onClick={() => setLang(l.key)}
+                      className="mono"
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "8px 6px",
+                        borderRadius: 8,
+                        border: lang === l.key ? "2px solid #F2662E" : "1px solid #D7DEE6",
+                        background: lang === l.key ? "#FBE3D5" : "#FFFFFF",
+                        fontSize: 10,
+                        color: "#29394F",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>{l.flag}</span>
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {user && (
+                <button
+                  onClick={() => {
+                    signOut();
+                    setShowMenu(false);
+                  }}
+                  className="mono"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    width: "100%",
+                    textAlign: "left",
+                    background: "#F4F6F9",
+                    border: "1px solid #D7DEE6",
+                    borderRadius: 10,
+                    padding: "12px 14px",
+                    fontSize: 13,
+                    color: "#F2662E",
+                    cursor: "pointer",
+                    marginTop: 4,
+                  }}
+                >
+                  <LogOut size={16} color="#F2662E" />
+                  <span style={{ flex: 1 }}>{t("menu_logout")}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ Rechercher un produit ============ */}
+      {showProductSearch && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 30,
+          }}
+          onClick={() => {
+            setShowProductSearch(false);
+            setSearchCategory(null);
+            setSearchQuery("");
+            setSearchResults(null);
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#E9EDF2",
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 3,
+                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                margin: "0 auto 16px",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                {searchCategory && (
+                  <button
+                    onClick={() => {
+                      setSearchCategory(null);
+                      setSearchResults(null);
+                    }}
+                    style={{ background: "none", border: "none", padding: 0, display: "flex" }}
+                    aria-label={t("back")}
+                  >
+                    <ChevronLeft size={18} color="#152238" />
+                  </button>
+                )}
+                <Search size={16} color="#F2662E" />
+                {t("menu_search_product")}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowProductSearch(false);
+                  setSearchCategory(null);
+                  setSearchQuery("");
+                  setSearchResults(null);
+                }}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color="#42536A" />
+              </button>
+            </div>
+
+            {!searchCategory ? (
+              <div>
+                <p className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 12 }}>
+                  {t("search_choose_category")}
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {PRODUCT_CATEGORIES.map((c) => (
+                    <button
+                      key={c.key}
+                      onClick={() => setSearchCategory(c)}
+                      className="mono"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        width: "100%",
+                        textAlign: "left",
+                        background: "#F4F6F9",
+                        border: "1px solid #D7DEE6",
+                        borderRadius: 8,
+                        padding: "10px 12px",
+                        fontSize: 12,
+                        color: "#29394F",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <span style={{ flex: 1 }}>{c.label}</span>
+                      <ChevronRight size={14} color="#93A4BC" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="mono" style={{ fontSize: 11, color: "#F2662E", marginBottom: 10 }}>
+                  {searchCategory.label}
+                </div>
+                <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") runProductSearch(searchCategory.label + " " + searchQuery);
+                    }}
+                    placeholder={t("search_placeholder")}
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #A9B7C6",
+                      background: "#fff",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <button
+                    className="btn-primary"
+                    onClick={() => runProductSearch(searchCategory.label + " " + searchQuery)}
+                    disabled={searchLoading || !searchQuery.trim()}
+                    style={{ width: "auto", flexShrink: 0, padding: "10px 16px" }}
+                  >
+                    <Search size={14} />
+                  </button>
+                </div>
+
+                {searchLoading && (
+                  <div
+                    className="mono"
+                    style={{ fontSize: 12, color: "#647A93", display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
+                  >
+                    <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> {t("search_loading")}
+                  </div>
+                )}
+                {searchError && <p style={{ fontSize: 12, color: "#F2662E" }}>{searchError}</p>}
+                {searchResults &&
+                  !searchLoading &&
+                  (() => {
+                    const items = ["leboncoin", "vinted", "ebay"].flatMap((src) =>
+                      (searchResults[src]?.results || []).map((r) => ({ ...r, source: src }))
+                    );
+                    if (items.length === 0) {
+                      return (
+                        <p className="mono" style={{ fontSize: 12, color: "#647A93" }}>
+                          {t("search_empty")}
+                        </p>
+                      );
+                    }
+                    return (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        {items.map((it, i) => (
+                          <ProductCard key={i} item={it} />
+                        ))}
+                      </div>
+                    );
+                  })()}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============ Produits du moment ============ */}
+      {showTrending && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 30,
+          }}
+          onClick={() => setShowTrending(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#E9EDF2",
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 3,
+                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                margin: "0 auto 16px",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <TrendingUp size={16} color="#F2662E" />
+                {t("trending_title")}
+              </h2>
+              <button
+                onClick={() => setShowTrending(false)}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color="#42536A" />
+              </button>
+            </div>
+            <p className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 14 }}>
+              {t("trending_subtitle")}
+            </p>
+
+            {trendingLoading && (
+              <div
+                className="mono"
+                style={{ fontSize: 12, color: "#647A93", display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
+              >
+                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> {t("trending_loading")}
+              </div>
+            )}
+            {trendingError && <p style={{ fontSize: 12, color: "#F2662E" }}>{trendingError}</p>}
+            {trendingItems &&
+              !trendingLoading &&
+              (trendingItems.length === 0 ? (
+                <p className="mono" style={{ fontSize: 12, color: "#647A93" }}>
+                  {t("trending_empty")}
+                </p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {trendingItems.map((it, i) => (
+                    <ProductCard key={i} item={it} />
+                  ))}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* ============ Abonnement ============ */}
+      {showSubscriptionPanel && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 30,
+          }}
+          onClick={() => setShowSubscriptionPanel(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#E9EDF2",
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 3,
+                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                margin: "0 auto 16px",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <Sparkles size={16} color="#F2662E" />
+                {t("subscription_title")}
+              </h2>
+              <button
+                onClick={() => setShowSubscriptionPanel(false)}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color="#42536A" />
+              </button>
+            </div>
+
+            {user && profile ? (
+              <div style={{ background: "#F4F6F9", border: "1px solid #D7DEE6", borderRadius: 3, padding: 12, marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontSize: 12, color: "#29394F" }}>
+                    {t("subscription_current")}:{" "}
+                    <strong>
+                      {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                        ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
+                        : t("subscription_free")}
+                    </strong>
+                    <div className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 2 }}>
+                      {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                        ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} ${t("subscription_remaining_paid")}`
+                        : `${Math.max(0, 3 - profile.gratuit_utilisees)} ${t("subscription_remaining_free")}`}
+                    </div>
+                  </div>
+                  {profile.stripe_customer_id && (
+                    <button className="btn-ghost" onClick={openBillingPortal} disabled={portalLoading} style={{ flexShrink: 0 }}>
+                      <CreditCard size={14} /> {portalLoading ? "…" : t("subscription_manage")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="mono" style={{ fontSize: 12, color: "#647A93", marginBottom: 16 }}>
+                {t("subscription_login_required")}
+              </p>
+            )}
+
+            <div style={{ borderTop: "1px dashed #D7DEE6", paddingTop: 14 }}>
+              <p className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 10 }}>
+                {t("subscription_plans_title")}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {PLANS.map((plan) => (
+                  <button
+                    key={plan.key}
+                    className="btn-primary"
+                    onClick={() => (user ? startCheckout(plan.key) : null)}
+                    disabled={!user || checkoutLoading !== null}
+                    style={{ justifyContent: "space-between", width: "100%", opacity: user ? 1 : 0.6 }}
+                  >
+                    <span>
+                      {plan.label} — {plan.quota}/mois
+                    </span>
+                    <span>
+                      {checkoutLoading === plan.key ? (
+                        <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+                      ) : (
+                        plan.price
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ Contact ============ */}
+      {showContact && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 30,
+          }}
+          onClick={() => setShowContact(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "#E9EDF2", width: "100%", maxWidth: 420, borderRadius: "22px 22px 0 0", padding: "20px 16px 32px" }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 3,
+                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                margin: "0 auto 16px",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <Mail size={16} color="#F2662E" />
+                {t("contact_title")}
+              </h2>
+              <button
+                onClick={() => setShowContact(false)}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color="#42536A" />
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: "#29394F", lineHeight: 1.5, marginTop: 0 }}>{t("contact_text")}</p>
+            <a
+              href={"mailto:" + CONTACT_EMAIL}
+              className="mono"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#152238",
+                background: "#F4F6F9",
+                border: "1px solid #D7DEE6",
+                borderRadius: 8,
+                padding: "12px 14px",
+                textDecoration: "none",
+              }}
+            >
+              <Mail size={14} color="#F2662E" /> {CONTACT_EMAIL}
+            </a>
           </div>
         </div>
       )}
