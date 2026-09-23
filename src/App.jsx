@@ -328,13 +328,13 @@ function ProductCard({ item }) {
       style={{
         display: "block",
         textDecoration: "none",
-        background: "#F4F6F9",
-        border: "1px solid #D7DEE6",
+        background: "rgba(255, 255, 255, 0.06)",
+        border: "1px solid rgba(255, 255, 255, 0.14)",
         borderRadius: 10,
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "relative", width: "100%", paddingTop: "100%", background: "#E9EDF2" }}>
+      <div style={{ position: "relative", width: "100%", paddingTop: "100%", background: "rgba(255, 255, 255, 0.04)" }}>
         {item.image ? (
           <img
             src={item.image}
@@ -352,7 +352,7 @@ function ProductCard({ item }) {
               justifyContent: "center",
             }}
           >
-            <Tag size={22} color="#B9C3D1" />
+            <Tag size={22} color="#5E7092" />
           </div>
         )}
         {item.source && SOURCE_LABELS[item.source] && (
@@ -380,7 +380,7 @@ function ProductCard({ item }) {
         <div
           style={{
             fontSize: 12,
-            color: "#29394F",
+            color: "#EEF1F5",
             lineHeight: 1.3,
             marginBottom: 4,
             display: "-webkit-box",
@@ -3353,14 +3353,14 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#E9EDF2",
+              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
               overflowY: "auto",
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
-              boxShadow: "0 -10px 30px rgba(21, 34, 56, 0.18)",
+              boxShadow: "0 -10px 30px rgba(4, 6, 12, 0.45)",
             }}
           >
             <div
@@ -3369,13 +3369,16 @@ export default function App() {
                 width: 40,
                 height: 4,
                 borderRadius: 3,
-                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
                 margin: "0 auto 16px",
               }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <Menu size={16} color="#F2662E" />
+              <h2
+                className="brand"
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+              >
+                <Menu size={17} color="#F2662E" />
                 {t("menu_title")}
               </h2>
               <button
@@ -3383,7 +3386,7 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#42536A" />
+                <X size={20} color="#B9C3D1" />
               </button>
             </div>
 
@@ -3434,33 +3437,37 @@ export default function App() {
                 <button
                   key={i}
                   onClick={row.onClick}
-                  className="mono"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
                     width: "100%",
                     textAlign: "left",
-                    background: "#F4F6F9",
-                    border: "1px solid #D7DEE6",
+                    background: "rgba(255, 255, 255, 0.06)",
+                    border: "1px solid rgba(255, 255, 255, 0.14)",
                     borderRadius: 10,
-                    padding: "12px 14px",
-                    fontSize: 13,
-                    color: "#29394F",
+                    padding: "13px 14px",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: "#EEF1F5",
                     cursor: "pointer",
                   }}
                 >
                   {row.icon}
                   <span style={{ flex: 1 }}>{row.label}</span>
-                  <ChevronRight size={14} color="#93A4BC" />
+                  <ChevronRight size={14} color="#7C8BA3" />
                 </button>
               ))}
 
-              <div style={{ background: "#F4F6F9", border: "1px solid #D7DEE6", borderRadius: 10, padding: "12px 14px" }}>
-                <div
-                  className="mono"
-                  style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: "#29394F", marginBottom: 10 }}
-                >
+              <div
+                style={{
+                  background: "rgba(255, 255, 255, 0.06)",
+                  border: "1px solid rgba(255, 255, 255, 0.14)",
+                  borderRadius: 10,
+                  padding: "13px 14px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 500, color: "#EEF1F5", marginBottom: 10 }}>
                   <Globe size={16} color="#F2662E" />
                   <span style={{ flex: 1 }}>{t("menu_language")}</span>
                 </div>
@@ -3469,7 +3476,6 @@ export default function App() {
                     <button
                       key={l.key}
                       onClick={() => setLang(l.key)}
-                      className="mono"
                       style={{
                         flex: 1,
                         display: "flex",
@@ -3478,10 +3484,11 @@ export default function App() {
                         gap: 4,
                         padding: "8px 6px",
                         borderRadius: 8,
-                        border: lang === l.key ? "2px solid #F2662E" : "1px solid #D7DEE6",
-                        background: lang === l.key ? "#FBE3D5" : "#FFFFFF",
-                        fontSize: 10,
-                        color: "#29394F",
+                        border: lang === l.key ? "2px solid #F2662E" : "1px solid rgba(255, 255, 255, 0.16)",
+                        background: lang === l.key ? "rgba(242, 102, 46, 0.18)" : "rgba(255, 255, 255, 0.04)",
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: "#EEF1F5",
                         cursor: "pointer",
                       }}
                     >
@@ -3498,24 +3505,24 @@ export default function App() {
                     signOut();
                     setShowMenu(false);
                   }}
-                  className="mono"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
                     width: "100%",
                     textAlign: "left",
-                    background: "#F4F6F9",
-                    border: "1px solid #D7DEE6",
+                    background: "rgba(242, 102, 46, 0.1)",
+                    border: "1px solid rgba(242, 102, 46, 0.35)",
                     borderRadius: 10,
-                    padding: "12px 14px",
-                    fontSize: 13,
-                    color: "#F2662E",
+                    padding: "13px 14px",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: "#FF9466",
                     cursor: "pointer",
                     marginTop: 4,
                   }}
                 >
-                  <LogOut size={16} color="#F2662E" />
+                  <LogOut size={16} color="#FF9466" />
                   <span style={{ flex: 1 }}>{t("menu_logout")}</span>
                 </button>
               )}
@@ -3546,7 +3553,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#E9EDF2",
+              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
@@ -3561,12 +3568,15 @@ export default function App() {
                 width: 40,
                 height: 4,
                 borderRadius: 3,
-                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
                 margin: "0 auto 16px",
               }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+              <h2
+                className="brand"
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+              >
                 {searchCategory && (
                   <button
                     onClick={() => {
@@ -3576,10 +3586,10 @@ export default function App() {
                     style={{ background: "none", border: "none", padding: 0, display: "flex" }}
                     aria-label={t("back")}
                   >
-                    <ChevronLeft size={18} color="#152238" />
+                    <ChevronLeft size={18} color="#FFFFFF" />
                   </button>
                 )}
-                <Search size={16} color="#F2662E" />
+                <Search size={17} color="#F2662E" />
                 {t("menu_search_product")}
               </h2>
               <button
@@ -3592,13 +3602,13 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#42536A" />
+                <X size={20} color="#B9C3D1" />
               </button>
             </div>
 
             {!searchCategory ? (
               <div>
-                <p className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 12 }}>
+                <p style={{ fontSize: 13, color: "#B9C3D1", marginTop: 0, marginBottom: 12 }}>
                   {t("search_choose_category")}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -3606,23 +3616,23 @@ export default function App() {
                     <button
                       key={c.key}
                       onClick={() => setSearchCategory(c)}
-                      className="mono"
                       style={{
                         display: "flex",
                         alignItems: "center",
                         width: "100%",
                         textAlign: "left",
-                        background: "#F4F6F9",
-                        border: "1px solid #D7DEE6",
+                        background: "rgba(255, 255, 255, 0.06)",
+                        border: "1px solid rgba(255, 255, 255, 0.14)",
                         borderRadius: 8,
-                        padding: "10px 12px",
-                        fontSize: 12,
-                        color: "#29394F",
+                        padding: "11px 12px",
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: "#EEF1F5",
                         cursor: "pointer",
                       }}
                     >
                       <span style={{ flex: 1 }}>{c.label}</span>
-                      <ChevronRight size={14} color="#93A4BC" />
+                      <ChevronRight size={14} color="#7C8BA3" />
                     </button>
                   ))}
                 </div>
@@ -3643,11 +3653,12 @@ export default function App() {
                     placeholder={t("search_placeholder")}
                     style={{
                       flex: 1,
-                      fontSize: 13,
+                      fontSize: 14,
                       padding: "10px 12px",
                       borderRadius: 8,
-                      border: "1px solid #A9B7C6",
-                      background: "#fff",
+                      border: "1px solid rgba(255, 255, 255, 0.25)",
+                      background: "rgba(255, 255, 255, 0.08)",
+                      color: "#FFFFFF",
                       boxSizing: "border-box",
                     }}
                   />
@@ -3664,12 +3675,12 @@ export default function App() {
                 {searchLoading && (
                   <div
                     className="mono"
-                    style={{ fontSize: 12, color: "#647A93", display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
+                    style={{ fontSize: 12, color: "#B9C3D1", display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
                   >
                     <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> {t("search_loading")}
                   </div>
                 )}
-                {searchError && <p style={{ fontSize: 12, color: "#F2662E" }}>{searchError}</p>}
+                {searchError && <p style={{ fontSize: 12, color: "#FF9466" }}>{searchError}</p>}
                 {searchResults &&
                   !searchLoading &&
                   (() => {
@@ -3678,7 +3689,7 @@ export default function App() {
                     );
                     if (items.length === 0) {
                       return (
-                        <p className="mono" style={{ fontSize: 12, color: "#647A93" }}>
+                        <p className="mono" style={{ fontSize: 12, color: "#B9C3D1" }}>
                           {t("search_empty")}
                         </p>
                       );
@@ -3698,9 +3709,9 @@ export default function App() {
                                 fontWeight: 700,
                                 padding: "7px 12px",
                                 borderRadius: 20,
-                                border: searchSort === opt.key ? "1px solid #F2662E" : "1px solid #D7DEE6",
-                                background: searchSort === opt.key ? "#F2662E" : "#FFFFFF",
-                                color: searchSort === opt.key ? "#FFFFFF" : "#647A93",
+                                border: searchSort === opt.key ? "1px solid #F2662E" : "1px solid rgba(255, 255, 255, 0.18)",
+                                background: searchSort === opt.key ? "#F2662E" : "rgba(255, 255, 255, 0.06)",
+                                color: searchSort === opt.key ? "#FFFFFF" : "#C9D3E0",
                                 cursor: "pointer",
                                 whiteSpace: "nowrap",
                               }}
@@ -3740,7 +3751,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#E9EDF2",
+              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
@@ -3755,13 +3766,16 @@ export default function App() {
                 width: 40,
                 height: 4,
                 borderRadius: 3,
-                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
                 margin: "0 auto 16px",
               }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <TrendingUp size={16} color="#F2662E" />
+              <h2
+                className="brand"
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+              >
+                <TrendingUp size={17} color="#F2662E" />
                 {t("trending_title")}
               </h2>
               <button
@@ -3769,26 +3783,24 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#42536A" />
+                <X size={20} color="#B9C3D1" />
               </button>
             </div>
-            <p className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 14 }}>
-              {t("trending_subtitle")}
-            </p>
+            <p style={{ fontSize: 13, color: "#B9C3D1", marginTop: 0, marginBottom: 14 }}>{t("trending_subtitle")}</p>
 
             {trendingLoading && (
               <div
                 className="mono"
-                style={{ fontSize: 12, color: "#647A93", display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
+                style={{ fontSize: 12, color: "#B9C3D1", display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
               >
                 <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> {t("trending_loading")}
               </div>
             )}
-            {trendingError && <p style={{ fontSize: 12, color: "#F2662E" }}>{trendingError}</p>}
+            {trendingError && <p style={{ fontSize: 12, color: "#FF9466" }}>{trendingError}</p>}
             {trendingItems &&
               !trendingLoading &&
               (trendingItems.length === 0 ? (
-                <p className="mono" style={{ fontSize: 12, color: "#647A93" }}>
+                <p className="mono" style={{ fontSize: 12, color: "#B9C3D1" }}>
                   {t("trending_empty")}
                 </p>
               ) : (
@@ -3819,7 +3831,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#E9EDF2",
+              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
@@ -3834,13 +3846,16 @@ export default function App() {
                 width: 40,
                 height: 4,
                 borderRadius: 3,
-                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
                 margin: "0 auto 16px",
               }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <Sparkles size={16} color="#F2662E" />
+              <h2
+                className="brand"
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+              >
+                <Sparkles size={17} color="#F2662E" />
                 {t("subscription_title")}
               </h2>
               <button
@@ -3848,41 +3863,59 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#42536A" />
+                <X size={20} color="#B9C3D1" />
               </button>
             </div>
 
             {user && profile ? (
-              <div style={{ background: "#F4F6F9", border: "1px solid #D7DEE6", borderRadius: 3, padding: 12, marginBottom: 16 }}>
+              <div
+                style={{
+                  background: "rgba(255, 255, 255, 0.06)",
+                  border: "1px solid rgba(255, 255, 255, 0.14)",
+                  borderRadius: 10,
+                  padding: 13,
+                  marginBottom: 16,
+                }}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <div style={{ fontSize: 12, color: "#29394F" }}>
+                  <div style={{ fontSize: 13, color: "#EEF1F5" }}>
                     {t("subscription_current")}:{" "}
-                    <strong>
+                    <strong style={{ color: "#FFFFFF" }}>
                       {profile.plan !== "gratuit" && profile.subscription_status === "active"
                         ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
                         : t("subscription_free")}
                     </strong>
-                    <div className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 2 }}>
+                    <div className="mono" style={{ fontSize: 11, color: "#B9C3D1", marginTop: 2 }}>
                       {profile.plan !== "gratuit" && profile.subscription_status === "active"
                         ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} ${t("subscription_remaining_paid")}`
                         : `${Math.max(0, 3 - profile.gratuit_utilisees)} ${t("subscription_remaining_free")}`}
                     </div>
                   </div>
                   {profile.stripe_customer_id && (
-                    <button className="btn-ghost" onClick={openBillingPortal} disabled={portalLoading} style={{ flexShrink: 0 }}>
+                    <button
+                      className="btn-ghost"
+                      onClick={openBillingPortal}
+                      disabled={portalLoading}
+                      style={{
+                        flexShrink: 0,
+                        borderColor: "rgba(255, 255, 255, 0.3)",
+                        color: "#EEF1F5",
+                        background: "rgba(255, 255, 255, 0.06)",
+                      }}
+                    >
                       <CreditCard size={14} /> {portalLoading ? "…" : t("subscription_manage")}
                     </button>
                   )}
                 </div>
               </div>
             ) : (
-              <p className="mono" style={{ fontSize: 12, color: "#647A93", marginBottom: 16 }}>
+              <p className="mono" style={{ fontSize: 12, color: "#B9C3D1", marginBottom: 16 }}>
                 {t("subscription_login_required")}
               </p>
             )}
 
-            <div style={{ borderTop: "1px dashed #D7DEE6", paddingTop: 14 }}>
-              <p className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 10 }}>
+            <div style={{ borderTop: "1px dashed rgba(255, 255, 255, 0.18)", paddingTop: 14 }}>
+              <p className="mono" style={{ fontSize: 11, color: "#B9C3D1", marginTop: 0, marginBottom: 10 }}>
                 {t("subscription_plans_title")}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -3928,7 +3961,13 @@ export default function App() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: "#E9EDF2", width: "100%", maxWidth: 420, borderRadius: "22px 22px 0 0", padding: "20px 16px 32px" }}
+            style={{
+              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
+              width: "100%",
+              maxWidth: 420,
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+            }}
           >
             <div
               aria-hidden="true"
@@ -3936,13 +3975,16 @@ export default function App() {
                 width: 40,
                 height: 4,
                 borderRadius: 3,
-                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
                 margin: "0 auto 16px",
               }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                <Mail size={16} color="#F2662E" />
+              <h2
+                className="brand"
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+              >
+                <Mail size={17} color="#F2662E" />
                 {t("contact_title")}
               </h2>
               <button
@@ -3950,10 +3992,10 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#42536A" />
+                <X size={20} color="#B9C3D1" />
               </button>
             </div>
-            <p style={{ fontSize: 13, color: "#29394F", lineHeight: 1.5, marginTop: 0 }}>{t("contact_text")}</p>
+            <p style={{ fontSize: 13, color: "#B9C3D1", lineHeight: 1.5, marginTop: 0 }}>{t("contact_text")}</p>
             <a
               href={"mailto:" + CONTACT_EMAIL}
               className="mono"
@@ -3963,9 +4005,9 @@ export default function App() {
                 gap: 8,
                 fontSize: 13,
                 fontWeight: 700,
-                color: "#152238",
-                background: "#F4F6F9",
-                border: "1px solid #D7DEE6",
+                color: "#FFFFFF",
+                background: "rgba(255, 255, 255, 0.06)",
+                border: "1px solid rgba(255, 255, 255, 0.16)",
                 borderRadius: 8,
                 padding: "12px 14px",
                 textDecoration: "none",
