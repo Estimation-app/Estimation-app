@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard } from "lucide-react";
-import logoWordmark from "./assets/logo-wordmark.png";
+import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
 // blocage CORS d'un appel direct depuis le navigateur.
@@ -13,6 +13,7 @@ const SOURCE_LABELS = {
   leboncoin: "Leboncoin",
   vinted: "Vinted",
   ebay: "eBay",
+  ebaySold: "eBay (vendu)",
 };
 
 // Plateformes vers lesquelles on renvoie pour créer une annonce (bouton
@@ -556,17 +557,15 @@ export default function App() {
     }
   }
 
-  async function callClaude(messages, model = "claude-sonnet-4-6") {
+  async function callClaude(messages, model = "claude-sonnet-4-6", temperature) {
     let res;
     try {
+      const body = { model, max_tokens: 1000, messages };
+      if (typeof temperature === "number") body.temperature = temperature;
       res = await fetch(PROXY_URL + "/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          max_tokens: 1000,
-          messages,
-        }),
+        body: JSON.stringify(body),
       });
     } catch (e) {
       throw new Error("Impossible de contacter l'API (réseau). " + e.message);
@@ -652,13 +651,16 @@ export default function App() {
       leboncoin: pickResults(data.leboncoin),
       vinted: pickResults(data.vinted),
       ebay: pickResults(data.ebay),
+      ebaySold: pickResults(data.ebaySold),
     };
     const errors = {
       leboncoin: (data.leboncoin && data.leboncoin.error) || null,
       vinted: (data.vinted && data.vinted.error) || null,
       ebay: (data.ebay && data.ebay.error) || null,
+      ebaySold: (data.ebaySold && data.ebaySold.error) || null,
     };
-    const total = bySource.leboncoin.length + bySource.vinted.length + bySource.ebay.length;
+    const total =
+      bySource.leboncoin.length + bySource.vinted.length + bySource.ebay.length + bySource.ebaySold.length;
     return { bySource, errors, total };
   }
 
@@ -803,7 +805,16 @@ export default function App() {
             },
           ],
         },
-      ]);
+      ], "claude-sonnet-4-6", 0.2);
+      // temperature basse (0.2) ici: c'est cette étape qui fixe "recherche"/
+      // "objet", donc les mots-clés utilisés pour chercher de vraies
+      // annonces. Au défaut (température ~1), la même photo pouvait donner
+      // des mots-clés légèrement différents d'une estimation à l'autre, donc
+      // une recherche différente et des annonces différentes trouvées —
+      // c'était la cause du "ça ne trouve pas la même annonce que la
+      // dernière fois" remonté par l'utilisateur. Une température basse
+      // rend l'identification beaucoup plus stable d'un essai à l'autre sur
+      // la même photo, sans la rendre totalement figée.
       const identification = extractJson(idText);
 
       // Mode humoristique: un être vivant n'est pas à vendre. On saute la
@@ -897,6 +908,7 @@ export default function App() {
             ...bySource.leboncoin.map((r) => ({ ...r, source: "leboncoin" })),
             ...bySource.vinted.map((r) => ({ ...r, source: "vinted" })),
             ...bySource.ebay.map((r) => ({ ...r, source: "ebay" })),
+            ...bySource.ebaySold.map((r) => ({ ...r, source: "ebaySold", sold: true })),
           ];
 
           // Filtrage de pertinence: on ne garde que les annonces qui
@@ -904,7 +916,10 @@ export default function App() {
           // modèle), pour éviter de mélanger un parfum 30ml avec un 100ml
           // par exemple.
           const listingsForReview = allListings
-            .map((r, i) => `${i}: [${r.source}] "${r.title}" — ${r.price || r.extracted_price + " €"}`)
+            .map(
+              (r, i) =>
+                `${i}: [${r.sold ? "VENDU sur eBay" : r.source}] "${r.title}" — ${r.price || r.extracted_price + " €"}`
+            )
             .join("\n");
 
           const filterText = await callClaude([
@@ -912,7 +927,7 @@ export default function App() {
               role: "user",
               content:
                 `Objet identifié avec précision: "${identification.objet}" (${identification.etat_note}). ` +
-                `Voici des annonces d'occasion trouvées sur Leboncoin, Vinted et eBay pour une recherche proche:\n${listingsForReview}\n\n` +
+                `Voici des annonces d'occasion trouvées sur Leboncoin, Vinted et eBay (annonces actives + ventes eBay déjà conclues) pour une recherche proche:\n${listingsForReview}\n\n` +
                 "Indique UNIQUEMENT les numéros des annonces qui correspondent vraiment au MÊME produit " +
                 "(même modèle, même taille/format/volume si applicable — pas juste la même marque ou catégorie). " +
                 "Exclus tout ce qui est un format, coloris ou modèle différent. " +
@@ -939,24 +954,35 @@ export default function App() {
 
           const usedResults = relevantResults;
           const usedPrices = relevantPrices;
+          // Les ventes eBay confirmées sont un signal beaucoup plus fiable
+          // qu'une simple annonce active (prix réellement payé, pas juste
+          // demandé) — on les distingue pour le prompt IA juste en dessous.
+          const soldResults = usedResults.filter((r) => r.source === "ebaySold");
+          const askingResults = usedResults.filter((r) => r.source !== "ebaySold");
+          const soldPrices = soldResults.map((r) => r.extracted_price).sort((a, b) => a - b);
+          const askingPrices = askingResults.map((r) => r.extracted_price).sort((a, b) => a - b);
           const usedSource =
-            "estimation basée sur " + usedPrices.length + " annonce(s) d'occasion réelle(s) (Leboncoin/Vinted/eBay)";
+            "estimation basée sur " +
+            usedPrices.length +
+            " annonce(s) d'occasion réelle(s) (Leboncoin/Vinted/eBay)" +
+            (soldPrices.length > 0 ? `, dont ${soldPrices.length} vente(s) eBay confirmée(s)` : "");
 
           // Fourchette "brute" (min/max des annonces trouvées), gardée en
           // repli si jamais l'IA ne renvoie pas prix_bas/prix_haut. Ce n'est
           // PAS la fourchette finale affichée: avec très peu d'annonces
           // (surtout une seule), un simple min=max donnerait un prix
-          // artificiellement précis alors que ce sont des prix affichés/
-          // demandés, pas des prix de vente confirmés. La vraie fourchette
-          // est calculée par l'IA juste après, en mélangeant ces prix réels
-          // avec sa connaissance générale du marché.
+          // artificiellement précis alors que ce sont pour la plupart des
+          // prix affichés/demandés, pas des prix de vente confirmés. La
+          // vraie fourchette est calculée par l'IA juste après, en
+          // mélangeant ces prix réels avec sa connaissance générale du
+          // marché.
           const rawPrixBas = usedPrices[0];
           const rawPrixHaut = usedPrices[usedPrices.length - 1];
 
           // Détail par plateforme (uniquement les annonces retenues comme
           // pertinentes), pour un affichage séparé "sans se mélanger".
           const breakdown = {};
-          for (const key of ["leboncoin", "vinted", "ebay"]) {
+          for (const key of ["leboncoin", "vinted", "ebay", "ebaySold"]) {
             const forSource = usedResults.filter((r) => r.source === key);
             if (forSource.length > 0) {
               const pricesForSource = forSource.map((r) => r.extracted_price).sort((a, b) => a - b);
@@ -970,15 +996,30 @@ export default function App() {
             }
           }
 
+          const askingPart =
+            askingPrices.length > 0
+              ? `Prix DEMANDÉS par des vendeurs (annonces actives, Leboncoin/Vinted/eBay) pour ce produit précis: ${askingPrices.join(
+                  ", "
+                )} € (${askingPrices.length} annonce(s)). Ce sont des prix affichés, pas forcément des prix de vente réels — le produit a pu se vendre moins cher, ou ne pas se vendre du tout à ce prix. `
+              : "";
+          const soldPart =
+            soldPrices.length > 0
+              ? `Prix de VENTE CONFIRMÉS récemment sur eBay pour ce produit précis (ventes réellement conclues — à privilégier comme référence la plus fiable): ${soldPrices.join(
+                  ", "
+                )} € (${soldPrices.length} vente(s)). `
+              : "";
+
           const conseilText = await callClaude([
             {
               role: "user",
               content:
                 `Objet: ${identification.objet}, état: ${identification.etat_note}. ` +
-                `Prix affichés trouvés en ligne pour ce produit précis (Leboncoin/Vinted/eBay): ${usedPrices.join(", ")} €` +
-                ` (${usedPrices.length} annonce(s) au total). ` +
-                "Important: ce sont des prix DEMANDÉS par des vendeurs (annonces actives), pas des prix de vente confirmés — le produit a pu se vendre moins cher, ou ne pas se vendre du tout à ce prix. " +
+                askingPart +
+                soldPart +
                 "À partir de ces prix réels ET de ta connaissance générale du marché de l'occasion pour ce type de produit et son état, donne une fourchette de revente réaliste : \"prix_bas\" et \"prix_haut\" (nombres en euros, prix_bas strictement inférieur à prix_haut). " +
+                (soldPrices.length > 0
+                  ? "Ancre ta fourchette en priorité sur les prix de vente confirmés (plus fiables qu'une simple annonce active), en te servant des prix demandés seulement comme repère complémentaire. "
+                  : "") +
                 "Ne renvoie JAMAIS prix_bas égal à prix_haut, même s'il n'y a qu'une seule annonce trouvée : élargis intelligemment la fourchette autour du/des prix observés (par exemple ±10 à 25% selon ton incertitude) en tenant compte du nombre d'annonces disponibles (moins il y en a, plus la fourchette doit être large) et de l'état de l'objet. " +
                 "Donne aussi une estimation pour la revente en brocante/vide-grenier (\"prix_brocante\", souvent moins cher que ces annonces), " +
                 "et un conseil de vente pratique en une phrase (\"conseil\"). " +
@@ -999,6 +1040,13 @@ export default function App() {
               ? extra.prix_haut
               : Math.max(rawPrixHaut, Math.round(prix_bas * 1.15));
 
+          // Une vente eBay confirmée est un signal beaucoup plus solide
+          // qu'une simple annonce active: si on en a au moins une, on monte
+          // le niveau de confiance d'un cran par rapport au seul nombre
+          // d'annonces trouvées.
+          const baseConfidenceLevel = usedPrices.length >= 4 ? 2 : usedPrices.length >= 2 ? 1 : 0;
+          const confidenceLevel = Math.min(2, baseConfidenceLevel + (soldPrices.length > 0 ? 1 : 0));
+
           pricing = {
             prix_bas,
             prix_haut,
@@ -1007,8 +1055,7 @@ export default function App() {
             alerte: extra.alerte || null,
             facilite_vente: typeof extra.facilite_vente === "number" ? extra.facilite_vente : null,
             rarete: typeof extra.rarete === "number" ? extra.rarete : null,
-            confiance:
-              usedPrices.length >= 4 ? "haute" : usedPrices.length >= 2 ? "moyenne" : "basse",
+            confiance: confidenceLevel === 2 ? "haute" : confidenceLevel === 1 ? "moyenne" : "basse",
             source: usedSource,
             listings: usedResults,
             breakdown,
@@ -1371,17 +1418,59 @@ export default function App() {
       `}</style>
 
       <div style={{ width: "100%", maxWidth: 420 }}>
-        <header style={{ marginBottom: 24, position: "relative" }}>
+        <header
+          style={{
+            marginBottom: 24,
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: 22,
+            padding: "22px 20px 24px",
+            background: "linear-gradient(135deg, #04060C 0%, #152238 52%, #2E4159 100%)",
+          }}
+        >
+          {/* Étiquette décorative géante en filigrane, pour le côté "fun" —
+              purement décoratif (aria-hidden), reprend la forme du tag du
+              logo, très discrète (faible opacité) pour ne jamais gêner la
+              lecture du texte par-dessus. */}
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="230"
+            height="230"
+            fill="none"
+            style={{
+              position: "absolute",
+              top: -50,
+              right: -60,
+              opacity: 0.1,
+              transform: "rotate(18deg)",
+              pointerEvents: "none",
+            }}
+          >
+            <path
+              d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+              fill="#F2662E"
+            />
+            <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
+          </svg>
+
           <button
             className="btn-ghost"
             onClick={() => setShowHistory(true)}
-            style={{ position: "absolute", top: 0, right: 0 }}
+            style={{
+              position: "absolute",
+              top: 22,
+              right: 20,
+              borderColor: "rgba(238, 241, 245, 0.35)",
+              color: "#EEF1F5",
+              background: "rgba(255, 255, 255, 0.06)",
+            }}
             aria-label="voir l'historique"
           >
             <History size={14} /> {history.length > 0 ? history.length : ""}
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <img src={logoWordmark} alt="estim'" style={{ height: 26, width: "auto", display: "block" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
+            <img src={logoWordmarkLight} alt="estim'" style={{ height: 26, width: "auto", display: "block" }} />
             <span
               className="mono"
               style={{
@@ -1389,9 +1478,8 @@ export default function App() {
                 fontWeight: 700,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                color: "#F2662E",
-                background: "#FDECE3",
-                border: "1px solid #F3C6A9",
+                color: "#152238",
+                background: "#F2662E",
                 borderRadius: 20,
                 padding: "3px 9px",
               }}
@@ -1401,28 +1489,29 @@ export default function App() {
           </div>
           <h1
             className="brand"
-            style={{ fontSize: 32, fontWeight: 600, margin: 0, lineHeight: 1.1 }}
+            style={{ fontSize: 33, fontWeight: 600, margin: 0, lineHeight: 1.12, color: "#FFFFFF", position: "relative" }}
           >
-            Ça vaut combien,
+            Une photo. Un prix.
             <br />
-            ce truc ?
+            <span style={{ color: "#F2662E" }}>Direct.</span>
           </h1>
-          <p style={{ marginTop: 10, fontSize: 14, color: "#42536A", lineHeight: 1.5 }}>
-            Prends l'objet en photo. Estimation du prix de revente en France,
-            façon Leboncoin ou brocante.
+          <p style={{ marginTop: 10, fontSize: 14, color: "#B9C3D1", lineHeight: 1.5, position: "relative" }}>
+            Dégaine ton téléphone : le prix de revente réel, façon Leboncoin
+            ou brocante, en quelques secondes chrono.
           </p>
 
           {user && profile && (
             <div
               className="mono"
               style={{
-                marginTop: 10,
+                marginTop: 12,
                 fontSize: 11,
-                color: "#647A93",
+                color: "#C9D3E0",
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
                 cursor: "pointer",
+                position: "relative",
               }}
               onClick={() => setShowHistory(true)}
             >
@@ -2005,7 +2094,7 @@ export default function App() {
                     <div style={{ fontSize: 12, color: "#647A93", marginBottom: 6 }}>
                       détail par plateforme :
                     </div>
-                    {["leboncoin", "vinted", "ebay"].map((key) => {
+                    {["leboncoin", "vinted", "ebay", "ebaySold"].map((key) => {
                       const b = result.breakdown[key];
                       if (!b) return null;
                       const label = SOURCE_LABELS[key] || key;
@@ -2023,8 +2112,12 @@ export default function App() {
                         >
                           <span>{label}</span>
                           {b.count > 0 ? (
-                            <span className="mono" style={{ color: "#F2662E" }}>
-                              {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count} annonce{b.count > 1 ? "s" : ""})
+                            <span
+                              className="mono"
+                              style={{ color: key === "ebaySold" ? "#1F7A4D" : "#F2662E" }}
+                            >
+                              {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count} {key === "ebaySold" ? "vente" : "annonce"}
+                              {b.count > 1 ? "s" : ""})
                             </span>
                           ) : (
                             <span style={{ color: "#647A93", fontStyle: "italic" }}>indisponible</span>
@@ -2073,8 +2166,8 @@ export default function App() {
                                 style={{
                                   flexShrink: 0,
                                   fontSize: 10,
-                                  color: "#647A93",
-                                  border: "1px solid #D7DEE6",
+                                  color: l.source === "ebaySold" ? "#1F7A4D" : "#647A93",
+                                  border: l.source === "ebaySold" ? "1px solid #1F7A4D" : "1px solid #D7DEE6",
                                   borderRadius: 3,
                                   padding: "1px 4px",
                                 }}
