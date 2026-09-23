@@ -1385,13 +1385,17 @@ export default function App() {
           0%, 100% { box-shadow: 0 0 0 0 rgba(242, 102, 46, 0.4); }
           50% { box-shadow: 0 0 0 6px rgba(242, 102, 46, 0); }
         }
-        .tag-swing-wrap {
-          transform-origin: top center;
-          animation: tagSwing 1.6s ease-in-out infinite;
+        .tag-spin-scene {
+          perspective: 260px;
         }
-        @keyframes tagSwing {
-          0%, 100% { transform: rotate(-12deg); }
-          50% { transform: rotate(12deg); }
+        .tag-spin-wrap {
+          animation: tagSpin3d 1.8s linear infinite;
+          transform-style: preserve-3d;
+          filter: drop-shadow(0 6px 10px rgba(242, 102, 46, 0.4));
+        }
+        @keyframes tagSpin3d {
+          0% { transform: rotateY(0deg) rotateX(12deg); }
+          100% { transform: rotateY(360deg) rotateX(12deg); }
         }
         .pulse-dot {
           width: 6px;
@@ -1689,14 +1693,16 @@ export default function App() {
                   border: "1px solid #29394F",
                 }}
               >
-                <div className="tag-swing-wrap">
-                  <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
-                    <path
-                      d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
-                      fill="#F2662E"
-                    />
-                    <circle cx="7.5" cy="7.5" r="1.7" fill="#152238" />
-                  </svg>
+                <div className="tag-spin-scene">
+                  <div className="tag-spin-wrap">
+                    <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
+                      <path
+                        d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+                        fill="#F2662E"
+                      />
+                      <circle cx="7.5" cy="7.5" r="1.7" fill="#152238" />
+                    </svg>
+                  </div>
                 </div>
                 <div
                   className="mono"
@@ -2398,15 +2404,22 @@ export default function App() {
                       onClick={generateAd}
                       className="mono"
                       style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
                         fontSize: 12,
-                        color: "#93A4BC",
-                        background: "none",
+                        fontWeight: 700,
+                        letterSpacing: "0.01em",
+                        color: "#152238",
+                        background: "linear-gradient(135deg, #F2662E 0%, #FF8A52 100%)",
                         border: "none",
-                        padding: 0,
+                        borderRadius: 20,
+                        padding: "9px 16px",
                         cursor: "pointer",
-                        textDecoration: "underline",
+                        boxShadow: "0 6px 14px rgba(0, 0, 0, 0.28)",
                       }}
                     >
+                      <Sparkles size={14} />
                       Générer une annonce à publier
                     </button>
                   )}
