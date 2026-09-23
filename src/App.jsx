@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, Globe, ChevronRight, ChevronLeft, ExternalLink } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
@@ -83,6 +83,75 @@ const LANGUAGES = [
   { key: "es", label: "Español", flag: "🇪🇸" },
 ];
 
+// Thème des 5 panneaux du menu (tiroir, recherche produit, produits du
+// moment, abonnement, contact) : "dark" (navy, par défaut — reprend la
+// palette du header/des cartes de résultat) ou "light" pour les personnes
+// que le fond sombre gêne. Le header, le hero et les cartes de résultat
+// restent toujours en navy quel que soit ce choix — seul l'intérieur du
+// menu change, voir le sélecteur (deux pastilles) dans le tiroir.
+const PANEL_THEMES = {
+  dark: {
+    sheetBg: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
+    grabBg: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
+    titleColor: "#FFFFFF",
+    closeColor: "#B9C3D1",
+    rowBg: "rgba(255, 255, 255, 0.06)",
+    rowBorder: "1px solid rgba(255, 255, 255, 0.14)",
+    rowText: "#EEF1F5",
+    chevronColor: "#7C8BA3",
+    subText: "#B9C3D1",
+    errorColor: "#FF9466",
+    inputBg: "rgba(255, 255, 255, 0.08)",
+    inputBorder: "1px solid rgba(255, 255, 255, 0.25)",
+    inputText: "#FFFFFF",
+    cardBg: "rgba(255, 255, 255, 0.06)",
+    cardBorder: "1px solid rgba(255, 255, 255, 0.14)",
+    cardImgBg: "rgba(255, 255, 255, 0.04)",
+    cardImgIcon: "#5E7092",
+    cardTitleColor: "#EEF1F5",
+    chipBorder: "1px solid rgba(255, 255, 255, 0.18)",
+    chipBg: "rgba(255, 255, 255, 0.06)",
+    chipText: "#C9D3E0",
+    dashedBorder: "1px dashed rgba(255, 255, 255, 0.18)",
+    langUnselectedBorder: "1px solid rgba(255, 255, 255, 0.16)",
+    langUnselectedBg: "rgba(255, 255, 255, 0.04)",
+    ghostBorder: "rgba(255, 255, 255, 0.3)",
+    ghostColor: "#EEF1F5",
+    ghostBg: "rgba(255, 255, 255, 0.06)",
+    strongColor: "#FFFFFF",
+  },
+  light: {
+    sheetBg: "#E9EDF2",
+    grabBg: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+    titleColor: "#152238",
+    closeColor: "#42536A",
+    rowBg: "#F4F6F9",
+    rowBorder: "1px solid #D7DEE6",
+    rowText: "#29394F",
+    chevronColor: "#93A4BC",
+    subText: "#647A93",
+    errorColor: "#F2662E",
+    inputBg: "#FFFFFF",
+    inputBorder: "1px solid #A9B7C6",
+    inputText: "#152238",
+    cardBg: "#F4F6F9",
+    cardBorder: "1px solid #D7DEE6",
+    cardImgBg: "#E9EDF2",
+    cardImgIcon: "#B9C3D1",
+    cardTitleColor: "#29394F",
+    chipBorder: "1px solid #D7DEE6",
+    chipBg: "#FFFFFF",
+    chipText: "#647A93",
+    dashedBorder: "1px dashed #D7DEE6",
+    langUnselectedBorder: "1px solid #D7DEE6",
+    langUnselectedBg: "#FFFFFF",
+    ghostBorder: "#A9B7C6",
+    ghostColor: "#42536A",
+    ghostBg: "transparent",
+    strongColor: "#152238",
+  },
+};
+
 const TRANSLATIONS = {
   fr: {
     hero_title_1: "Une photo. Un prix.",
@@ -95,12 +164,15 @@ const TRANSLATIONS = {
     loading_pricing: "Recherche des prix sur Leboncoin, Vinted, eBay…",
     used_price_label: "estimation d'occasion",
     menu_title: "Menu",
-    menu_my_estimates: "Mes estimes",
+    menu_my_estimates: "Mes Estim'",
     menu_search_product: "Rechercher un produit",
     menu_trending: "Produits du moment",
     menu_subscription: "Abonnement",
     menu_contact: "Contact",
     menu_language: "Langue",
+    menu_display: "Affichage",
+    theme_dark: "Fond bleu",
+    theme_light: "Fond blanc",
     menu_logout: "Déconnexion",
     search_choose_category: "Choisis une catégorie",
     search_placeholder: "Rechercher un produit…",
@@ -143,12 +215,15 @@ const TRANSLATIONS = {
     loading_pricing: "Searching prices on Leboncoin, Vinted, eBay…",
     used_price_label: "second-hand estimate",
     menu_title: "Menu",
-    menu_my_estimates: "My estimates",
+    menu_my_estimates: "My Estim'",
     menu_search_product: "Search a product",
     menu_trending: "Trending products",
     menu_subscription: "Subscription",
     menu_contact: "Contact",
     menu_language: "Language",
+    menu_display: "Display",
+    theme_dark: "Blue background",
+    theme_light: "White background",
     menu_logout: "Log out",
     search_choose_category: "Choose a category",
     search_placeholder: "Search a product…",
@@ -191,12 +266,15 @@ const TRANSLATIONS = {
     loading_pricing: "Buscando precios en Leboncoin, Vinted, eBay…",
     used_price_label: "estimación de segunda mano",
     menu_title: "Menú",
-    menu_my_estimates: "Mis estimaciones",
+    menu_my_estimates: "Mis Estim'",
     menu_search_product: "Buscar un producto",
     menu_trending: "Productos del momento",
     menu_subscription: "Suscripción",
     menu_contact: "Contacto",
     menu_language: "Idioma",
+    menu_display: "Apariencia",
+    theme_dark: "Fondo azul",
+    theme_light: "Fondo blanco",
     menu_logout: "Cerrar sesión",
     search_choose_category: "Elige una categoría",
     search_placeholder: "Buscar un producto…",
@@ -324,8 +402,9 @@ function Gauge({ label, value, lowLabel, highLabel }) {
 // plateforme), utilisée à la fois par "Rechercher un produit" et "Produits
 // du moment" — clique = ouvre la vraie annonce d'origine dans un nouvel
 // onglet (aucune donnée n'est recréée/fabriquée, on relie juste vers elle).
-function ProductCard({ item }) {
+function ProductCard({ item, theme = "dark" }) {
   if (!item || !item.link) return null;
+  const pt = PANEL_THEMES[theme] || PANEL_THEMES.dark;
   return (
     <a
       href={item.link}
@@ -334,13 +413,13 @@ function ProductCard({ item }) {
       style={{
         display: "block",
         textDecoration: "none",
-        background: "rgba(255, 255, 255, 0.06)",
-        border: "1px solid rgba(255, 255, 255, 0.14)",
+        background: pt.cardBg,
+        border: pt.cardBorder,
         borderRadius: 10,
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "relative", width: "100%", paddingTop: "100%", background: "rgba(255, 255, 255, 0.04)" }}>
+      <div style={{ position: "relative", width: "100%", paddingTop: "100%", background: pt.cardImgBg }}>
         {item.image ? (
           <img
             src={item.image}
@@ -358,7 +437,7 @@ function ProductCard({ item }) {
               justifyContent: "center",
             }}
           >
-            <Tag size={22} color="#5E7092" />
+            <Tag size={22} color={pt.cardImgIcon} />
           </div>
         )}
         {item.source && SOURCE_LABELS[item.source] && (
@@ -386,7 +465,7 @@ function ProductCard({ item }) {
         <div
           style={{
             fontSize: 12,
-            color: "#EEF1F5",
+            color: pt.cardTitleColor,
             lineHeight: 1.3,
             marginBottom: 4,
             display: "-webkit-box",
@@ -698,6 +777,23 @@ export default function App() {
   function t(key) {
     return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.fr[key] || key;
   }
+
+  // Thème des panneaux du menu ("dark" navy par défaut, ou "light" pour qui
+  // trouve le fond sombre fatigant) — persisté localement. Le header/hero et
+  // les cartes de résultat restent toujours en navy, seul le menu change.
+  const [menuTheme, setMenuTheme] = useState(() => {
+    try {
+      return localStorage.getItem("estim_menu_theme") || "dark";
+    } catch (e) {
+      return "dark";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("estim_menu_theme", menuTheme);
+    } catch (e) {}
+  }, [menuTheme]);
+  const pt = PANEL_THEMES[menuTheme] || PANEL_THEMES.dark;
 
   // "Rechercher un produit" : catégorie choisie puis recherche texte libre,
   // résultats = vraies annonces (image cliquable → lien direct vers
@@ -1922,21 +2018,6 @@ export default function App() {
             <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
           </svg>
 
-          <button
-            className="btn-ghost"
-            onClick={() => setShowHistory(true)}
-            style={{
-              position: "absolute",
-              top: 22,
-              right: 20,
-              borderColor: "rgba(238, 241, 245, 0.35)",
-              color: "#EEF1F5",
-              background: "rgba(255, 255, 255, 0.06)",
-            }}
-            aria-label="voir l'historique"
-          >
-            <History size={14} /> {history.length > 0 ? history.length : ""}
-          </button>
           {/* Le bouton menu est un élément normal du flux (pas absolu) juste
               avant le logo : il ne peut donc jamais chevaucher le texte du
               logo, quelle que soit sa propre largeur. */}
@@ -3365,7 +3446,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
+              background: pt.sheetBg,
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
@@ -3377,18 +3458,12 @@ export default function App() {
           >
             <div
               aria-hidden="true"
-              style={{
-                width: 40,
-                height: 4,
-                borderRadius: 3,
-                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
-                margin: "0 auto 16px",
-              }}
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <Menu size={17} color="#F2662E" />
                 {t("menu_title")}
@@ -3398,7 +3473,7 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#B9C3D1" />
+                <X size={20} color={pt.closeColor} />
               </button>
             </div>
 
@@ -3455,31 +3530,24 @@ export default function App() {
                     gap: 12,
                     width: "100%",
                     textAlign: "left",
-                    background: "rgba(255, 255, 255, 0.06)",
-                    border: "1px solid rgba(255, 255, 255, 0.14)",
+                    background: pt.rowBg,
+                    border: pt.rowBorder,
                     borderRadius: 10,
                     padding: "13px 14px",
                     fontSize: 14,
                     fontWeight: 500,
-                    color: "#EEF1F5",
+                    color: pt.rowText,
                     cursor: "pointer",
                   }}
                 >
                   {row.icon}
                   <span style={{ flex: 1 }}>{row.label}</span>
-                  <ChevronRight size={14} color="#7C8BA3" />
+                  <ChevronRight size={14} color={pt.chevronColor} />
                 </button>
               ))}
 
-              <div
-                style={{
-                  background: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.14)",
-                  borderRadius: 10,
-                  padding: "13px 14px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 500, color: "#EEF1F5", marginBottom: 10 }}>
+              <div style={{ background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "13px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 500, color: pt.rowText, marginBottom: 10 }}>
                   <Globe size={16} color="#F2662E" />
                   <span style={{ flex: 1 }}>{t("menu_language")}</span>
                 </div>
@@ -3496,11 +3564,11 @@ export default function App() {
                         gap: 4,
                         padding: "8px 6px",
                         borderRadius: 8,
-                        border: lang === l.key ? "2px solid #F2662E" : "1px solid rgba(255, 255, 255, 0.16)",
-                        background: lang === l.key ? "rgba(242, 102, 46, 0.18)" : "rgba(255, 255, 255, 0.04)",
+                        border: lang === l.key ? "2px solid #F2662E" : pt.langUnselectedBorder,
+                        background: lang === l.key ? "rgba(242, 102, 46, 0.18)" : pt.langUnselectedBg,
                         fontSize: 11,
                         fontWeight: 500,
-                        color: "#EEF1F5",
+                        color: pt.rowText,
                         cursor: "pointer",
                       }}
                     >
@@ -3508,6 +3576,46 @@ export default function App() {
                       {l.label}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div style={{ background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "13px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 500, color: pt.rowText, marginBottom: 10 }}>
+                  <Moon size={16} color="#F2662E" />
+                  <span style={{ flex: 1 }}>{t("menu_display")}</span>
+                </div>
+                <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                  <button
+                    onClick={() => setMenuTheme("dark")}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #04060C 0%, #152238 60%, #2E4159 100%)",
+                      border: menuTheme === "dark" ? "3px solid #F2662E" : "2px solid rgba(255, 255, 255, 0.25)",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                    aria-label={t("theme_dark")}
+                    title={t("theme_dark")}
+                  />
+                  <button
+                    onClick={() => setMenuTheme("light")}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      background: "#FFFFFF",
+                      border: menuTheme === "light" ? "3px solid #F2662E" : "2px solid rgba(255, 255, 255, 0.25)",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                    aria-label={t("theme_light")}
+                    title={t("theme_light")}
+                  />
+                  <span className="mono" style={{ fontSize: 11, color: pt.subText }}>
+                    {menuTheme === "dark" ? t("theme_dark") : t("theme_light")}
+                  </span>
                 </div>
               </div>
 
@@ -3565,7 +3673,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
+              background: pt.sheetBg,
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
@@ -3576,18 +3684,12 @@ export default function App() {
           >
             <div
               aria-hidden="true"
-              style={{
-                width: 40,
-                height: 4,
-                borderRadius: 3,
-                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
-                margin: "0 auto 16px",
-              }}
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 {searchCategory && (
                   <button
@@ -3598,7 +3700,7 @@ export default function App() {
                     style={{ background: "none", border: "none", padding: 0, display: "flex" }}
                     aria-label={t("back")}
                   >
-                    <ChevronLeft size={18} color="#FFFFFF" />
+                    <ChevronLeft size={18} color={pt.titleColor} />
                   </button>
                 )}
                 <Search size={17} color="#F2662E" />
@@ -3614,13 +3716,13 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#B9C3D1" />
+                <X size={20} color={pt.closeColor} />
               </button>
             </div>
 
             {!searchCategory ? (
               <div>
-                <p style={{ fontSize: 13, color: "#B9C3D1", marginTop: 0, marginBottom: 12 }}>
+                <p style={{ fontSize: 13, color: pt.subText, marginTop: 0, marginBottom: 12 }}>
                   {t("search_choose_category")}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -3633,18 +3735,18 @@ export default function App() {
                         alignItems: "center",
                         width: "100%",
                         textAlign: "left",
-                        background: "rgba(255, 255, 255, 0.06)",
-                        border: "1px solid rgba(255, 255, 255, 0.14)",
+                        background: pt.rowBg,
+                        border: pt.rowBorder,
                         borderRadius: 8,
                         padding: "11px 12px",
                         fontSize: 13,
                         fontWeight: 500,
-                        color: "#EEF1F5",
+                        color: pt.rowText,
                         cursor: "pointer",
                       }}
                     >
                       <span style={{ flex: 1 }}>{c.label}</span>
-                      <ChevronRight size={14} color="#7C8BA3" />
+                      <ChevronRight size={14} color={pt.chevronColor} />
                     </button>
                   ))}
                 </div>
@@ -3668,9 +3770,9 @@ export default function App() {
                       fontSize: 14,
                       padding: "10px 12px",
                       borderRadius: 8,
-                      border: "1px solid rgba(255, 255, 255, 0.25)",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      color: "#FFFFFF",
+                      border: pt.inputBorder,
+                      background: pt.inputBg,
+                      color: pt.inputText,
                       boxSizing: "border-box",
                     }}
                   />
@@ -3687,12 +3789,12 @@ export default function App() {
                 {searchLoading && (
                   <div
                     className="mono"
-                    style={{ fontSize: 12, color: "#B9C3D1", display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
+                    style={{ fontSize: 12, color: pt.subText, display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
                   >
                     <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> {t("search_loading")}
                   </div>
                 )}
-                {searchError && <p style={{ fontSize: 12, color: "#FF9466" }}>{searchError}</p>}
+                {searchError && <p style={{ fontSize: 12, color: pt.errorColor }}>{searchError}</p>}
                 {searchResults &&
                   !searchLoading &&
                   (() => {
@@ -3701,7 +3803,7 @@ export default function App() {
                     );
                     if (items.length === 0) {
                       return (
-                        <p className="mono" style={{ fontSize: 12, color: "#B9C3D1" }}>
+                        <p className="mono" style={{ fontSize: 12, color: pt.subText }}>
                           {t("search_empty")}
                         </p>
                       );
@@ -3721,9 +3823,9 @@ export default function App() {
                                 fontWeight: 700,
                                 padding: "7px 12px",
                                 borderRadius: 20,
-                                border: searchSort === opt.key ? "1px solid #F2662E" : "1px solid rgba(255, 255, 255, 0.18)",
-                                background: searchSort === opt.key ? "#F2662E" : "rgba(255, 255, 255, 0.06)",
-                                color: searchSort === opt.key ? "#FFFFFF" : "#C9D3E0",
+                                border: searchSort === opt.key ? "1px solid #F2662E" : pt.chipBorder,
+                                background: searchSort === opt.key ? "#F2662E" : pt.chipBg,
+                                color: searchSort === opt.key ? "#FFFFFF" : pt.chipText,
                                 cursor: "pointer",
                                 whiteSpace: "nowrap",
                               }}
@@ -3734,7 +3836,7 @@ export default function App() {
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                           {sorted.map((it, i) => (
-                            <ProductCard key={i} item={it} />
+                            <ProductCard key={i} item={it} theme={menuTheme} />
                           ))}
                         </div>
                       </div>
@@ -3763,7 +3865,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
+              background: pt.sheetBg,
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
@@ -3774,18 +3876,12 @@ export default function App() {
           >
             <div
               aria-hidden="true"
-              style={{
-                width: 40,
-                height: 4,
-                borderRadius: 3,
-                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
-                margin: "0 auto 16px",
-              }}
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <TrendingUp size={17} color="#F2662E" />
                 {t("trending_title")}
@@ -3795,24 +3891,24 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#B9C3D1" />
+                <X size={20} color={pt.closeColor} />
               </button>
             </div>
-            <p style={{ fontSize: 13, color: "#B9C3D1", marginTop: 0, marginBottom: 14 }}>{t("trending_subtitle")}</p>
+            <p style={{ fontSize: 13, color: pt.subText, marginTop: 0, marginBottom: 14 }}>{t("trending_subtitle")}</p>
 
             {trendingLoading && (
               <div
                 className="mono"
-                style={{ fontSize: 12, color: "#B9C3D1", display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
+                style={{ fontSize: 12, color: pt.subText, display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
               >
                 <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> {t("trending_loading")}
               </div>
             )}
-            {trendingError && <p style={{ fontSize: 12, color: "#FF9466" }}>{trendingError}</p>}
+            {trendingError && <p style={{ fontSize: 12, color: pt.errorColor }}>{trendingError}</p>}
             {trendingItems &&
               !trendingLoading &&
               (trendingItems.length === 0 ? (
-                <p className="mono" style={{ fontSize: 12, color: "#B9C3D1" }}>
+                <p className="mono" style={{ fontSize: 12, color: pt.subText }}>
                   {t("trending_empty")}
                 </p>
               ) : (
@@ -3822,12 +3918,12 @@ export default function App() {
                   const pageItems = trendingItems.slice((page - 1) * TRENDING_PAGE_SIZE, page * TRENDING_PAGE_SIZE);
                   return (
                     <div>
-                      <div className="mono" style={{ fontSize: 11, color: "#B9C3D1", marginBottom: 10 }}>
+                      <div className="mono" style={{ fontSize: 11, color: pt.subText, marginBottom: 10 }}>
                         {trendingItems.length} {t("trending_count_suffix")}
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                         {pageItems.map((it, i) => (
-                          <ProductCard key={(page - 1) * TRENDING_PAGE_SIZE + i} item={it} />
+                          <ProductCard key={(page - 1) * TRENDING_PAGE_SIZE + i} item={it} theme={menuTheme} />
                         ))}
                       </div>
                       {totalPages > 1 && (
@@ -3838,16 +3934,16 @@ export default function App() {
                             className="btn-ghost"
                             style={{
                               padding: "8px 12px",
-                              borderColor: "rgba(255, 255, 255, 0.25)",
-                              color: "#EEF1F5",
-                              background: "rgba(255, 255, 255, 0.06)",
+                              borderColor: pt.ghostBorder,
+                              color: pt.ghostColor,
+                              background: pt.ghostBg,
                               opacity: page <= 1 ? 0.4 : 1,
                             }}
                             aria-label={t("back")}
                           >
                             <ChevronLeft size={14} />
                           </button>
-                          <span className="mono" style={{ fontSize: 12, color: "#EEF1F5" }}>
+                          <span className="mono" style={{ fontSize: 12, color: pt.rowText }}>
                             {t("trending_page_label")} {page} / {totalPages}
                           </span>
                           <button
@@ -3856,9 +3952,9 @@ export default function App() {
                             className="btn-ghost"
                             style={{
                               padding: "8px 12px",
-                              borderColor: "rgba(255, 255, 255, 0.25)",
-                              color: "#EEF1F5",
-                              background: "rgba(255, 255, 255, 0.06)",
+                              borderColor: pt.ghostBorder,
+                              color: pt.ghostColor,
+                              background: pt.ghostBg,
                               opacity: page >= totalPages ? 0.4 : 1,
                             }}
                             aria-label="suivant"
@@ -3892,7 +3988,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
+              background: pt.sheetBg,
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
@@ -3903,18 +3999,12 @@ export default function App() {
           >
             <div
               aria-hidden="true"
-              style={{
-                width: 40,
-                height: 4,
-                borderRadius: 3,
-                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
-                margin: "0 auto 16px",
-              }}
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <Sparkles size={17} color="#F2662E" />
                 {t("subscription_title")}
@@ -3924,29 +4014,21 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#B9C3D1" />
+                <X size={20} color={pt.closeColor} />
               </button>
             </div>
 
             {user && profile ? (
-              <div
-                style={{
-                  background: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.14)",
-                  borderRadius: 10,
-                  padding: 13,
-                  marginBottom: 16,
-                }}
-              >
+              <div style={{ background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: 13, marginBottom: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <div style={{ fontSize: 13, color: "#EEF1F5" }}>
+                  <div style={{ fontSize: 13, color: pt.rowText }}>
                     {t("subscription_current")}:{" "}
-                    <strong style={{ color: "#FFFFFF" }}>
+                    <strong style={{ color: pt.strongColor }}>
                       {profile.plan !== "gratuit" && profile.subscription_status === "active"
                         ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
                         : t("subscription_free")}
                     </strong>
-                    <div className="mono" style={{ fontSize: 11, color: "#B9C3D1", marginTop: 2 }}>
+                    <div className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 2 }}>
                       {profile.plan !== "gratuit" && profile.subscription_status === "active"
                         ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} ${t("subscription_remaining_paid")}`
                         : `${Math.max(0, 3 - profile.gratuit_utilisees)} ${t("subscription_remaining_free")}`}
@@ -3959,9 +4041,9 @@ export default function App() {
                       disabled={portalLoading}
                       style={{
                         flexShrink: 0,
-                        borderColor: "rgba(255, 255, 255, 0.3)",
-                        color: "#EEF1F5",
-                        background: "rgba(255, 255, 255, 0.06)",
+                        borderColor: pt.ghostBorder,
+                        color: pt.ghostColor,
+                        background: pt.ghostBg,
                       }}
                     >
                       <CreditCard size={14} /> {portalLoading ? "…" : t("subscription_manage")}
@@ -3970,13 +4052,13 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <p className="mono" style={{ fontSize: 12, color: "#B9C3D1", marginBottom: 16 }}>
+              <p className="mono" style={{ fontSize: 12, color: pt.subText, marginBottom: 16 }}>
                 {t("subscription_login_required")}
               </p>
             )}
 
-            <div style={{ borderTop: "1px dashed rgba(255, 255, 255, 0.18)", paddingTop: 14 }}>
-              <p className="mono" style={{ fontSize: 11, color: "#B9C3D1", marginTop: 0, marginBottom: 10 }}>
+            <div style={{ borderTop: pt.dashedBorder, paddingTop: 14 }}>
+              <p className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 10 }}>
                 {t("subscription_plans_title")}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4023,7 +4105,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
+              background: pt.sheetBg,
               width: "100%",
               maxWidth: 420,
               borderRadius: "22px 22px 0 0",
@@ -4032,18 +4114,12 @@ export default function App() {
           >
             <div
               aria-hidden="true"
-              style={{
-                width: 40,
-                height: 4,
-                borderRadius: 3,
-                background: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
-                margin: "0 auto 16px",
-              }}
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: "#FFFFFF" }}
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <Mail size={17} color="#F2662E" />
                 {t("contact_title")}
@@ -4053,10 +4129,10 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#B9C3D1" />
+                <X size={20} color={pt.closeColor} />
               </button>
             </div>
-            <p style={{ fontSize: 13, color: "#B9C3D1", lineHeight: 1.5, marginTop: 0 }}>{t("contact_text")}</p>
+            <p style={{ fontSize: 13, color: pt.subText, lineHeight: 1.5, marginTop: 0 }}>{t("contact_text")}</p>
             <a
               href={"mailto:" + CONTACT_EMAIL}
               className="mono"
@@ -4066,9 +4142,9 @@ export default function App() {
                 gap: 8,
                 fontSize: 13,
                 fontWeight: 700,
-                color: "#FFFFFF",
-                background: "rgba(255, 255, 255, 0.06)",
-                border: "1px solid rgba(255, 255, 255, 0.16)",
+                color: pt.titleColor,
+                background: pt.rowBg,
+                border: pt.rowBorder,
                 borderRadius: 8,
                 padding: "12px 14px",
                 textDecoration: "none",
