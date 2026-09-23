@@ -108,6 +108,10 @@ const TRANSLATIONS = {
     search_loading: "Recherche en cours…",
     search_empty: "Aucun résultat pour l'instant. Essaie une autre recherche.",
     search_error: "Erreur pendant la recherche.",
+    search_sort_relevance: "Pertinence",
+    search_sort_price_asc: "Prix croissant",
+    search_sort_price_desc: "Prix décroissant",
+    search_sort_date: "Plus récent",
     back: "Retour",
     trending_title: "Produits du moment",
     trending_subtitle: "Les annonces les plus vues sur Leboncoin, Vinted et eBay, sélectionnées par l'IA.",
@@ -150,6 +154,10 @@ const TRANSLATIONS = {
     search_loading: "Searching…",
     search_empty: "No results yet. Try another search.",
     search_error: "Search error.",
+    search_sort_relevance: "Relevance",
+    search_sort_price_asc: "Price: low to high",
+    search_sort_price_desc: "Price: high to low",
+    search_sort_date: "Newest",
     back: "Back",
     trending_title: "Trending products",
     trending_subtitle: "The most viewed listings on Leboncoin, Vinted and eBay, curated by AI.",
@@ -192,6 +200,10 @@ const TRANSLATIONS = {
     search_loading: "Buscando…",
     search_empty: "Sin resultados por ahora. Prueba otra búsqueda.",
     search_error: "Error en la búsqueda.",
+    search_sort_relevance: "Relevancia",
+    search_sort_price_asc: "Precio: menor a mayor",
+    search_sort_price_desc: "Precio: mayor a menor",
+    search_sort_date: "Más reciente",
     back: "Volver",
     trending_title: "Productos del momento",
     trending_subtitle: "Los anuncios más vistos en Leboncoin, Vinted y eBay, seleccionados por IA.",
@@ -691,6 +703,32 @@ export default function App() {
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
+  // Tri des résultats : pertinence (ordre renvoyé) | prix croissant/décroissant
+  // | plus récent (uniquement fiable pour Leboncoin, seule source à exposer
+  // une vraie date de publication en recherche — voir searchLeboncoin dans
+  // worker.js ; les annonces sans date connue sont reléguées en fin de liste).
+  const [searchSort, setSearchSort] = useState("pertinence");
+  const SEARCH_SORT_OPTIONS = [
+    { key: "pertinence", label: "search_sort_relevance" },
+    { key: "price_asc", label: "search_sort_price_asc" },
+    { key: "price_desc", label: "search_sort_price_desc" },
+    { key: "date_desc", label: "search_sort_date" },
+  ];
+  function sortSearchItems(items) {
+    const arr = [...items];
+    if (searchSort === "price_asc") {
+      arr.sort((a, b) => (a.extracted_price ?? Infinity) - (b.extracted_price ?? Infinity));
+    } else if (searchSort === "price_desc") {
+      arr.sort((a, b) => (b.extracted_price ?? -Infinity) - (a.extracted_price ?? -Infinity));
+    } else if (searchSort === "date_desc") {
+      arr.sort((a, b) => {
+        const da = a.date ? new Date(a.date).getTime() : -Infinity;
+        const db = b.date ? new Date(b.date).getTime() : -Infinity;
+        return db - da;
+      });
+    }
+    return arr;
+  }
 
   async function runProductSearch(query) {
     const q = (query || "").trim();
@@ -1874,21 +1912,6 @@ export default function App() {
 
           <button
             className="btn-ghost"
-            onClick={() => setShowMenu(true)}
-            style={{
-              position: "absolute",
-              top: 22,
-              left: 20,
-              borderColor: "rgba(238, 241, 245, 0.35)",
-              color: "#EEF1F5",
-              background: "rgba(255, 255, 255, 0.06)",
-            }}
-            aria-label={t("menu_title")}
-          >
-            <Menu size={16} />
-          </button>
-          <button
-            className="btn-ghost"
             onClick={() => setShowHistory(true)}
             style={{
               position: "absolute",
@@ -1902,7 +1925,24 @@ export default function App() {
           >
             <History size={14} /> {history.length > 0 ? history.length : ""}
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, marginLeft: 34, position: "relative" }}>
+          {/* Le bouton menu est un élément normal du flux (pas absolu) juste
+              avant le logo : il ne peut donc jamais chevaucher le texte du
+              logo, quelle que soit sa propre largeur. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, position: "relative" }}>
+            <button
+              className="btn-ghost"
+              onClick={() => setShowMenu(true)}
+              style={{
+                flexShrink: 0,
+                padding: 9,
+                borderColor: "rgba(238, 241, 245, 0.35)",
+                color: "#EEF1F5",
+                background: "rgba(255, 255, 255, 0.06)",
+              }}
+              aria-label={t("menu_title")}
+            >
+              <Menu size={16} />
+            </button>
             <img src={logoWordmarkLight} alt="estim'" style={{ height: 26, width: "auto", display: "block" }} />
             <span
               className="mono"
@@ -3643,11 +3683,37 @@ export default function App() {
                         </p>
                       );
                     }
+                    const sorted = sortSearchItems(items);
                     return (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        {items.map((it, i) => (
-                          <ProductCard key={i} item={it} />
-                        ))}
+                      <div>
+                        <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto", paddingBottom: 2 }}>
+                          {SEARCH_SORT_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.key}
+                              onClick={() => setSearchSort(opt.key)}
+                              className="mono"
+                              style={{
+                                flexShrink: 0,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                padding: "7px 12px",
+                                borderRadius: 20,
+                                border: searchSort === opt.key ? "1px solid #F2662E" : "1px solid #D7DEE6",
+                                background: searchSort === opt.key ? "#F2662E" : "#FFFFFF",
+                                color: searchSort === opt.key ? "#FFFFFF" : "#647A93",
+                                cursor: "pointer",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {t(opt.label)}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          {sorted.map((it, i) => (
+                            <ProductCard key={i} item={it} />
+                          ))}
+                        </div>
                       </div>
                     );
                   })()}
