@@ -255,6 +255,7 @@ const TRANSLATIONS = {
     menu_my_estimates: "Mes Estim'",
     menu_search_product: "Rechercher un produit",
     menu_trending: "Produits du moment",
+    menu_leaderboard: "Classement",
     menu_collection: "Ma collection",
     menu_subscription: "Abonnement",
     menu_contact: "Contact",
@@ -284,6 +285,20 @@ const TRANSLATIONS = {
     category_trending_subtitle: "Mis à jour régulièrement à partir d'annonces Leboncoin, Vinted et eBay, sélectionnées par l'IA.",
     category_trending_loading: "Chargement des tendances…",
     category_trending_empty: "Rien à afficher pour l'instant.",
+    leaderboard_title: "Classement",
+    leaderboard_subtitle: "Les meilleurs estimateurs, par nombre d'estimations et par nombre d'annonces générées.",
+    leaderboard_tab_estimations: "Estimations",
+    leaderboard_tab_ads: "Annonces générées",
+    leaderboard_period_month: "Ce mois-ci",
+    leaderboard_period_total: "Total",
+    leaderboard_loading: "Chargement du classement…",
+    leaderboard_empty: "Personne dans ce classement pour l'instant.",
+    leaderboard_you: "toi",
+    leaderboard_pseudo_label: "Ton pseudo public",
+    leaderboard_pseudo_placeholder: "pseudo (3-20 caractères)",
+    leaderboard_pseudo_save: "Enregistrer",
+    leaderboard_pseudo_saved: "Pseudo enregistré !",
+    leaderboard_pseudo_login_required: "Connecte-toi (depuis « Mes estimes ») pour apparaître dans le classement sous ton propre pseudo.",
     subscription_title: "Abonnement",
     subscription_current: "Abonnement en cours",
     subscription_free: "Gratuit",
@@ -316,6 +331,7 @@ const TRANSLATIONS = {
     menu_my_estimates: "My Estim'",
     menu_search_product: "Search a product",
     menu_trending: "Trending products",
+    menu_leaderboard: "Leaderboard",
     menu_collection: "My collection",
     menu_subscription: "Subscription",
     menu_contact: "Contact",
@@ -345,6 +361,20 @@ const TRANSLATIONS = {
     category_trending_subtitle: "Regularly refreshed from Leboncoin, Vinted and eBay listings, curated by AI.",
     category_trending_loading: "Loading trends…",
     category_trending_empty: "Nothing to show yet.",
+    leaderboard_title: "Leaderboard",
+    leaderboard_subtitle: "The top estimators, by number of estimations and by number of ads generated.",
+    leaderboard_tab_estimations: "Estimations",
+    leaderboard_tab_ads: "Ads generated",
+    leaderboard_period_month: "This month",
+    leaderboard_period_total: "Total",
+    leaderboard_loading: "Loading leaderboard…",
+    leaderboard_empty: "No one on this leaderboard yet.",
+    leaderboard_you: "you",
+    leaderboard_pseudo_label: "Your public username",
+    leaderboard_pseudo_placeholder: "username (3-20 characters)",
+    leaderboard_pseudo_save: "Save",
+    leaderboard_pseudo_saved: "Username saved!",
+    leaderboard_pseudo_login_required: "Sign in (from “My estimates”) to appear on the leaderboard under your own username.",
     subscription_title: "Subscription",
     subscription_current: "Current plan",
     subscription_free: "Free",
@@ -377,6 +407,7 @@ const TRANSLATIONS = {
     menu_my_estimates: "Mis Estim'",
     menu_search_product: "Buscar un producto",
     menu_trending: "Productos del momento",
+    menu_leaderboard: "Clasificación",
     menu_collection: "Mi colección",
     menu_subscription: "Suscripción",
     menu_contact: "Contacto",
@@ -406,6 +437,20 @@ const TRANSLATIONS = {
     category_trending_subtitle: "Actualizado regularmente a partir de anuncios de Leboncoin, Vinted y eBay, seleccionados por IA.",
     category_trending_loading: "Cargando tendencias…",
     category_trending_empty: "Nada que mostrar por ahora.",
+    leaderboard_title: "Clasificación",
+    leaderboard_subtitle: "Los mejores estimadores, por número de estimaciones y por número de anuncios generados.",
+    leaderboard_tab_estimations: "Estimaciones",
+    leaderboard_tab_ads: "Anuncios generados",
+    leaderboard_period_month: "Este mes",
+    leaderboard_period_total: "Total",
+    leaderboard_loading: "Cargando clasificación…",
+    leaderboard_empty: "Nadie en esta clasificación todavía.",
+    leaderboard_you: "tú",
+    leaderboard_pseudo_label: "Tu nombre público",
+    leaderboard_pseudo_placeholder: "nombre (3-20 caracteres)",
+    leaderboard_pseudo_save: "Guardar",
+    leaderboard_pseudo_saved: "¡Nombre guardado!",
+    leaderboard_pseudo_login_required: "Inicia sesión (desde «Mis estimaciones») para aparecer en la clasificación con tu propio nombre.",
     subscription_title: "Suscripción",
     subscription_current: "Plan actual",
     subscription_free: "Gratis",
@@ -1056,7 +1101,7 @@ export default function App() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id"
+        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo"
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1534,6 +1579,80 @@ export default function App() {
       setTrendingError(e.message || "Erreur de chargement.");
     } finally {
       setTrendingLoading(false);
+    }
+  }
+
+  // "Classement" : nombre d'estimations et nombre d'annonces générées,
+  // chacun en "ce mois-ci" et "total" — 4 combinaisons, calculées côté
+  // Supabase (fonctions leaderboard_estimations / leaderboard_ad_generations,
+  // voir supabase_schema.sql) et mises en cache ici par combinaison pour
+  // éviter de recharger à chaque changement d'onglet.
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboardType, setLeaderboardType] = useState("estimations"); // estimations | annonces
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState("month"); // month | total
+  const [leaderboardCache, setLeaderboardCache] = useState({}); // { "estimations:month": [...] }
+  const [leaderboardLoadingKey, setLeaderboardLoadingKey] = useState(null);
+  const [leaderboardError, setLeaderboardError] = useState(null);
+  const [pseudoInput, setPseudoInput] = useState("");
+  const [pseudoSaving, setPseudoSaving] = useState(false);
+  const [pseudoError, setPseudoError] = useState(null);
+  const [pseudoSavedFlash, setPseudoSavedFlash] = useState(false);
+
+  async function loadLeaderboard(type, period) {
+    const cacheKey = `${type}:${period}`;
+    if (leaderboardCache[cacheKey] || leaderboardLoadingKey === cacheKey) return;
+    setLeaderboardLoadingKey(cacheKey);
+    setLeaderboardError(null);
+    try {
+      const fn = type === "annonces" ? "leaderboard_ad_generations" : "leaderboard_estimations";
+      const { data, error } = await supabase.rpc(fn, { p_period: period, p_limit: 20 });
+      if (error) throw new Error(error.message);
+      setLeaderboardCache((prev) => ({ ...prev, [cacheKey]: data || [] }));
+    } catch (e) {
+      console.error(e);
+      setLeaderboardError(e.message || "Erreur de chargement.");
+    } finally {
+      setLeaderboardLoadingKey(null);
+    }
+  }
+  useEffect(() => {
+    if (showLeaderboard) loadLeaderboard(leaderboardType, leaderboardPeriod);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLeaderboard, leaderboardType, leaderboardPeriod]);
+  useEffect(() => {
+    if (showLeaderboard) setPseudoInput((profile && profile.pseudo) || "");
+  }, [showLeaderboard, profile]);
+
+  const PSEUDO_ERROR_LABELS = {
+    longueur_invalide: "3 à 20 caractères.",
+    caracteres_invalides: "Lettres, chiffres, - et _ uniquement (pas d'espace).",
+    deja_pris: "Ce pseudo est déjà pris.",
+    profil_introuvable: "Connecte-toi pour choisir un pseudo.",
+  };
+  async function savePseudo() {
+    if (!user || pseudoSaving) return;
+    const value = pseudoInput.trim();
+    if (!value) return;
+    setPseudoSaving(true);
+    setPseudoError(null);
+    try {
+      const { data, error } = await supabase.rpc("set_pseudo", { p_pseudo: value });
+      if (error) throw new Error(error.message);
+      if (data && data.ok) {
+        setProfile((prev) => (prev ? { ...prev, pseudo: data.pseudo } : prev));
+        setPseudoSavedFlash(true);
+        setTimeout(() => setPseudoSavedFlash(false), 2500);
+        // Le pseudo peut avoir changé le classement (nouvel affichage) —
+        // on vide le cache pour forcer un rechargement à la prochaine vue.
+        setLeaderboardCache({});
+      } else {
+        setPseudoError(PSEUDO_ERROR_LABELS[data && data.reason] || "Erreur, réessaie.");
+      }
+    } catch (e) {
+      console.error(e);
+      setPseudoError("Erreur, réessaie.");
+    } finally {
+      setPseudoSaving(false);
     }
   }
 
@@ -2055,6 +2174,13 @@ export default function App() {
       const parsed = extractJson(adTextRaw);
       setAdText({ titre: parsed.titre || "", description: parsed.description || "" });
       setLifetimeAdGenerations((prev) => prev + 1);
+      // Compteur CÔTÉ SERVEUR (nécessaire pour le classement — comparer les
+      // utilisateurs entre eux avec un compteur purement local serait
+      // impossible). Silencieux : un échec ne doit pas faire échouer la
+      // génération d'annonce elle-même, déjà réussie à ce stade.
+      if (user) {
+        supabase.rpc("record_ad_generation").catch(() => {});
+      }
     } catch (e) {
       setAdError("Impossible de générer l'annonce, réessaie.");
     } finally {
@@ -4936,6 +5062,14 @@ export default function App() {
                   },
                 },
                 {
+                  icon: <Trophy size={16} color={accent} />,
+                  label: t("menu_leaderboard"),
+                  onClick: () => {
+                    setShowMenu(false);
+                    setShowLeaderboard(true);
+                  },
+                },
+                {
                   icon: <BarChart3 size={16} color={accent} />,
                   label: t("menu_collection"),
                   onClick: () => {
@@ -5569,6 +5703,225 @@ export default function App() {
                   );
                 })()
               ))}
+          </div>
+        </div>
+      )}
+
+      {/* ============ Classement ============ */}
+      {showLeaderboard && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 30,
+          }}
+          onClick={() => setShowLeaderboard(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: pt.sheetBg,
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <h2
+                className="brand"
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+              >
+                <Trophy size={17} color={accent} />
+                {t("leaderboard_title")}
+              </h2>
+              <button
+                onClick={() => setShowLeaderboard(false)}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color={pt.closeColor} />
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: pt.subText, marginTop: 0, marginBottom: 14 }}>{t("leaderboard_subtitle")}</p>
+
+            <div style={{ background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
+              {user ? (
+                <>
+                  <div className="mono" style={{ fontSize: 11, fontWeight: 700, color: pt.rowText, marginBottom: 8 }}>
+                    {t("leaderboard_pseudo_label")}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      type="text"
+                      value={pseudoInput}
+                      onChange={(e) => {
+                        setPseudoInput(e.target.value);
+                        setPseudoError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") savePseudo();
+                      }}
+                      maxLength={20}
+                      placeholder={t("leaderboard_pseudo_placeholder")}
+                      style={{
+                        flex: 1,
+                        fontSize: 13,
+                        padding: "9px 11px",
+                        borderRadius: 8,
+                        border: pt.inputBorder,
+                        background: pt.inputBg,
+                        color: pt.inputText,
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    <button
+                      className="btn-primary"
+                      onClick={savePseudo}
+                      disabled={pseudoSaving || !pseudoInput.trim() || pseudoInput.trim() === (profile && profile.pseudo)}
+                      style={{ width: "auto", flexShrink: 0, padding: "9px 14px", fontSize: 12 }}
+                    >
+                      {t("leaderboard_pseudo_save")}
+                    </button>
+                  </div>
+                  {pseudoError && (
+                    <div className="mono" style={{ fontSize: 11, color: pt.errorColor, marginTop: 6 }}>
+                      {pseudoError}
+                    </div>
+                  )}
+                  {pseudoSavedFlash && (
+                    <div className="mono" style={{ fontSize: 11, color: "#4ADE80", marginTop: 6 }}>
+                      {t("leaderboard_pseudo_saved")}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="mono" style={{ fontSize: 12, color: pt.subText }}>
+                  {t("leaderboard_pseudo_login_required")}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+              {[
+                { key: "estimations", label: t("leaderboard_tab_estimations") },
+                { key: "annonces", label: t("leaderboard_tab_ads") },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setLeaderboardType(opt.key)}
+                  className="mono"
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "7px 12px",
+                    borderRadius: 20,
+                    border: leaderboardType === opt.key ? `1px solid ${accent}` : pt.chipBorder,
+                    background: leaderboardType === opt.key ? accent : pt.chipBg,
+                    color: leaderboardType === opt.key ? "#FFFFFF" : pt.chipText,
+                    cursor: "pointer",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
+              {[
+                { key: "month", label: t("leaderboard_period_month") },
+                { key: "total", label: t("leaderboard_period_total") },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setLeaderboardPeriod(opt.key)}
+                  className="mono"
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "6px 11px",
+                    borderRadius: 20,
+                    border: leaderboardPeriod === opt.key ? `1px solid ${accent}` : pt.chipBorder,
+                    background: leaderboardPeriod === opt.key ? `rgba(${accentRgb}, 0.18)` : pt.chipBg,
+                    color: leaderboardPeriod === opt.key ? accent : pt.chipText,
+                    cursor: "pointer",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {(() => {
+              const cacheKey = `${leaderboardType}:${leaderboardPeriod}`;
+              const rows = leaderboardCache[cacheKey];
+              if (leaderboardLoadingKey === cacheKey && !rows) {
+                return (
+                  <div
+                    className="mono"
+                    style={{ fontSize: 12, color: pt.subText, display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
+                  >
+                    <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> {t("leaderboard_loading")}
+                  </div>
+                );
+              }
+              if (leaderboardError && !rows) {
+                return <p style={{ fontSize: 12, color: pt.errorColor }}>{leaderboardError}</p>;
+              }
+              if (!rows || rows.length === 0) {
+                return (
+                  <p className="mono" style={{ fontSize: 12, color: pt.subText }}>
+                    {rows ? t("leaderboard_empty") : ""}
+                  </p>
+                );
+              }
+              const MEDALS = ["🥇", "🥈", "🥉"];
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {rows.map((row, i) => {
+                    const isYou = !!(user && row.user_id === user.id);
+                    return (
+                      <div
+                        key={row.user_id || i}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          background: isYou ? `rgba(${accentRgb}, 0.14)` : pt.rowBg,
+                          border: isYou ? `1px solid ${accent}` : pt.rowBorder,
+                          borderRadius: 10,
+                          padding: "9px 12px",
+                        }}
+                      >
+                        <span className="mono" style={{ fontSize: 13, fontWeight: 800, width: 26, color: i < 3 ? accent : pt.chevronColor }}>
+                          {MEDALS[i] || i + 1}
+                        </span>
+                        <span style={{ flex: 1, fontSize: 13, fontWeight: isYou ? 700 : 500, color: pt.rowText }}>
+                          {row.pseudo}
+                          {isYou && (
+                            <span className="mono" style={{ fontSize: 10, color: accent, marginLeft: 6 }}>
+                              ({t("leaderboard_you")})
+                            </span>
+                          )}
+                        </span>
+                        <span className="mono" style={{ fontSize: 13, fontWeight: 800, color: pt.rowText }}>
+                          {row.cnt}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
