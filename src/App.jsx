@@ -78,14 +78,30 @@ function hexToRgbString(hex) {
 // bas : on ne touche aux dégradés de fond que pour les autres teintes).
 // Chaque teinte fournit 3 tons pour le mode sombre et 3 pour le mode clair,
 // utilisés pour reconstruire dynamiquement pageBg/sheetBg/headerBg/etc.
+// "bleu" et "blanc" sont les deux fonds historiques (l'ancienne bascule
+// fond sombre/clair du menu, désormais fusionnée ici) : toujours débloqués,
+// jamais retouchés (mode "dark"/"light" = les thèmes PANEL_THEMES existants
+// tels quels). Les couleurs suivantes sont volontairement saturées/vives
+// (pas de pastel délavé) pour bien se voir, sur le même principe que le
+// bleu nuit d'origine — seules les grandes surfaces (page/panneaux/header/
+// carte résultat/écran de chargement/zone photo) sont retouchées, via un
+// dégradé base → mid → high propre à chaque teinte (voir plus bas dans le
+// composant, juste avant `const pt = ...`).
 const BG_SKINS = [
-  { key: "bleu", threshold: 0, label: "Bleu nuit", emoji: "🔵", darkBase: "#0A1220", darkMid: "#152238", darkHigh: "#26374E", lightBase: "#E9EDF2", lightMid: "#F4F6F9", lightHigh: "#D7DEE6" },
-  { key: "rouge", threshold: 10, label: "Rouge", emoji: "🔴", darkBase: "#1A0A0C", darkMid: "#3A1218", darkHigh: "#5C1B24", lightBase: "#FBEAEA", lightMid: "#F7D9D9", lightHigh: "#F0BFBF" },
-  { key: "violet", threshold: 25, label: "Violet", emoji: "🟣", darkBase: "#140A1F", darkMid: "#28123F", darkHigh: "#3E1D5E", lightBase: "#F1EAFB", lightMid: "#E4D6F7", lightHigh: "#D3BEF0" },
-  { key: "vert", threshold: 50, label: "Vert", emoji: "🟢", darkBase: "#08140E", darkMid: "#0F281A", darkHigh: "#173D27", lightBase: "#E8F5EC", lightMid: "#D3EBDA", lightHigh: "#B9E0C6" },
-  { key: "jaune", threshold: 100, label: "Jaune", emoji: "🟡", darkBase: "#1A1608", darkMid: "#332B10", darkHigh: "#4D4118", lightBase: "#FBF6E3", lightMid: "#F5EAC2", lightHigh: "#EEDD97" },
-  { key: "marron", threshold: 200, label: "Marron", emoji: "🟤", darkBase: "#160F0A", darkMid: "#2B1E14", darkHigh: "#40301F", lightBase: "#F3EBE3", lightMid: "#E7D6C6", lightHigh: "#D8BEA5" },
+  { key: "bleu", threshold: 0, label: "Bleu nuit", emoji: "🔵", mode: "dark", base: "#0A1220", mid: "#152238", high: "#26374E" },
+  { key: "blanc", threshold: 0, label: "Blanc", emoji: "⚪", mode: "light", base: "#E9EDF2", mid: "#F4F6F9", high: "#D7DEE6" },
+  { key: "rouge", threshold: 10, label: "Rouge", emoji: "🔴", mode: "dark", base: "#210609", mid: "#6E1620", high: "#B22B3A" },
+  { key: "violet", threshold: 25, label: "Violet", emoji: "🟣", mode: "dark", base: "#180A28", mid: "#3F1768", high: "#6D2FB0" },
+  { key: "vert", threshold: 50, label: "Vert", emoji: "🟢", mode: "dark", base: "#051A10", mid: "#0F3D26", high: "#17824C" },
+  { key: "jaune", threshold: 100, label: "Jaune", emoji: "🟡", mode: "dark", base: "#1F1605", mid: "#4D3800", high: "#8A6800" },
+  { key: "marron", threshold: 200, label: "Marron", emoji: "🟤", mode: "dark", base: "#1C120A", mid: "#442A17", high: "#7A4A26" },
 ];
+// Progression réelle des paliers à débloquer (le "blanc" est un fond
+// alternatif toujours disponible, pas une récompense — il ne fait donc pas
+// partie de l'échelle utilisée pour calculer le palier le plus haut
+// atteint / le prochain palier, sinon il court-circuiterait "bleu" comme
+// fond "le plus haut débloqué" par défaut puisque les deux ont le seuil 0).
+const BG_PROGRESSION = BG_SKINS.filter((sk) => sk.key !== "blanc");
 
 // Sous-catégories affichées (triées de A à Z) dans le menu "Rechercher un
 // produit". Purement pour orienter la recherche — le texte de la catégorie
@@ -264,6 +280,10 @@ const TRANSLATIONS = {
     trending_empty: "Rien à afficher pour l'instant.",
     trending_count_suffix: "produits trouvés",
     trending_page_label: "Page",
+    category_trending_title: "Tendances dans cette catégorie",
+    category_trending_subtitle: "Mis à jour régulièrement à partir d'annonces Leboncoin, Vinted et eBay, sélectionnées par l'IA.",
+    category_trending_loading: "Chargement des tendances…",
+    category_trending_empty: "Rien à afficher pour l'instant.",
     subscription_title: "Abonnement",
     subscription_current: "Abonnement en cours",
     subscription_free: "Gratuit",
@@ -321,6 +341,10 @@ const TRANSLATIONS = {
     trending_empty: "Nothing to show yet.",
     trending_count_suffix: "products found",
     trending_page_label: "Page",
+    category_trending_title: "Trending in this category",
+    category_trending_subtitle: "Regularly refreshed from Leboncoin, Vinted and eBay listings, curated by AI.",
+    category_trending_loading: "Loading trends…",
+    category_trending_empty: "Nothing to show yet.",
     subscription_title: "Subscription",
     subscription_current: "Current plan",
     subscription_free: "Free",
@@ -378,6 +402,10 @@ const TRANSLATIONS = {
     trending_empty: "Nada que mostrar por ahora.",
     trending_count_suffix: "productos encontrados",
     trending_page_label: "Página",
+    category_trending_title: "Tendencias en esta categoría",
+    category_trending_subtitle: "Actualizado regularmente a partir de anuncios de Leboncoin, Vinted y eBay, seleccionados por IA.",
+    category_trending_loading: "Cargando tendencias…",
+    category_trending_empty: "Nada que mostrar por ahora.",
     subscription_title: "Suscripción",
     subscription_current: "Plan actual",
     subscription_free: "Gratis",
@@ -1219,21 +1247,6 @@ export default function App() {
     return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.fr[key] || key;
   }
 
-  // Thème des panneaux du menu ("dark" navy par défaut, ou "light" pour qui
-  // trouve le fond sombre fatigant) — persisté localement. Le header/hero et
-  // les cartes de résultat restent toujours en navy, seul le menu change.
-  const [menuTheme, setMenuTheme] = useState(() => {
-    try {
-      return localStorage.getItem("estim_menu_theme") || "dark";
-    } catch (e) {
-      return "dark";
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem("estim_menu_theme", menuTheme);
-    } catch (e) {}
-  }, [menuTheme]);
   // Nombre total d'estimations jamais réalisées (à vie, ne redescend
   // jamais même si l'historique visible est limité ou vidé) — sert à
   // débloquer les "habillages" (bronze/argent/or/diamant). Mis en cache en
@@ -1337,18 +1350,22 @@ export default function App() {
   }, [lifetimeAdGenerations]);
 
   function bgSkinForCount(n) {
-    let b = BG_SKINS[0];
-    for (const sk of BG_SKINS) {
+    let b = BG_PROGRESSION[0];
+    for (const sk of BG_PROGRESSION) {
       if (n >= sk.threshold) b = sk;
     }
     return b;
   }
   const highestUnlockedBgSkin = bgSkinForCount(lifetimeAdGenerations);
-  const nextBgSkin = BG_SKINS.find((sk) => sk.threshold > lifetimeAdGenerations) || null;
+  const nextBgSkin = BG_PROGRESSION.find((sk) => sk.threshold > lifetimeAdGenerations) || null;
 
   const [selectedBgSkinKey, setSelectedBgSkinKey] = useState(() => {
     try {
-      return localStorage.getItem("estim_bg_skin") || null;
+      const stored = localStorage.getItem("estim_bg_skin");
+      if (stored) return stored;
+      // Migration : l'ancienne bascule fond sombre/clair du menu a fusionné
+      // dans les "fonds" — qui avait choisi le fond clair garde "blanc".
+      return localStorage.getItem("estim_menu_theme") === "light" ? "blanc" : null;
     } catch (e) {
       return null;
     }
@@ -1376,28 +1393,22 @@ export default function App() {
       BG_SKINS.find((sk) => sk.key === selectedBgSkinKey && (sk.threshold <= lifetimeAdGenerations || isOwnerPreview))) ||
     highestUnlockedBgSkin;
 
+  // Le thème clair/sombre est désormais entièrement dérivé du fond choisi
+  // ("blanc" → light, tout le reste → dark) — il n'y a plus de bascule
+  // séparée dans le menu, voir BG_SKINS plus haut.
+  const menuTheme = activeBgSkin.mode;
   const pt = { ...(PANEL_THEMES[menuTheme] || PANEL_THEMES.dark) };
   // Fond de couleur débloqué : on ne retouche que les grandes surfaces
   // (page, panneaux, header, carte résultat, écran de chargement, zone
-  // photo) — le "bleu" par défaut reste strictement identique à avant.
-  if (activeBgSkin.key !== "bleu") {
-    if (menuTheme === "light") {
-      pt.pageBg = activeBgSkin.lightBase;
-      pt.sheetBg = activeBgSkin.lightBase;
-      pt.headerBg = `linear-gradient(135deg, #FFFFFF 0%, ${activeBgSkin.lightMid} 55%, ${activeBgSkin.lightHigh} 100%)`;
-      pt.resultCardBg = pt.headerBg;
-      pt.loadingBg = `linear-gradient(160deg, #FFFFFF 0%, ${activeBgSkin.lightMid} 100%)`;
-      pt.loadingBorder = activeBgSkin.lightHigh;
-      pt.dropZoneBg = `radial-gradient(circle at 50% 32%, ${activeBgSkin.lightMid} 0%, ${activeBgSkin.lightBase} 72%)`;
-    } else {
-      pt.pageBg = activeBgSkin.darkBase;
-      pt.sheetBg = `linear-gradient(160deg, ${activeBgSkin.darkBase} 0%, ${activeBgSkin.darkMid} 45%, ${activeBgSkin.darkHigh} 100%)`;
-      pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeBgSkin.darkMid} 52%, ${activeBgSkin.darkHigh} 100%)`;
-      pt.resultCardBg = pt.headerBg;
-      pt.loadingBg = `linear-gradient(160deg, ${activeBgSkin.darkHigh} 0%, ${activeBgSkin.darkMid} 100%)`;
-      pt.loadingBorder = activeBgSkin.darkHigh;
-      pt.dropZoneBg = `radial-gradient(circle at 50% 32%, ${activeBgSkin.darkMid} 0%, ${activeBgSkin.darkBase} 72%)`;
-    }
+  // photo) — "bleu" et "blanc" restent strictement identiques à avant.
+  if (activeBgSkin.key !== "bleu" && activeBgSkin.key !== "blanc") {
+    pt.pageBg = activeBgSkin.base;
+    pt.sheetBg = `linear-gradient(160deg, ${activeBgSkin.base} 0%, ${activeBgSkin.mid} 45%, ${activeBgSkin.high} 100%)`;
+    pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeBgSkin.mid} 52%, ${activeBgSkin.high} 100%)`;
+    pt.resultCardBg = pt.headerBg;
+    pt.loadingBg = `linear-gradient(160deg, ${activeBgSkin.high} 0%, ${activeBgSkin.mid} 100%)`;
+    pt.loadingBorder = activeBgSkin.high;
+    pt.dropZoneBg = `radial-gradient(circle at 50% 32%, ${activeBgSkin.mid} 0%, ${activeBgSkin.base} 72%)`;
   }
   // Le haut de l'appli (bandeau + poignée des panneaux) se termine toujours
   // sur l'accent actif: c'est ce qui donne l'impression que "tout change"
@@ -1465,6 +1476,36 @@ export default function App() {
       setSearchLoading(false);
     }
   }
+
+  // Tendances PAR CATÉGORIE (dans "Rechercher un produit", affiché tant que
+  // l'utilisateur n'a pas lancé sa propre recherche texte) — même principe
+  // que "Produits du moment" mais restreint à la catégorie choisie
+  // (worker.js : /trending-category). Mis en cache ici par clé de catégorie
+  // pour éviter de recharger si l'utilisateur navigue entre catégories.
+  const [catTrendingCache, setCatTrendingCache] = useState({}); // { [catKey]: items[] }
+  const [catTrendingLoadingKey, setCatTrendingLoadingKey] = useState(null);
+  const [catTrendingError, setCatTrendingError] = useState(null);
+
+  async function loadCategoryTrending(cat) {
+    if (!cat || catTrendingCache[cat.key] || catTrendingLoadingKey === cat.key) return;
+    setCatTrendingLoadingKey(cat.key);
+    setCatTrendingError(null);
+    try {
+      const res = await fetch(PROXY_URL + "/trending-category?cat=" + encodeURIComponent(cat.key));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur de chargement.");
+      setCatTrendingCache((prev) => ({ ...prev, [cat.key]: data.items || [] }));
+    } catch (e) {
+      console.error(e);
+      setCatTrendingError(e.message || "Erreur de chargement.");
+    } finally {
+      setCatTrendingLoadingKey(null);
+    }
+  }
+  useEffect(() => {
+    if (searchCategory) loadCategoryTrending(searchCategory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchCategory]);
 
   // "Produits du moment" : sélection IA des annonces les plus vues,
   // rafraîchie côté serveur toutes les 12h (worker.js : /trending).
@@ -2789,7 +2830,7 @@ export default function App() {
             display: "flex",
             alignItems: "center",
             gap: 8,
-            background: `linear-gradient(135deg, ${bgSkinUnlockToast.lightHigh} 0%, ${bgSkinUnlockToast.darkHigh} 100%)`,
+            background: `linear-gradient(135deg, ${bgSkinUnlockToast.mid} 0%, ${bgSkinUnlockToast.high} 100%)`,
             color: "#FFFFFF",
             borderRadius: 30,
             padding: "10px 16px",
@@ -4982,41 +5023,8 @@ export default function App() {
                   <Moon size={16} color={accent} />
                   <span style={{ flex: 1 }}>{t("menu_display")}</span>
                 </div>
-                <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                  <button
-                    onClick={() => setMenuTheme("dark")}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #04060C 0%, #152238 60%, #2E4159 100%)",
-                      border: menuTheme === "dark" ? `3px solid ${accent}` : "2px solid rgba(255, 255, 255, 0.25)",
-                      cursor: "pointer",
-                      padding: 0,
-                    }}
-                    aria-label={t("theme_dark")}
-                    title={t("theme_dark")}
-                  />
-                  <button
-                    onClick={() => setMenuTheme("light")}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      background: "#FFFFFF",
-                      border: menuTheme === "light" ? `3px solid ${accent}` : "2px solid rgba(255, 255, 255, 0.25)",
-                      cursor: "pointer",
-                      padding: 0,
-                    }}
-                    aria-label={t("theme_light")}
-                    title={t("theme_light")}
-                  />
-                  <span className="mono" style={{ fontSize: 11, color: pt.subText }}>
-                    {menuTheme === "dark" ? t("theme_dark") : t("theme_light")}
-                  </span>
-                </div>
 
-                <div style={{ borderTop: pt.dashedBorder, marginTop: 12, paddingTop: 12 }}>
+                <div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
                     Habillage ({lifetimeEstimations} estimation{lifetimeEstimations > 1 ? "s" : ""} au total)
                   </div>
@@ -5119,9 +5127,9 @@ export default function App() {
                               width: 34,
                               height: 34,
                               borderRadius: "50%",
-                              background: `linear-gradient(135deg, ${sk.lightHigh} 0%, ${sk.darkMid} 55%, ${sk.darkHigh} 100%)`,
+                              background: `linear-gradient(135deg, ${sk.high} 0%, ${sk.mid} 55%, ${sk.base} 100%)`,
                               border: isActive ? "3px solid #FFFFFF" : "2px solid rgba(255, 255, 255, 0.25)",
-                              boxShadow: isActive ? `0 0 0 2px ${sk.darkHigh}` : "none",
+                              boxShadow: isActive ? `0 0 0 2px ${sk.high}` : "none",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -5324,6 +5332,55 @@ export default function App() {
                   </div>
                 )}
                 {searchError && <p style={{ fontSize: 12, color: pt.errorColor }}>{searchError}</p>}
+
+                {/* Tendances de la catégorie : affichées tant que l'utilisateur
+                    n'a pas lancé sa propre recherche texte (voir searchResults
+                    ci-dessous, qui prend le relais une fois une recherche faite). */}
+                {!searchResults && !searchLoading && (
+                  <div style={{ marginTop: 4 }}>
+                    <div
+                      className="mono"
+                      style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: pt.rowText, marginBottom: 4 }}
+                    >
+                      {t("category_trending_title")}
+                    </div>
+                    <p style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 12 }}>
+                      {t("category_trending_subtitle")}
+                    </p>
+                    {catTrendingLoadingKey === searchCategory.key && !catTrendingCache[searchCategory.key] && (
+                      <div
+                        className="mono"
+                        style={{ fontSize: 12, color: pt.subText, display: "flex", alignItems: "center", gap: 8, padding: "20px 0", justifyContent: "center" }}
+                      >
+                        <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> {t("category_trending_loading")}
+                      </div>
+                    )}
+                    {catTrendingError && !catTrendingCache[searchCategory.key] && (
+                      <p style={{ fontSize: 12, color: pt.errorColor }}>{catTrendingError}</p>
+                    )}
+                    {catTrendingCache[searchCategory.key] &&
+                      (catTrendingCache[searchCategory.key].length === 0 ? (
+                        <p className="mono" style={{ fontSize: 12, color: pt.subText }}>
+                          {t("category_trending_empty")}
+                        </p>
+                      ) : (
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          {catTrendingCache[searchCategory.key].map((it, i) => (
+                            <ProductCard
+                              key={i}
+                              item={it}
+                              theme={menuTheme}
+                              accent={accent}
+                              onEstimate={estimateFromListing}
+                              estimateLabel={t("card_estimate_button")}
+                              estimateTitle={t("card_estimate_title")}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                  </div>
+                )}
+
                 {searchResults &&
                   !searchLoading &&
                   (() => {
