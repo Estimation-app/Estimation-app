@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3 } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 import logoWordmarkDark from "./assets/logo-wordmark.png";
 
@@ -44,6 +44,31 @@ const PLANS = [
   { key: "pro", label: "Pro", price: "9,99 €/mois", quota: 100 },
   { key: "premium", label: "Premium", price: "19,99 €/mois", quota: 300 },
 ];
+
+// "Habillages" débloqués au fil des estimations (fonctionne comme les
+// badges de "Ma collection", mais change carrément l'accent visuel de toute
+// l'appli à la place de l'orange, en plus du choix fond clair/sombre). Le
+// premier ("defaut") correspond à l'orange de marque habituel — il n'est
+// jamais verrouillé. Chaque palier a sa propre teinte + une variante plus
+// foncée (dégradés type bouton) et plus claire (surbrillance).
+const GRADES = [
+  { key: "defaut", threshold: 0, label: "Estim' classique", emoji: "🟠", accent: "#F2662E", accentDark: "#E0501D", accentLight: "#FF8A52" },
+  { key: "bronze", threshold: 100, label: "Bronze", emoji: "🥉", accent: "#C97A3D", accentDark: "#8C5225", accentLight: "#E7A876" },
+  { key: "argent", threshold: 500, label: "Argent", emoji: "🥈", accent: "#8B98A6", accentDark: "#5C6773", accentLight: "#E7ECF1" },
+  { key: "or", threshold: 1000, label: "Or", emoji: "🥇", accent: "#D4A017", accentDark: "#96700D", accentLight: "#F6D978" },
+  { key: "diamant", threshold: 5000, label: "Diamant", emoji: "💎", accent: "#4FC3E8", accentDark: "#1E7FA3", accentLight: "#BDEEFF" },
+];
+
+// Convertit un hex ("#RRGGBB") en triplet "r, g, b" pour construire des
+// rgba(...) dynamiques (bordures/fonds translucides) à partir de l'accent
+// actif, quel que soit le palier débloqué.
+function hexToRgbString(hex) {
+  const clean = (hex || "").replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16) || 0;
+  const g = parseInt(clean.substring(2, 4), 16) || 0;
+  const b = parseInt(clean.substring(4, 6), 16) || 0;
+  return `${r}, ${g}, ${b}`;
+}
 
 // Sous-catégories affichées (triées de A à Z) dans le menu "Rechercher un
 // produit". Purement pour orienter la recherche — le texte de la catégorie
@@ -197,6 +222,7 @@ const TRANSLATIONS = {
     menu_my_estimates: "Mes Estim'",
     menu_search_product: "Rechercher un produit",
     menu_trending: "Produits du moment",
+    menu_collection: "Ma collection",
     menu_subscription: "Abonnement",
     menu_contact: "Contact",
     menu_language: "Langue",
@@ -237,6 +263,7 @@ const TRANSLATIONS = {
     card_estimate_title: "Générer une estimation à partir de cette annonce",
     listing_seed_badge: "Estimation basée sur une annonce en ligne",
     listing_seed_link: "Voir l'annonce d'origine",
+    reestimate_badge: "Réestimation à partir de ton historique — pour voir si le prix a bougé",
   },
   en: {
     hero_title_1: "One photo. One price.",
@@ -252,6 +279,7 @@ const TRANSLATIONS = {
     menu_my_estimates: "My Estim'",
     menu_search_product: "Search a product",
     menu_trending: "Trending products",
+    menu_collection: "My collection",
     menu_subscription: "Subscription",
     menu_contact: "Contact",
     menu_language: "Language",
@@ -292,6 +320,7 @@ const TRANSLATIONS = {
     card_estimate_title: "Generate an estimate from this listing",
     listing_seed_badge: "Estimate based on an online listing",
     listing_seed_link: "View the original listing",
+    reestimate_badge: "Re-checked from your history — to see if the price has moved",
   },
   es: {
     hero_title_1: "Una foto. Un precio.",
@@ -307,6 +336,7 @@ const TRANSLATIONS = {
     menu_my_estimates: "Mis Estim'",
     menu_search_product: "Buscar un producto",
     menu_trending: "Productos del momento",
+    menu_collection: "Mi colección",
     menu_subscription: "Suscripción",
     menu_contact: "Contacto",
     menu_language: "Idioma",
@@ -347,6 +377,7 @@ const TRANSLATIONS = {
     card_estimate_title: "Generar una estimación a partir de este anuncio",
     listing_seed_badge: "Estimación basada en un anuncio en línea",
     listing_seed_link: "Ver el anuncio original",
+    reestimate_badge: "Reestimación desde tu historial — para ver si el precio cambió",
   },
 };
 
@@ -356,7 +387,7 @@ const TRANSLATIONS = {
 // gauche à "facile" côté droit (ou "pas rare" / "rare" pour la rareté).
 // `value` peut être null/undefined si l'IA ne l'a pas renvoyée (ex: anciens
 // résultats de l'historique) — dans ce cas on affiche le rail vide, sans curseur.
-function Gauge({ label, value, lowLabel, highLabel, theme = "dark" }) {
+function Gauge({ label, value, lowLabel, highLabel, theme = "dark", accent = "#F2662E", accentRgb = "242, 102, 46" }) {
   const pt = PANEL_THEMES[theme] || PANEL_THEMES.dark;
   const v = typeof value === "number" && !isNaN(value) ? Math.max(0, Math.min(10, value)) : null;
   const pct = v !== null ? v * 10 : null;
@@ -388,8 +419,8 @@ function Gauge({ label, value, lowLabel, highLabel, theme = "dark" }) {
             borderRadius: 3,
             background:
               theme === "light"
-                ? "linear-gradient(90deg, rgba(21,34,56,0.12) 0%, rgba(242,102,46,0.45) 100%)"
-                : "linear-gradient(90deg, rgba(255,255,255,0.16) 0%, rgba(242,102,46,0.45) 100%)",
+                ? `linear-gradient(90deg, rgba(21,34,56,0.12) 0%, rgba(${accentRgb},0.45) 100%)`
+                : `linear-gradient(90deg, rgba(255,255,255,0.16) 0%, rgba(${accentRgb},0.45) 100%)`,
             border: `1px solid ${pt.rowBorder.replace("1px solid ", "")}`,
           }}
         />
@@ -412,7 +443,7 @@ function Gauge({ label, value, lowLabel, highLabel, theme = "dark" }) {
                 fontSize: 10,
                 fontWeight: 800,
                 color: "#FFFFFF",
-                background: "#F2662E",
+                background: accent,
                 borderRadius: 8,
                 padding: "2px 6px",
                 whiteSpace: "nowrap",
@@ -426,7 +457,7 @@ function Gauge({ label, value, lowLabel, highLabel, theme = "dark" }) {
                 width: 16,
                 height: 16,
                 borderRadius: "50%",
-                background: "#F2662E",
+                background: accent,
                 border: "3px solid #FFFFFF",
                 boxShadow: "0 2px 6px rgba(21, 34, 56, 0.35)",
                 display: "block",
@@ -444,11 +475,182 @@ function Gauge({ label, value, lowLabel, highLabel, theme = "dark" }) {
   );
 }
 
+// Découpe un texte sur plusieurs lignes centrées dans un <canvas> (pas
+// d'équivalent natif à fillText multi-lignes) — utilisé par shareResult()
+// pour composer la carte visuelle partageable.
+function canvasWrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+  const words = (text || "").split(" ");
+  const lines = [];
+  let line = "";
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + " ";
+    if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+      lines.push(line.trim());
+      line = words[n] + " ";
+    } else {
+      line = testLine;
+    }
+  }
+  lines.push(line.trim());
+  const kept = lines.slice(0, maxLines);
+  const startY = y - ((kept.length - 1) * lineHeight) / 2;
+  kept.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+}
+
+// Petit graphique de tendance façon "trading" (ligne + zone dégradée, vert
+// si ça monte, rouge si ça baisse, curseur tactile/souris avec info-bulle) —
+// aucune dépendance externe, tout en SVG à la main. Utilisé pour la tendance
+// de marché IA (onglet "Statistiques" d'un résultat) et pour la valeur de la
+// collection dans le temps (panneau "Ma collection").
+function PriceEvolutionChart({ points, theme = "dark", height = 130, unit = "€", formatValue }) {
+  const pt = PANEL_THEMES[theme] || PANEL_THEMES.dark;
+  const [hoverIndex, setHoverIndex] = useState(null);
+  const svgRef = useRef(null);
+  const W = 320;
+  const H = height;
+  const PADX = 6;
+  const PADY = 14;
+
+  const clean = (points || []).filter((p) => typeof p.value === "number" && !isNaN(p.value));
+  if (clean.length < 2) return null;
+
+  const values = clean.map((p) => p.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || Math.max(1, max * 0.1) || 1;
+
+  const xAt = (i) => PADX + (i * (W - 2 * PADX)) / Math.max(clean.length - 1, 1);
+  const yAt = (v) => H - PADY - ((v - min) / range) * (H - 2 * PADY);
+
+  const linePath = clean.map((p, i) => `${i === 0 ? "M" : "L"} ${xAt(i).toFixed(1)} ${yAt(p.value).toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L ${xAt(clean.length - 1).toFixed(1)} ${H - PADY} L ${xAt(0).toFixed(1)} ${H - PADY} Z`;
+
+  const first = values[0];
+  const last = values[values.length - 1];
+  const up = last >= first;
+  const color = up ? "#4ADE80" : "#F87171";
+  const deltaPct = first !== 0 ? Math.round(((last - first) / Math.abs(first)) * 100) : 0;
+
+  const fmt = formatValue || ((v) => `${Math.round(v)} ${unit}`);
+
+  function handleMove(clientX) {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const relX = ((clientX - rect.left) / rect.width) * W;
+    let nearest = 0;
+    let nearestDist = Infinity;
+    clean.forEach((_, i) => {
+      const d = Math.abs(xAt(i) - relX);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = i;
+      }
+    });
+    setHoverIndex(nearest);
+  }
+
+  const hovered = hoverIndex !== null ? clean[hoverIndex] : null;
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div
+          className="mono"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: 12,
+            fontWeight: 700,
+            color,
+            background: up ? "rgba(74, 222, 128, 0.14)" : "rgba(248, 113, 113, 0.14)",
+            borderRadius: 8,
+            padding: "3px 8px",
+          }}
+        >
+          {up ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+          {deltaPct > 0 ? "+" : ""}
+          {deltaPct}%
+        </div>
+        {hovered && (
+          <div className="mono" style={{ fontSize: 11, color: pt.subText }}>
+            {hovered.label} · <strong style={{ color: pt.strongColor }}>{fmt(hovered.value)}</strong>
+          </div>
+        )}
+      </div>
+
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        height={H}
+        style={{ display: "block", touchAction: "pan-y" }}
+        onMouseMove={(e) => handleMove(e.clientX)}
+        onMouseLeave={() => setHoverIndex(null)}
+        onTouchStart={(e) => handleMove(e.touches[0].clientX)}
+        onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+        onTouchEnd={() => setHoverIndex(null)}
+      >
+        <defs>
+          <linearGradient id={`priceEvoGrad-${theme}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        <line
+          x1={PADX}
+          y1={H - PADY}
+          x2={W - PADX}
+          y2={H - PADY}
+          stroke={pt.rowBorder.replace("1px solid ", "")}
+          strokeWidth="1"
+        />
+
+        <path d={areaPath} fill={`url(#priceEvoGrad-${theme})`} stroke="none" />
+        <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+
+        {hoverIndex !== null && (
+          <>
+            <line
+              x1={xAt(hoverIndex)}
+              y1={PADY / 2}
+              x2={xAt(hoverIndex)}
+              y2={H - PADY}
+              stroke={pt.chevronColor}
+              strokeWidth="1"
+              strokeDasharray="3 3"
+            />
+            <circle cx={xAt(hoverIndex)} cy={yAt(clean[hoverIndex].value)} r="4" fill={color} stroke={pt.pageBg} strokeWidth="2" />
+          </>
+        )}
+
+        {hoverIndex === null && (
+          <circle
+            cx={xAt(clean.length - 1)}
+            cy={yAt(clean[clean.length - 1].value)}
+            r="4"
+            fill={color}
+            stroke={pt.pageBg}
+            strokeWidth="2"
+          />
+        )}
+      </svg>
+
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+        <span className="mono" style={{ fontSize: 10, color: pt.chevronColor }}>{clean[0].label}</span>
+        <span className="mono" style={{ fontSize: 10, color: pt.chevronColor }}>{clean[clean.length - 1].label}</span>
+      </div>
+    </div>
+  );
+}
+
 // Carte cliquable pour une annonce réelle (image + titre + prix + badge de
 // plateforme), utilisée à la fois par "Rechercher un produit" et "Produits
 // du moment" — clique = ouvre la vraie annonce d'origine dans un nouvel
 // onglet (aucune donnée n'est recréée/fabriquée, on relie juste vers elle).
-function ProductCard({ item, theme = "dark", onEstimate, estimateLabel, estimateTitle }) {
+function ProductCard({ item, theme = "dark", onEstimate, estimateLabel, estimateTitle, accent = "#F2662E" }) {
   if (!item || !item.link) return null;
   const pt = PANEL_THEMES[theme] || PANEL_THEMES.dark;
   return (
@@ -528,7 +730,7 @@ function ProductCard({ item, theme = "dark", onEstimate, estimateLabel, estimate
           >
             {item.title}
           </div>
-          <div className="mono" style={{ fontSize: 13, fontWeight: 800, color: "#F2662E" }}>
+          <div className="mono" style={{ fontSize: 13, fontWeight: 800, color: accent }}>
             {item.price || (item.extracted_price ? item.extracted_price + " €" : "")}
           </div>
         </div>
@@ -583,6 +785,36 @@ export default function App() {
   const [adLoading, setAdLoading] = useState(false);
   const [adError, setAdError] = useState(null);
   const [adCopied, setAdCopied] = useState(false);
+  const [shareStatus, setShareStatus] = useState(null); // null | "generating" | "downloaded"
+  const [referralCopied, setReferralCopied] = useState(false);
+
+  function referralLink() {
+    if (!user) return "";
+    return `${window.location.origin}/?ref=${user.id.slice(0, 8)}`;
+  }
+  function copyReferralLink() {
+    const link = referralLink();
+    if (!link) return;
+    navigator.clipboard
+      .writeText(link)
+      .then(() => {
+        setReferralCopied(true);
+        setTimeout(() => setReferralCopied(false), 2000);
+      })
+      .catch(() => {});
+  }
+  async function shareReferralLink() {
+    const link = referralLink();
+    if (!link) return;
+    const text = "Estime la valeur de revente de tes objets en une photo avec estim' !";
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "estim'", text, url: link });
+      } catch (e) {}
+    } else {
+      copyReferralLink();
+    }
+  }
   const [adGenCount, setAdGenCount] = useState(0); // nb de générations/régénérations d'annonce pour l'estimation en cours (max 3, pour éviter un abus d'appels IA gratuits)
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
 
@@ -879,7 +1111,96 @@ export default function App() {
       localStorage.setItem("estim_menu_theme", menuTheme);
     } catch (e) {}
   }, [menuTheme]);
-  const pt = PANEL_THEMES[menuTheme] || PANEL_THEMES.dark;
+  // Nombre total d'estimations jamais réalisées (à vie, ne redescend
+  // jamais même si l'historique visible est limité ou vidé) — sert à
+  // débloquer les "habillages" (bronze/argent/or/diamant). Mis en cache en
+  // local et recalé sur Supabase (comptage exact) à la connexion, en
+  // gardant toujours le plus grand des deux valeurs.
+  const [lifetimeEstimations, setLifetimeEstimations] = useState(() => {
+    try {
+      return parseInt(localStorage.getItem("estim_lifetime_count") || "0", 10) || 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("estim_lifetime_count", String(lifetimeEstimations));
+    } catch (e) {}
+  }, [lifetimeEstimations]);
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { count, error } = await supabase
+        .from("estimations")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if (!error && typeof count === "number") {
+        setLifetimeEstimations((prev) => Math.max(prev, count));
+      }
+    })();
+  }, [user]);
+
+  function gradeForCount(n) {
+    let g = GRADES[0];
+    for (const gr of GRADES) {
+      if (n >= gr.threshold) g = gr;
+    }
+    return g;
+  }
+  const highestUnlockedGrade = gradeForCount(lifetimeEstimations);
+  const nextGrade = GRADES.find((g) => g.threshold > lifetimeEstimations) || null;
+
+  // Palier choisi par l'utilisateur (peut revenir à un palier déjà débloqué
+  // moins "haut" s'il préfère ce style) — bascule automatiquement sur le
+  // tout dernier palier débloqué dès qu'un nouveau seuil est franchi, avec
+  // un petit message de félicitations.
+  const [selectedGradeKey, setSelectedGradeKey] = useState(() => {
+    try {
+      return localStorage.getItem("estim_grade") || null;
+    } catch (e) {
+      return null;
+    }
+  });
+  useEffect(() => {
+    try {
+      if (selectedGradeKey) localStorage.setItem("estim_grade", selectedGradeKey);
+    } catch (e) {}
+  }, [selectedGradeKey]);
+  const prevGradeKeyRef = useRef(highestUnlockedGrade.key);
+  const [gradeUnlockToast, setGradeUnlockToast] = useState(null);
+  useEffect(() => {
+    if (highestUnlockedGrade.key !== prevGradeKeyRef.current) {
+      prevGradeKeyRef.current = highestUnlockedGrade.key;
+      if (highestUnlockedGrade.key !== "defaut") {
+        setSelectedGradeKey(highestUnlockedGrade.key);
+        setGradeUnlockToast(highestUnlockedGrade);
+        setTimeout(() => setGradeUnlockToast(null), 5000);
+      }
+    }
+  }, [highestUnlockedGrade.key]);
+
+  const activeGrade =
+    (selectedGradeKey &&
+      GRADES.find((g) => g.key === selectedGradeKey && g.threshold <= lifetimeEstimations)) ||
+    highestUnlockedGrade;
+  const accent = activeGrade.accent;
+  const accentDark = activeGrade.accentDark;
+  const accentLight = activeGrade.accentLight;
+  const accentRgb = hexToRgbString(activeGrade.accent);
+
+  const pt = { ...(PANEL_THEMES[menuTheme] || PANEL_THEMES.dark) };
+  // Le haut de l'appli (bandeau + poignée des panneaux) se termine toujours
+  // sur l'accent actif: c'est ce qui donne l'impression que "tout change"
+  // visuellement d'un palier à l'autre, sans toucher au fond navy/clair.
+  pt.topBarGradient =
+    menuTheme === "light"
+      ? `linear-gradient(90deg, #D7DEE6 0%, #93A4BC 35%, ${accent} 100%)`
+      : `linear-gradient(90deg, #152238 0%, #29394F 35%, ${accent} 100%)`;
+  pt.grabBg =
+    menuTheme === "light"
+      ? `linear-gradient(90deg, #152238 0%, ${accent} 100%)`
+      : `linear-gradient(90deg, rgba(255,255,255,0.4) 0%, ${accent} 100%)`;
 
   // "Rechercher un produit" : catégorie choisie puis recherche texte libre,
   // résultats = vraies annonces (image cliquable → lien direct vers
@@ -971,6 +1292,49 @@ export default function App() {
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
   const [showContact, setShowContact] = useState(false);
 
+  // "Ma collection" : panneau gamification/portefeuille (valeur totale,
+  // badges, streak, courbe de valeur dans le temps) — calculé côté client à
+  // partir de l'historique existant, pas de nouvel appel serveur.
+  const [showCollection, setShowCollection] = useState(false);
+  const isPremiumPlan = !!(profile && profile.plan !== "gratuit" && profile.subscription_status === "active");
+  const numericHistory = history.filter(
+    (h) => typeof h.prix_bas === "number" && typeof h.prix_haut === "number" && h.date
+  );
+  const portfolioValue = numericHistory.reduce((sum, h) => sum + (h.prix_bas + h.prix_haut) / 2, 0);
+  const portfolioBestFind = numericHistory.reduce(
+    (best, h) => Math.max(best, (h.prix_bas + h.prix_haut) / 2),
+    0
+  );
+  const portfolioSortedAsc = [...numericHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+  let portfolioRunning = 0;
+  const portfolioChartPoints = portfolioSortedAsc.map((h) => {
+    portfolioRunning += (h.prix_bas + h.prix_haut) / 2;
+    return {
+      label: new Date(h.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+      value: portfolioRunning,
+    };
+  });
+  const portfolioStreak = (() => {
+    const days = new Set(history.map((h) => new Date(h.date).toDateString()));
+    let streak = 0;
+    const cursor = new Date();
+    while (days.has(cursor.toDateString())) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  })();
+  const COLLECTION_BADGES = [
+    { id: "first", emoji: "🎉", label: "Premier scan", test: () => history.length >= 1 },
+    { id: "five", emoji: "📸", label: "5 estimations", test: () => history.length >= 5 },
+    { id: "ten", emoji: "🔥", label: "10 estimations", test: () => history.length >= 10 },
+    { id: "fifty", emoji: "🏆", label: "50 estimations", test: () => history.length >= 50 },
+    { id: "streak3", emoji: "⚡", label: "3 jours de suite", test: () => portfolioStreak >= 3 },
+    { id: "bigfind", emoji: "💰", label: "Trouvaille à +200 €", test: () => portfolioBestFind >= 200 },
+    { id: "collector500", emoji: "📦", label: "Collection à 500 €", test: () => portfolioValue >= 500 },
+    { id: "collector2000", emoji: "💎", label: "Collection à 2000 €", test: () => portfolioValue >= 2000 },
+  ];
+
   const HISTORY_KEY = "estimateur_historique";
   const [history, setHistory] = useState(() => {
     try {
@@ -1011,6 +1375,9 @@ export default function App() {
   }, [user]);
 
   async function addToHistory(entry) {
+    // Compte à vie pour les paliers d'habillage (bronze/argent/or/diamant) —
+    // jamais décrémenté, y compris si l'historique est ensuite vidé.
+    setLifetimeEstimations((prev) => prev + 1);
     if (user) {
       try {
         await supabase.from("estimations").insert({
@@ -1357,11 +1724,30 @@ export default function App() {
       link: item.link || null,
       image: item.image || null,
       category: (searchCategory && searchCategory.label) || null,
+      // true quand on relance une estimation depuis "Mes Estim'" (bouton
+      // "Réestimer") plutôt que depuis une vraie annonce en ligne — sert
+      // juste à adapter le petit badge affiché sur la carte de résultat.
+      fromHistory: !!item.fromHistory,
     };
     setListingSeed(seed);
     setImage({ dataUrl: item.image || null, mediaType: null, base64: null, debug: null });
 
     await runEstimationCore("", seed);
+  }
+
+  // Relance une estimation à partir d'une entrée déjà dans l'historique, pour
+  // voir si le prix a bougé depuis — un substitut léger à une vraie alerte de
+  // prix automatique (pas d'infra de notifications push côté serveur).
+  async function reestimateFromHistory(h) {
+    setShowHistory(false);
+    await estimateFromListing({
+      title: h.objet,
+      extracted_price: null,
+      source: null,
+      link: null,
+      image: h.image,
+      fromHistory: true,
+    });
   }
 
   // Permet de corriger un détail après coup (ex: l'IA a estimé "grande
@@ -1431,6 +1817,117 @@ export default function App() {
       .catch(() => {
         setAdError("Impossible de copier automatiquement, sélectionne le texte à la main.");
       });
+  }
+
+  // Génère une petite carte visuelle (canvas) reprenant l'objet, le prix et
+  // le branding estim', puis la propose au partage natif (réseaux sociaux,
+  // messages...) — repli en téléchargement si le partage n'est pas dispo. Un
+  // levier de croissance simple: chaque partage fait connaître l'appli.
+  async function shareResult() {
+    if (!result) return;
+    setShareStatus("generating");
+    try {
+      try {
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      } catch (e) {}
+
+      const W = 1080;
+      const H = 1350;
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d");
+
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      grad.addColorStop(0, "#04060C");
+      grad.addColorStop(0.55, "#152238");
+      grad.addColorStop(1, "#2E4159");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      const photoSrc = (listingSeed && listingSeed.image) || (image && image.dataUrl);
+      if (photoSrc) {
+        try {
+          const img = await new Promise((resolve, reject) => {
+            const im = new Image();
+            im.onload = () => resolve(im);
+            im.onerror = reject;
+            im.src = photoSrc;
+          });
+          const size = 760;
+          const sx = (W - size) / 2;
+          const sy = 100;
+          const radius = 28;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(sx + radius, sy);
+          ctx.arcTo(sx + size, sy, sx + size, sy + size, radius);
+          ctx.arcTo(sx + size, sy + size, sx, sy + size, radius);
+          ctx.arcTo(sx, sy + size, sx, sy, radius);
+          ctx.arcTo(sx, sy, sx + size, sy, radius);
+          ctx.closePath();
+          ctx.clip();
+          const ratio = Math.max(size / img.width, size / img.height);
+          const dw = img.width * ratio;
+          const dh = img.height * ratio;
+          ctx.drawImage(img, sx + (size - dw) / 2, sy + (size - dh) / 2, dw, dh);
+          ctx.restore();
+        } catch (e) {
+          // image non chargeable (ex: CORS sur une image externe) : on
+          // continue simplement sans elle plutôt que de bloquer le partage.
+        }
+      }
+
+      ctx.textAlign = "center";
+      ctx.fillStyle = accent;
+      ctx.font = "700 32px 'JetBrains Mono', monospace";
+      ctx.fillText((result.categorie || "").toUpperCase(), W / 2, 945);
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "600 46px Fraunces, Georgia, serif";
+      canvasWrapText(ctx, result.objet || "", W / 2, 1005, 900, 54, 2);
+
+      ctx.fillStyle = accent;
+      ctx.font = "800 90px 'JetBrains Mono', monospace";
+      ctx.fillText(`${result.prix_bas}–${result.prix_haut} €`, W / 2, 1175);
+
+      ctx.fillStyle = "#B9C3D1";
+      ctx.font = "500 28px Fraunces, Georgia, serif";
+      ctx.fillText("estimé avec estim'", W / 2, 1275);
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      if (!blob) {
+        setShareStatus(null);
+        return;
+      }
+      const file = new File([blob], "estimation-estim.png", { type: "image/png" });
+      const shareText = `${result.objet} — estimé à ${result.prix_bas}–${result.prix_haut} € avec estim' !`;
+
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ title: "estim'", text: shareText, files: [file] });
+          setShareStatus(null);
+        } else if (navigator.share) {
+          await navigator.share({ title: "estim'", text: shareText });
+          setShareStatus(null);
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "estimation-estim.png";
+          a.click();
+          URL.revokeObjectURL(url);
+          setShareStatus("downloaded");
+          setTimeout(() => setShareStatus(null), 2500);
+        }
+      } catch (e) {
+        // partage annulé par l'utilisateur ou erreur navigateur: rien à
+        // afficher, ce n'est pas une vraie erreur.
+        setShareStatus(null);
+      }
+    } catch (e) {
+      setShareStatus(null);
+    }
   }
 
   // detailsOverride permet de relancer immédiatement une estimation avec un
@@ -1767,7 +2264,8 @@ export default function App() {
                 "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
                 "\"facilite_vente\" (0 = très difficile à vendre car peu de demande sur ce type de plateformes d'occasion, 10 = se vend très facilement/vite, en te basant sur le nombre d'annonces trouvées et ta connaissance générale de la demande pour ce type de produit), " +
                 "\"rarete\" (0 = produit courant qu'on trouve facilement partout, 10 = produit très rare/recherché/difficile à trouver). " +
-                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10}',
+                "Donne aussi une tendance de marché sur les 5 dernières années pour CE TYPE de produit précis (\"tendance_marche\"): un tableau de 6 points allant d'il y a 5 ans à aujourd'hui, chaque point avec \"label\" (ex: \"2021\", \"2022\"... jusqu'à \"2026\" ou \"auj.\" pour le dernier) et \"indice\" (nombre, 100 = niveau de prix actuel de ce point précédent). Base-toi sur ta connaissance réelle de l'évolution de la cote de cette catégorie: les objets qui prennent de la valeur avec le temps (vintage recherché, collector, édition limitée) doivent avoir un indice qui MONTE vers 100 en fin de période, ceux qui se déprécient (électronique récente, mobilier neuf de grande diffusion) doivent avoir un indice qui BAISSE vers 100, et un marché de l'occasion ne bouge presque jamais en ligne parfaitement droite: varie légèrement chaque point plutôt qu'une progression linéaire. " +
+                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [{"label": "...", "indice": nombre}, ...]}',
             },
           ], "claude-haiku-4-5-20251001");
           const extra = extractJson(conseilText);
@@ -1794,6 +2292,7 @@ export default function App() {
             alerte: extra.alerte || null,
             facilite_vente: typeof extra.facilite_vente === "number" ? extra.facilite_vente : null,
             rarete: typeof extra.rarete === "number" ? extra.rarete : null,
+            tendance_marche: Array.isArray(extra.tendance_marche) ? extra.tendance_marche : null,
             confiance: confidenceLevel === 2 ? "haute" : confidenceLevel === 1 ? "moyenne" : "basse",
             source: usedSource,
             listings: usedResults,
@@ -1820,7 +2319,8 @@ export default function App() {
               "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
               "\"facilite_vente\" (0 = très difficile à vendre car peu de demande, 10 = se vend très facilement/vite) et " +
               "\"rarete\" (0 = produit courant, 10 = produit très rare/recherché), en te basant sur ta connaissance générale du marché de l'occasion. " +
-              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10}',
+              "Donne aussi une tendance de marché sur les 5 dernières années pour CE TYPE de produit (\"tendance_marche\"): un tableau de 6 points d'il y a 5 ans à aujourd'hui, chaque point avec \"label\" (ex: \"2021\"... jusqu'à \"auj.\") et \"indice\" (100 = niveau actuel), en montant vers 100 si ce type d'objet prend de la valeur avec le temps, en descendant vers 100 s'il se déprécie, avec de légères variations plutôt qu'une ligne droite. " +
+              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [{"label": "...", "indice": nombre}, ...]}',
           },
         ], "claude-haiku-4-5-20251001");
         const fallback = extractJson(priceText);
@@ -1835,6 +2335,7 @@ export default function App() {
           prix_haut: fbHaut,
           facilite_vente: typeof fallback.facilite_vente === "number" ? fallback.facilite_vente : null,
           rarete: typeof fallback.rarete === "number" ? fallback.rarete : null,
+          tendance_marche: Array.isArray(fallback.tendance_marche) ? fallback.tendance_marche : null,
           confiance: "basse",
           source: "estimation IA (annonces réelles indisponibles: " + marketError.message + ")",
           listings: [],
@@ -2028,6 +2529,34 @@ export default function App() {
           zIndex: 50,
         }}
       />
+
+      {gradeUnlockToast && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            top: 14,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 60,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: `linear-gradient(135deg, ${gradeUnlockToast.accentLight} 0%, ${gradeUnlockToast.accent} 55%, ${gradeUnlockToast.accentDark} 100%)`,
+            color: "#152238",
+            borderRadius: 30,
+            padding: "10px 16px",
+            boxShadow: "0 8px 24px rgba(4, 6, 12, 0.4)",
+            maxWidth: "90vw",
+          }}
+        >
+          <span style={{ fontSize: 18 }}>{gradeUnlockToast.emoji}</span>
+          <span className="mono" style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
+            Palier {gradeUnlockToast.label} débloqué !
+          </span>
+        </div>
+      )}
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
         * { box-sizing: border-box; }
@@ -2035,7 +2564,7 @@ export default function App() {
         .mono { font-family: 'JetBrains Mono', monospace; }
         button { font-family: inherit; cursor: pointer; }
         .btn-primary {
-          background: linear-gradient(135deg, #F2662E 0%, #E0501D 100%);
+          background: linear-gradient(135deg, ${accent} 0%, ${accentDark} 100%);
           color: #FFFFFF;
           border: none;
           padding: 14px 22px;
@@ -2048,10 +2577,10 @@ export default function App() {
           justify-content: center;
           gap: 8px;
           width: 100%;
-          box-shadow: 0 6px 16px rgba(242, 102, 46, 0.32);
+          box-shadow: 0 6px 16px rgba(${accentRgb}, 0.32);
           transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-        .btn-primary:active { transform: scale(0.98); box-shadow: 0 3px 10px rgba(242, 102, 46, 0.28); }
+        .btn-primary:active { transform: scale(0.98); box-shadow: 0 3px 10px rgba(${accentRgb}, 0.28); }
         .btn-primary:disabled { opacity: 0.55; box-shadow: none; }
         .btn-ghost {
           background: transparent;
@@ -2077,14 +2606,14 @@ export default function App() {
           flex-shrink: 0;
         }
         .btn-mic.listening {
-          background: #F2662E;
+          background: ${accent};
           color: #EEF1F5;
-          border-color: #F2662E;
+          border-color: ${accent};
           animation: pulse 1.4s ease-in-out infinite;
         }
         @keyframes pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(242, 102, 46, 0.4); }
-          50% { box-shadow: 0 0 0 6px rgba(242, 102, 46, 0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(${accentRgb}, 0.4); }
+          50% { box-shadow: 0 0 0 6px rgba(${accentRgb}, 0); }
         }
         .tag-spin-scene {
           perspective: 260px;
@@ -2092,7 +2621,7 @@ export default function App() {
         .tag-spin-wrap {
           animation: tagSpin3d 1.8s linear infinite;
           transform-style: preserve-3d;
-          filter: drop-shadow(0 6px 10px rgba(242, 102, 46, 0.4));
+          filter: drop-shadow(0 6px 10px rgba(${accentRgb}, 0.4));
         }
         @keyframes tagSpin3d {
           0% { transform: rotateY(0deg) rotateX(12deg); }
@@ -2102,7 +2631,7 @@ export default function App() {
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: #F2662E;
+          background: ${accent};
           display: inline-block;
           animation: pulseDot 1.2s ease-in-out infinite;
         }
@@ -2111,7 +2640,7 @@ export default function App() {
           40% { opacity: 1; transform: scale(1.2); }
         }
         .drop-zone {
-          border: 2px dashed #F2662E;
+          border: 2px dashed ${accent};
           border-radius: 18px;
           width: 100%;
           aspect-ratio: 4/3;
@@ -2131,7 +2660,7 @@ export default function App() {
           content: "";
           position: absolute;
           inset: 8px;
-          border: 1px solid rgba(242, 102, 46, 0.35);
+          border: 1px solid rgba(${accentRgb}, 0.35);
           border-radius: 12px;
           pointer-events: none;
         }
@@ -2139,7 +2668,7 @@ export default function App() {
         .tag-card {
           background: ${pt.formCardBg};
           border: 1px solid ${pt.rowBorder.replace("1px solid ", "")};
-          border-top: 3px solid #F2662E;
+          border-top: 3px solid ${accent};
           border-radius: 16px;
           position: relative;
           padding: 26px 22px 22px;
@@ -2159,13 +2688,13 @@ export default function App() {
         }
         .tag-card-result {
           background: ${pt.resultCardBg};
-          border-color: rgba(242, 102, 46, 0.4);
+          border-color: rgba(${accentRgb}, 0.4);
           box-shadow: 0 14px 32px rgba(4, 6, 12, 0.35);
           overflow: hidden;
         }
         .tag-card-result::before {
           background: ${pt.pageBg};
-          border-color: rgba(242, 102, 46, 0.4);
+          border-color: rgba(${accentRgb}, 0.4);
         }
         .tag-card-result .tag-card-watermark {
           position: absolute;
@@ -2179,7 +2708,7 @@ export default function App() {
           display: inline-flex;
           align-items: baseline;
           gap: 6px;
-          background: linear-gradient(135deg, #F2662E 0%, #FF8A52 100%);
+          background: linear-gradient(135deg, ${accent} 0%, ${accentLight} 100%);
           color: #152238;
           border-radius: 12px;
           padding: 10px 16px;
@@ -2235,7 +2764,7 @@ export default function App() {
           >
             <path
               d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
-              fill="#F2662E"
+              fill={accent}
             />
             <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
           </svg>
@@ -2271,7 +2800,7 @@ export default function App() {
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 color: "#152238",
-                background: "#F2662E",
+                background: accent,
                 borderRadius: 20,
                 padding: "3px 9px",
               }}
@@ -2285,7 +2814,7 @@ export default function App() {
           >
             {t("hero_title_1")}
             <br />
-            <span style={{ color: "#F2662E" }}>{t("hero_title_2")}</span>
+            <span style={{ color: accent }}>{t("hero_title_2")}</span>
           </h1>
           <p style={{ marginTop: 10, fontSize: 14, color: pt.subText, lineHeight: 1.5, position: "relative" }}>
             {t("hero_subtitle")}
@@ -2324,7 +2853,7 @@ export default function App() {
 
         {!image && (
           <label className="drop-zone" htmlFor="photo-input">
-            <Camera size={30} strokeWidth={1.5} style={{ color: "#F2662E" }} />
+            <Camera size={30} strokeWidth={1.5} style={{ color: accent }} />
             <div style={{ fontSize: 14, fontWeight: 600 }}>{t("drop_zone_title")}</div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>{t("drop_zone_sub")}</div>
             <input
@@ -2353,7 +2882,7 @@ export default function App() {
             className="mono"
             style={{
               fontSize: 12,
-              color: "#F2662E",
+              color: accent,
               background: "#FDECE3",
               border: "1px solid #F3C6A9",
               borderRadius: 3,
@@ -2404,7 +2933,7 @@ export default function App() {
                     <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
                       <path
                         d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
-                        fill="#F2662E"
+                        fill={accent}
                       />
                       <circle cx="7.5" cy="7.5" r="1.7" fill="#152238" />
                     </svg>
@@ -2444,7 +2973,7 @@ export default function App() {
                     Précisions (optionnel) — contenance, état, modèle exact...
                   </label>
                   {isListening && (
-                    <span className="mono" style={{ fontSize: 11, color: "#F2662E" }}>
+                    <span className="mono" style={{ fontSize: 11, color: accent }}>
                       ● écoute…
                     </span>
                   )}
@@ -2512,7 +3041,7 @@ export default function App() {
 
             {status === "vehicule_form" && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 10 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 10 }}>
                   🚗 quelques précisions sur le véhicule
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -2600,7 +3129,7 @@ export default function App() {
 
             {status === "immobilier_form" && (
               <div className="tag-card">
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 10 }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 10 }}>
                   🏠 quelques précisions sur le bien
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -2688,7 +3217,7 @@ export default function App() {
                 className="mono"
                 style={{
                   fontSize: 12,
-                  color: "#F2662E",
+                  color: accent,
                   background: "#FDECE3",
                   border: "1px solid #F3C6A9",
                   borderRadius: 3,
@@ -2706,11 +3235,11 @@ export default function App() {
                 <svg aria-hidden="true" viewBox="0 0 24 24" width="180" height="180" fill="none" className="tag-card-watermark">
                   <path
                     d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
-                    fill="#F2662E"
+                    fill={accent}
                   />
                   <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
                 </svg>
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4, position: "relative" }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   🎭 mode "estimer tout, même n'importe quoi"
                 </div>
                 <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
@@ -2745,11 +3274,11 @@ export default function App() {
                 <svg aria-hidden="true" viewBox="0 0 24 24" width="180" height="180" fill="none" className="tag-card-watermark">
                   <path
                     d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
-                    fill="#F2662E"
+                    fill={accent}
                   />
                   <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
                 </svg>
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4, position: "relative" }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
                 </div>
                 <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
@@ -2789,11 +3318,11 @@ export default function App() {
                 <svg aria-hidden="true" viewBox="0 0 24 24" width="180" height="180" fill="none" className="tag-card-watermark">
                   <path
                     d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
-                    fill="#F2662E"
+                    fill={accent}
                   />
                   <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
                 </svg>
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4, position: "relative" }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.categorie}
                 </div>
                 <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4, color: pt.strongColor, position: "relative" }}>
@@ -2821,14 +3350,14 @@ export default function App() {
                       position: "relative",
                     }}
                   >
-                    <Sparkles size={11} color="#F2662E" style={{ flexShrink: 0 }} />
-                    <span>{t("listing_seed_badge")}</span>
+                    <Sparkles size={11} color={accent} style={{ flexShrink: 0 }} />
+                    <span>{listingSeed.fromHistory ? t("reestimate_badge") : t("listing_seed_badge")}</span>
                     {listingSeed.link && (
                       <a
                         href={listingSeed.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: "#F2662E", textDecoration: "underline" }}
+                        style={{ color: accent, textDecoration: "underline" }}
                       >
                         {t("listing_seed_link")}
                       </a>
@@ -2851,8 +3380,8 @@ export default function App() {
                         fontSize: 12,
                         padding: "8px 10px",
                         borderRadius: 4,
-                        border: "1px solid " + (resultTab === tab.key ? "#F2662E" : pt.rowBorder.replace("1px solid ", "")),
-                        background: resultTab === tab.key ? "#F2662E" : "transparent",
+                        border: "1px solid " + (resultTab === tab.key ? accent : pt.rowBorder.replace("1px solid ", "")),
+                        background: resultTab === tab.key ? accent : "transparent",
                         color: resultTab === tab.key ? "#FFFFFF" : pt.chevronColor,
                         cursor: "pointer",
                       }}
@@ -2870,8 +3399,41 @@ export default function App() {
                       marginBottom: 12,
                     }}
                   >
-                    <Gauge label="Facilité à vendre" value={result.facilite_vente} lowLabel="Difficile" highLabel="Facile" theme={menuTheme} />
-                    <Gauge label="Rareté" value={result.rarete} lowLabel="Pas rare" highLabel="Rare" theme={menuTheme} />
+                    <Gauge label="Facilité à vendre" value={result.facilite_vente} lowLabel="Difficile" highLabel="Facile" theme={menuTheme} accent={accent} accentRgb={accentRgb} />
+                    <Gauge label="Rareté" value={result.rarete} lowLabel="Pas rare" highLabel="Rare" theme={menuTheme} accent={accent} accentRgb={accentRgb} />
+
+                    {Array.isArray(result.tendance_marche) && result.tendance_marche.length >= 2 && (
+                      <div style={{ marginBottom: 22 }}>
+                        <div
+                          className="mono"
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            color: pt.strongColor,
+                            marginBottom: 10,
+                          }}
+                        >
+                          Tendance sur 5 ans
+                        </div>
+                        <PriceEvolutionChart
+                          theme={menuTheme}
+                          points={result.tendance_marche.map((p) => ({
+                            label: p.label,
+                            value:
+                              typeof p.indice === "number"
+                                ? ((result.prix_bas + result.prix_haut) / 2) * (p.indice / 100)
+                                : null,
+                          }))}
+                        />
+                        <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5, marginTop: 10 }}>
+                          Tendance de cote estimée par l'IA pour ce type de produit (pas une donnée de marché
+                          vérifiée) — à prendre comme un repère indicatif, pas une valeur garantie.
+                        </div>
+                      </div>
+                    )}
+
                     <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
                       Évaluation par l'IA à partir de la demande observée sur Leboncoin, Vinted et eBay pour ce
                       produit précis.
@@ -2888,14 +3450,38 @@ export default function App() {
                   {t("used_price_label")}
                 </div>
 
+                <button
+                  type="button"
+                  onClick={shareResult}
+                  disabled={shareStatus === "generating"}
+                  className="mono"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: accent,
+                    background: `rgba(${accentRgb}, 0.12)`,
+                    border: `1px solid rgba(${accentRgb}, 0.35)`,
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    marginBottom: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Share2 size={13} />
+                  {shareStatus === "generating" ? "génération…" : shareStatus === "downloaded" ? "Image enregistrée !" : "Partager"}
+                </button>
+
                 {result.alerte && (
                   <div
                     className="mono"
                     style={{
                       fontSize: 12,
-                      color: "#F2662E",
-                      background: "rgba(242, 102, 46, 0.15)",
-                      border: "1px solid rgba(242, 102, 46, 0.4)",
+                      color: accent,
+                      background: `rgba(${accentRgb}, 0.15)`,
+                      border: `1px solid rgba(${accentRgb}, 0.4)`,
                       borderRadius: 3,
                       padding: "10px 12px",
                       marginBottom: 14,
@@ -2937,7 +3523,7 @@ export default function App() {
                           {b.count > 0 ? (
                             <span
                               className="mono"
-                              style={{ color: key === "ebaySold" ? "#4ADE80" : "#F2662E" }}
+                              style={{ color: key === "ebaySold" ? "#4ADE80" : accent }}
                             >
                               {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count} {key === "ebaySold" ? "vente" : "annonce"}
                               {b.count > 1 ? "s" : ""})
@@ -3009,7 +3595,7 @@ export default function App() {
                               {l.title}
                             </span>
                           </span>
-                          <span className="mono" style={{ flexShrink: 0, color: "#F2662E", display: "flex", alignItems: "center", gap: 3 }}>
+                          <span className="mono" style={{ flexShrink: 0, color: accent, display: "flex", alignItems: "center", gap: 3 }}>
                             {l.price}
                             {l.link && <span style={{ fontSize: 10 }}>↗</span>}
                           </span>
@@ -3095,8 +3681,8 @@ export default function App() {
                             fontSize: 12,
                             padding: "8px 12px",
                             borderRadius: 4,
-                            border: "1px solid #F2662E",
-                            background: "#F2662E",
+                            border: `1px solid ${accent}`,
+                            background: accent,
                             color: "#FFFFFF",
                             cursor: correctionInput.trim() ? "pointer" : "default",
                             opacity: correctionInput.trim() ? 1 : 0.5,
@@ -3148,7 +3734,7 @@ export default function App() {
                         fontWeight: 700,
                         letterSpacing: "0.01em",
                         color: "#152238",
-                        background: "linear-gradient(135deg, #F2662E 0%, #FF8A52 100%)",
+                        background: `linear-gradient(135deg, ${accent} 0%, ${accentLight} 100%)`,
                         border: "none",
                         borderRadius: 20,
                         padding: "9px 16px",
@@ -3172,7 +3758,7 @@ export default function App() {
                   )}
 
                   {adError && (
-                    <div style={{ fontSize: 12, color: "#F2662E", marginTop: adText ? 8 : 0 }}>{adError}</div>
+                    <div style={{ fontSize: 12, color: accent, marginTop: adText ? 8 : 0 }}>{adError}</div>
                   )}
 
                   {adText && !adLoading && (
@@ -3224,8 +3810,8 @@ export default function App() {
                             fontSize: 12,
                             padding: "8px 12px",
                             borderRadius: 4,
-                            border: "1px solid #F2662E",
-                            background: "#F2662E",
+                            border: `1px solid ${accent}`,
+                            background: accent,
                             color: "#FFFFFF",
                             cursor: "pointer",
                           }}
@@ -3365,7 +3951,7 @@ export default function App() {
               }}
             >
               <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
-                <Tag size={16} color="#F2662E" style={{ transform: "rotate(90deg)" }} />
+                <Tag size={16} color={accent} style={{ transform: "rotate(90deg)" }} />
                 Historique
               </h2>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -3465,6 +4051,24 @@ export default function App() {
                   )}
 
                   <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <Gift size={14} color={accent} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: pt.rowText }}>Parraine un ami</span>
+                    </div>
+                    <p style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 8 }}>
+                      Partage ton lien avec un proche pour lui faire découvrir estim'.
+                    </p>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn-ghost" onClick={shareReferralLink} style={{ flex: 1, justifyContent: "center" }}>
+                        <Share2 size={14} /> partager mon lien
+                      </button>
+                      <button className="btn-ghost" onClick={copyReferralLink} style={{ flexShrink: 0 }} aria-label="copier le lien">
+                        {referralCopied ? "copié !" : <Copy size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
                     {passwordStatus === "done" ? (
                       <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
                         Mot de passe défini ! Tu peux maintenant l'utiliser pour te connecter.
@@ -3512,7 +4116,7 @@ export default function App() {
                           </button>
                         </div>
                         {passwordError && (
-                          <p style={{ fontSize: 11, color: "#F2662E", marginTop: 6, marginBottom: 0 }}>
+                          <p style={{ fontSize: 11, color: accent, marginTop: 6, marginBottom: 0 }}>
                             {passwordError}
                           </p>
                         )}
@@ -3620,7 +4224,7 @@ export default function App() {
                     <Mail size={14} /> recevoir un lien de connexion (sans mot de passe)
                   </button>
                   {authError && (
-                    <p style={{ fontSize: 11, color: "#F2662E", marginTop: 6, marginBottom: 0 }}>{authError}</p>
+                    <p style={{ fontSize: 11, color: accent, marginTop: 6, marginBottom: 0 }}>{authError}</p>
                   )}
                 </div>
               )}
@@ -3679,15 +4283,213 @@ export default function App() {
                     </div>
                   </div>
                   <button
+                    onClick={() => reestimateFromHistory(h)}
+                    title="Réestimer (voir si le prix a bougé)"
+                    aria-label="réestimer"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: `rgba(${accentRgb}, 0.12)`,
+                      border: `1px solid rgba(${accentRgb}, 0.35)`,
+                      borderRadius: 6,
+                      padding: 6,
+                      flexShrink: 0,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <RotateCcw size={14} color={accent} />
+                  </button>
+                  <button
                     onClick={() => removeFromHistory(h.id)}
                     style={{ background: "none", border: "none", padding: 4, flexShrink: 0 }}
                     aria-label="supprimer"
                   >
-                    <Trash2 size={16} color="#F2662E" />
+                    <Trash2 size={16} color={accent} />
                   </button>
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ Ma collection (portefeuille + gamification) ============ */}
+      {showCollection && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 10,
+          }}
+          onClick={() => setShowCollection(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: pt.sheetBg,
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+              boxShadow: "0 -10px 30px rgba(21, 34, 56, 0.18)",
+            }}
+          >
+            <div aria-hidden="true" style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
+                <BarChart3 size={16} color={accent} />
+                Ma collection
+              </h2>
+              <button onClick={() => setShowCollection(false)} style={{ background: "none", border: "none", padding: 4 }} aria-label="fermer">
+                <X size={20} color={pt.closeColor} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: `linear-gradient(135deg, ${activeGrade.accentLight} 0%, ${activeGrade.accent} 55%, ${activeGrade.accentDark} 100%)`,
+                borderRadius: 10,
+                padding: "10px 14px",
+                marginBottom: 16,
+              }}
+            >
+              <span className="mono" style={{ fontSize: 12, fontWeight: 800, color: "#152238" }}>
+                {activeGrade.emoji} Habillage {activeGrade.label}
+              </span>
+              {nextGrade && (
+                <span className="mono" style={{ fontSize: 10, color: "#152238", opacity: 0.85 }}>
+                  {nextGrade.label} dans {nextGrade.threshold - lifetimeEstimations}
+                </span>
+              )}
+            </div>
+
+            {history.length === 0 ? (
+              <p className="mono" style={{ fontSize: 13, color: pt.subText }}>
+                Fais ta première estimation pour commencer à remplir ta collection.
+              </p>
+            ) : (
+              <>
+                <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+                  <div style={{ flex: 1, background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "14px 12px" }}>
+                    <div className="mono" style={{ fontSize: 10, color: pt.subText, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Valeur estimée
+                    </div>
+                    <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: accent }}>
+                      {Math.round(portfolioValue)} €
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "14px 12px" }}>
+                    <div className="mono" style={{ fontSize: 10, color: pt.subText, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Objets scannés
+                    </div>
+                    <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: pt.strongColor }}>
+                      {history.length}
+                    </div>
+                  </div>
+                </div>
+
+                {portfolioStreak >= 2 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      background: `rgba(${accentRgb}, 0.12)`,
+                      border: `1px solid rgba(${accentRgb}, 0.35)`,
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Flame size={16} color={accent} />
+                    <span className="mono" style={{ fontSize: 12, color: pt.rowText }}>
+                      <strong>{portfolioStreak} jours</strong> de suite à checker des prix — continue comme ça !
+                    </span>
+                  </div>
+                )}
+
+                {portfolioChartPoints.length >= 2 && (
+                  <div style={{ background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: 14, marginBottom: 16, position: "relative" }}>
+                    <div className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}>
+                      Valeur de ta collection dans le temps
+                    </div>
+                    <PriceEvolutionChart
+                      theme={menuTheme}
+                      points={isPremiumPlan ? portfolioChartPoints : portfolioChartPoints.slice(-5)}
+                    />
+                    {!isPremiumPlan && portfolioChartPoints.length > 5 && (
+                      <button
+                        onClick={() => {
+                          setShowCollection(false);
+                          setPaywallInfo(null);
+                          setShowPaywall(true);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          width: "100%",
+                          marginTop: 12,
+                          background: `rgba(${accentRgb}, 0.12)`,
+                          border: `1px dashed rgba(${accentRgb}, 0.5)`,
+                          borderRadius: 8,
+                          padding: "9px 10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Lock size={13} color={accent} />
+                        <span className="mono" style={{ fontSize: 11, color: accent, textAlign: "left" }}>
+                          Passe premium pour voir tes {portfolioChartPoints.length - 5} points d'historique en plus
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ marginBottom: 6 }}>
+                  <div className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}>
+                    Badges
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                    {COLLECTION_BADGES.map((b) => {
+                      const unlocked = b.test();
+                      return (
+                        <div
+                          key={b.id}
+                          title={b.label}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 4,
+                            background: pt.rowBg,
+                            border: pt.rowBorder,
+                            borderRadius: 10,
+                            padding: "10px 6px",
+                            opacity: unlocked ? 1 : 0.35,
+                          }}
+                        >
+                          <span style={{ fontSize: 20 }}>{b.emoji}</span>
+                          <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center", lineHeight: 1.2 }}>
+                            {b.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -3728,7 +4530,7 @@ export default function App() {
                 className="brand"
                 style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
-                <Menu size={17} color="#F2662E" />
+                <Menu size={17} color={accent} />
                 {t("menu_title")}
               </h2>
               <button
@@ -3743,7 +4545,7 @@ export default function App() {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {[
                 {
-                  icon: <History size={16} color="#F2662E" />,
+                  icon: <History size={16} color={accent} />,
                   label: t("menu_my_estimates"),
                   onClick: () => {
                     setShowMenu(false);
@@ -3751,7 +4553,7 @@ export default function App() {
                   },
                 },
                 {
-                  icon: <Search size={16} color="#F2662E" />,
+                  icon: <Search size={16} color={accent} />,
                   label: t("menu_search_product"),
                   onClick: () => {
                     setShowMenu(false);
@@ -3759,7 +4561,7 @@ export default function App() {
                   },
                 },
                 {
-                  icon: <TrendingUp size={16} color="#F2662E" />,
+                  icon: <TrendingUp size={16} color={accent} />,
                   label: t("menu_trending"),
                   onClick: () => {
                     setShowMenu(false);
@@ -3768,7 +4570,15 @@ export default function App() {
                   },
                 },
                 {
-                  icon: <Sparkles size={16} color="#F2662E" />,
+                  icon: <BarChart3 size={16} color={accent} />,
+                  label: t("menu_collection"),
+                  onClick: () => {
+                    setShowMenu(false);
+                    setShowCollection(true);
+                  },
+                },
+                {
+                  icon: <Sparkles size={16} color={accent} />,
                   label: t("menu_subscription"),
                   onClick: () => {
                     setShowMenu(false);
@@ -3776,7 +4586,7 @@ export default function App() {
                   },
                 },
                 {
-                  icon: <Mail size={16} color="#F2662E" />,
+                  icon: <Mail size={16} color={accent} />,
                   label: t("menu_contact"),
                   onClick: () => {
                     setShowMenu(false);
@@ -3811,7 +4621,7 @@ export default function App() {
 
               <div style={{ background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "13px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 500, color: pt.rowText, marginBottom: 10 }}>
-                  <Globe size={16} color="#F2662E" />
+                  <Globe size={16} color={accent} />
                   <span style={{ flex: 1 }}>{t("menu_language")}</span>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -3827,8 +4637,8 @@ export default function App() {
                         gap: 4,
                         padding: "8px 6px",
                         borderRadius: 8,
-                        border: lang === l.key ? "2px solid #F2662E" : pt.langUnselectedBorder,
-                        background: lang === l.key ? "rgba(242, 102, 46, 0.18)" : pt.langUnselectedBg,
+                        border: lang === l.key ? `2px solid ${accent}` : pt.langUnselectedBorder,
+                        background: lang === l.key ? `rgba(${accentRgb}, 0.18)` : pt.langUnselectedBg,
                         fontSize: 11,
                         fontWeight: 500,
                         color: pt.rowText,
@@ -3844,7 +4654,7 @@ export default function App() {
 
               <div style={{ background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "13px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 500, color: pt.rowText, marginBottom: 10 }}>
-                  <Moon size={16} color="#F2662E" />
+                  <Moon size={16} color={accent} />
                   <span style={{ flex: 1 }}>{t("menu_display")}</span>
                 </div>
                 <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
@@ -3855,7 +4665,7 @@ export default function App() {
                       height: 36,
                       borderRadius: "50%",
                       background: "linear-gradient(135deg, #04060C 0%, #152238 60%, #2E4159 100%)",
-                      border: menuTheme === "dark" ? "3px solid #F2662E" : "2px solid rgba(255, 255, 255, 0.25)",
+                      border: menuTheme === "dark" ? `3px solid ${accent}` : "2px solid rgba(255, 255, 255, 0.25)",
                       cursor: "pointer",
                       padding: 0,
                     }}
@@ -3869,7 +4679,7 @@ export default function App() {
                       height: 36,
                       borderRadius: "50%",
                       background: "#FFFFFF",
-                      border: menuTheme === "light" ? "3px solid #F2662E" : "2px solid rgba(255, 255, 255, 0.25)",
+                      border: menuTheme === "light" ? `3px solid ${accent}` : "2px solid rgba(255, 255, 255, 0.25)",
                       cursor: "pointer",
                       padding: 0,
                     }}
@@ -3879,6 +4689,61 @@ export default function App() {
                   <span className="mono" style={{ fontSize: 11, color: pt.subText }}>
                     {menuTheme === "dark" ? t("theme_dark") : t("theme_light")}
                   </span>
+                </div>
+
+                <div style={{ borderTop: pt.dashedBorder, marginTop: 12, paddingTop: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
+                    Habillage ({lifetimeEstimations} estimation{lifetimeEstimations > 1 ? "s" : ""} au total)
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {GRADES.map((g) => {
+                      const unlocked = lifetimeEstimations >= g.threshold;
+                      const isActive = activeGrade.key === g.key;
+                      return (
+                        <button
+                          key={g.key}
+                          onClick={() => unlocked && setSelectedGradeKey(g.key)}
+                          title={unlocked ? g.label : `${g.label} — débloqué à ${g.threshold} estimations`}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 4,
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: unlocked ? "pointer" : "default",
+                            opacity: unlocked ? 1 : 0.4,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: "50%",
+                              background: `linear-gradient(135deg, ${g.accentLight} 0%, ${g.accent} 55%, ${g.accentDark} 100%)`,
+                              border: isActive ? "3px solid #FFFFFF" : "2px solid rgba(255, 255, 255, 0.25)",
+                              boxShadow: isActive ? `0 0 0 2px ${g.accent}` : "none",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {!unlocked && <Lock size={12} color="#FFFFFF" />}
+                          </div>
+                          <span className="mono" style={{ fontSize: 9, color: pt.subText }}>
+                            {g.emoji} {g.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {nextGrade && (
+                    <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
+                      Prochain palier : {nextGrade.label} à {nextGrade.threshold} estimations (
+                      {lifetimeEstimations}/{nextGrade.threshold})
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -3894,8 +4759,8 @@ export default function App() {
                     gap: 12,
                     width: "100%",
                     textAlign: "left",
-                    background: "rgba(242, 102, 46, 0.1)",
-                    border: "1px solid rgba(242, 102, 46, 0.35)",
+                    background: `rgba(${accentRgb}, 0.1)`,
+                    border: `1px solid rgba(${accentRgb}, 0.35)`,
                     borderRadius: 10,
                     padding: "13px 14px",
                     fontSize: 14,
@@ -3966,7 +4831,7 @@ export default function App() {
                     <ChevronLeft size={18} color={pt.titleColor} />
                   </button>
                 )}
-                <Search size={17} color="#F2662E" />
+                <Search size={17} color={accent} />
                 {t("menu_search_product")}
               </h2>
               <button
@@ -4016,7 +4881,7 @@ export default function App() {
               </div>
             ) : (
               <div>
-                <div className="mono" style={{ fontSize: 11, color: "#F2662E", marginBottom: 10 }}>
+                <div className="mono" style={{ fontSize: 11, color: accent, marginBottom: 10 }}>
                   {searchCategory.label}
                 </div>
                 <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
@@ -4086,8 +4951,8 @@ export default function App() {
                                 fontWeight: 700,
                                 padding: "7px 12px",
                                 borderRadius: 20,
-                                border: searchSort === opt.key ? "1px solid #F2662E" : pt.chipBorder,
-                                background: searchSort === opt.key ? "#F2662E" : pt.chipBg,
+                                border: searchSort === opt.key ? `1px solid ${accent}` : pt.chipBorder,
+                                background: searchSort === opt.key ? accent : pt.chipBg,
                                 color: searchSort === opt.key ? "#FFFFFF" : pt.chipText,
                                 cursor: "pointer",
                                 whiteSpace: "nowrap",
@@ -4103,6 +4968,7 @@ export default function App() {
                               key={i}
                               item={it}
                               theme={menuTheme}
+                              accent={accent}
                               onEstimate={estimateFromListing}
                               estimateLabel={t("card_estimate_button")}
                               estimateTitle={t("card_estimate_title")}
@@ -4153,7 +5019,7 @@ export default function App() {
                 className="brand"
                 style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
-                <TrendingUp size={17} color="#F2662E" />
+                <TrendingUp size={17} color={accent} />
                 {t("trending_title")}
               </h2>
               <button
@@ -4197,6 +5063,7 @@ export default function App() {
                             key={(page - 1) * TRENDING_PAGE_SIZE + i}
                             item={it}
                             theme={menuTheme}
+                            accent={accent}
                             onEstimate={estimateFromListing}
                             estimateLabel={t("card_estimate_button")}
                             estimateTitle={t("card_estimate_title")}
@@ -4283,7 +5150,7 @@ export default function App() {
                 className="brand"
                 style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
-                <Sparkles size={17} color="#F2662E" />
+                <Sparkles size={17} color={accent} />
                 {t("subscription_title")}
               </h2>
               <button
@@ -4398,7 +5265,7 @@ export default function App() {
                 className="brand"
                 style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
-                <Mail size={17} color="#F2662E" />
+                <Mail size={17} color={accent} />
                 {t("contact_title")}
               </h2>
               <button
@@ -4427,7 +5294,7 @@ export default function App() {
                 textDecoration: "none",
               }}
             >
-              <Mail size={14} color="#F2662E" /> {CONTACT_EMAIL}
+              <Mail size={14} color={accent} /> {CONTACT_EMAIL}
             </a>
           </div>
         </div>
@@ -4479,7 +5346,7 @@ export default function App() {
               {!paywallInfo?.reason && "Impossible de continuer l'estimation pour l'instant."}
             </p>
             {paywallInfo?.message && (
-              <p style={{ fontSize: 12, color: "#F2662E", marginTop: 0 }}>{paywallInfo.message}</p>
+              <p style={{ fontSize: 12, color: accent, marginTop: 0 }}>{paywallInfo.message}</p>
             )}
 
             {(paywallInfo?.bonus_pub_disponible ||
