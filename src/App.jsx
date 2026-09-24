@@ -52,11 +52,11 @@ const PLANS = [
 // jamais verrouillé. Chaque palier a sa propre teinte + une variante plus
 // foncée (dégradés type bouton) et plus claire (surbrillance).
 const GRADES = [
-  { key: "defaut", threshold: 0, label: "Estim' classique", emoji: "🟠", accent: "#F2662E", accentDark: "#E0501D", accentLight: "#FF8A52" },
-  { key: "bronze", threshold: 100, label: "Bronze", emoji: "🥉", accent: "#C97A3D", accentDark: "#8C5225", accentLight: "#E7A876" },
-  { key: "argent", threshold: 500, label: "Argent", emoji: "🥈", accent: "#8B98A6", accentDark: "#5C6773", accentLight: "#E7ECF1" },
-  { key: "or", threshold: 1000, label: "Or", emoji: "🥇", accent: "#D4A017", accentDark: "#96700D", accentLight: "#F6D978" },
-  { key: "diamant", threshold: 5000, label: "Diamant", emoji: "💎", accent: "#4FC3E8", accentDark: "#1E7FA3", accentLight: "#BDEEFF" },
+  { key: "defaut", threshold: 0, label: "Estim' classique", emoji: "🟠", accent: "#F2662E", accentDark: "#E0501D", accentLight: "#FF8A52", glow: 0 },
+  { key: "bronze", threshold: 100, label: "Bronze", emoji: "🥉", accent: "#C97A3D", accentDark: "#8C5225", accentLight: "#E7A876", glow: 0.16 },
+  { key: "argent", threshold: 500, label: "Argent", emoji: "🥈", accent: "#8B98A6", accentDark: "#5C6773", accentLight: "#F1F5F9", glow: 0.22 },
+  { key: "or", threshold: 1000, label: "Or", emoji: "🥇", accent: "#D4A017", accentDark: "#96700D", accentLight: "#F6D978", glow: 0.3 },
+  { key: "diamant", threshold: 5000, label: "Diamant", emoji: "💎", accent: "#4FC3E8", accentDark: "#1E7FA3", accentLight: "#D6F6FF", glow: 0.4 },
 ];
 
 // Convertit un hex ("#RRGGBB") en triplet "r, g, b" pour construire des
@@ -69,6 +69,23 @@ function hexToRgbString(hex) {
   const b = parseInt(clean.substring(4, 6), 16) || 0;
   return `${r}, ${g}, ${b}`;
 }
+
+// "Fonds" débloqués au fil des GÉNÉRATIONS D'ANNONCE (et non des
+// estimations comme pour les habillages — on génère bien moins d'annonces
+// que d'estimations, donc les paliers sont volontairement beaucoup plus
+// bas). Le premier ("bleu") correspond au fond navy/blanc habituel — il
+// n'est jamais verrouillé et ne modifie rien (voir la logique de pt.* plus
+// bas : on ne touche aux dégradés de fond que pour les autres teintes).
+// Chaque teinte fournit 3 tons pour le mode sombre et 3 pour le mode clair,
+// utilisés pour reconstruire dynamiquement pageBg/sheetBg/headerBg/etc.
+const BG_SKINS = [
+  { key: "bleu", threshold: 0, label: "Bleu nuit", emoji: "🔵", darkBase: "#0A1220", darkMid: "#152238", darkHigh: "#26374E", lightBase: "#E9EDF2", lightMid: "#F4F6F9", lightHigh: "#D7DEE6" },
+  { key: "rouge", threshold: 10, label: "Rouge", emoji: "🔴", darkBase: "#1A0A0C", darkMid: "#3A1218", darkHigh: "#5C1B24", lightBase: "#FBEAEA", lightMid: "#F7D9D9", lightHigh: "#F0BFBF" },
+  { key: "violet", threshold: 25, label: "Violet", emoji: "🟣", darkBase: "#140A1F", darkMid: "#28123F", darkHigh: "#3E1D5E", lightBase: "#F1EAFB", lightMid: "#E4D6F7", lightHigh: "#D3BEF0" },
+  { key: "vert", threshold: 50, label: "Vert", emoji: "🟢", darkBase: "#08140E", darkMid: "#0F281A", darkHigh: "#173D27", lightBase: "#E8F5EC", lightMid: "#D3EBDA", lightHigh: "#B9E0C6" },
+  { key: "jaune", threshold: 100, label: "Jaune", emoji: "🟡", darkBase: "#1A1608", darkMid: "#332B10", darkHigh: "#4D4118", lightBase: "#FBF6E3", lightMid: "#F5EAC2", lightHigh: "#EEDD97" },
+  { key: "marron", threshold: 200, label: "Marron", emoji: "🟤", darkBase: "#160F0A", darkMid: "#2B1E14", darkHigh: "#40301F", lightBase: "#F3EBE3", lightMid: "#E7D6C6", lightHigh: "#D8BEA5" },
+];
 
 // Sous-catégories affichées (triées de A à Z) dans le menu "Rechercher un
 // produit". Purement pour orienter la recherche — le texte de la catégorie
@@ -497,6 +514,111 @@ function canvasWrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
   kept.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
 }
 
+// Générateur pseudo-aléatoire déterministe (même seed = toujours le même
+// résultat) — sert à "zoomer" dans la tendance IA (annuelle) sans que la
+// courbe ne saute à chaque re-rendu ni ne soit identique pour tout le monde.
+function seededRandom(seedStr) {
+  let h = 0;
+  const s = String(seedStr || "estim");
+  for (let i = 0; i < s.length; i++) {
+    h = (h << 5) - h + s.charCodeAt(i);
+    h |= 0;
+  }
+  return function () {
+    h = (h * 1103515245 + 12345) & 0x7fffffff;
+    return (h % 10000) / 10000;
+  };
+}
+
+// Interpole `count` points entre v0 et v1, avec un peu de bruit déterministe
+// (ancré exactement sur v0/v1 aux extrémités) pour donner un tracé crédible
+// plutôt qu'une ligne droite parfaite quand on "zoome" dans un segment.
+function interpolateSegment(v0, v1, count, seedStr) {
+  const rand = seededRandom(seedStr);
+  const span = Math.abs(v1 - v0) || Math.max(1, Math.abs(v0 || 1) * 0.05);
+  const points = [];
+  for (let i = 0; i <= count; i++) {
+    const t = i / count;
+    const base = v0 + (v1 - v0) * t;
+    const noise = (rand() - 0.5) * span * 0.35 * Math.sin(Math.PI * t);
+    points.push(base + noise);
+  }
+  return points;
+}
+
+// Construit les points du graphique pour une période donnée ("1j" à
+// "total") à partir des indices annuels renvoyés par l'IA (tendance sur 10
+// ans). Les périodes courtes (1j/1s/1m) "zooment" dans la fin de la courbe
+// longue plutôt que d'inventer une donnée indépendante — comme un vrai
+// graphique boursier qui n'a qu'UNE série de prix, juste regardée à des
+// résolutions différentes.
+function buildTrendSeries(yearlyIndices, rangeKey, seedStr, priceAvg) {
+  const idx = (yearlyIndices || []).filter((n) => typeof n === "number" && !isNaN(n));
+  if (idx.length < 2) return null;
+  const n = idx.length;
+  const values = idx.map((v) => priceAvg * (v / 100));
+  const yearsAgoLabel = (k) => (k <= 0 ? "auj." : `-${k} an${k > 1 ? "s" : ""}`);
+
+  if (rangeKey === "10a" || rangeKey === "total") {
+    return values.map((v, i) => ({ label: yearsAgoLabel(n - 1 - i), value: v }));
+  }
+  if (rangeKey === "5a") {
+    const start = Math.max(0, n - 6);
+    return values.slice(start).map((v, i) => ({ label: yearsAgoLabel(n - 1 - (start + i)), value: v }));
+  }
+
+  const last = values[n - 1];
+  const prev = values[n - 2] !== undefined ? values[n - 2] : last;
+  const monthSeg = interpolateSegment(prev, last, 11, seedStr + "|1a");
+
+  if (rangeKey === "1a") {
+    return monthSeg.map((v, i) => ({
+      label: i === monthSeg.length - 1 ? "auj." : `-${monthSeg.length - 1 - i} mois`,
+      value: v,
+    }));
+  }
+
+  const daySeg = interpolateSegment(
+    monthSeg[monthSeg.length - 2],
+    monthSeg[monthSeg.length - 1],
+    29,
+    seedStr + "|1m"
+  );
+  if (rangeKey === "1m") {
+    return daySeg.map((v, i) => ({
+      label: i === daySeg.length - 1 ? "auj." : `j-${daySeg.length - 1 - i}`,
+      value: v,
+    }));
+  }
+  if (rangeKey === "1s") {
+    const weekSeg = daySeg.slice(-7);
+    return weekSeg.map((v, i) => ({
+      label: i === weekSeg.length - 1 ? "auj." : `j-${weekSeg.length - 1 - i}`,
+      value: v,
+    }));
+  }
+  // "1j" : la dernière journée uniquement — variation intra-journée quasi
+  // nulle pour ce type d'objet, on le dit clairement dans l'appelant plutôt
+  // que d'inventer un vrai signal.
+  const lastDay = daySeg[daySeg.length - 1];
+  const prevDay = daySeg[daySeg.length - 2] !== undefined ? daySeg[daySeg.length - 2] : lastDay;
+  const hourSeg = interpolateSegment(prevDay, lastDay, 7, seedStr + "|1j");
+  return hourSeg.map((v, i) => ({
+    label: i === hourSeg.length - 1 ? "maint." : `-${(hourSeg.length - 1 - i) * 3}h`,
+    value: v,
+  }));
+}
+
+const TREND_RANGES = [
+  { key: "1j", label: "1J" },
+  { key: "1s", label: "1S" },
+  { key: "1m", label: "1M" },
+  { key: "1a", label: "1A" },
+  { key: "5a", label: "5A" },
+  { key: "10a", label: "10A" },
+  { key: "total", label: "Total" },
+];
+
 // Petit graphique de tendance façon "trading" (ligne + zone dégradée, vert
 // si ça monte, rouge si ça baisse, curseur tactile/souris avec info-bulle) —
 // aucune dépendance externe, tout en SVG à la main. Utilisé pour la tendance
@@ -779,6 +901,7 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [resultTab, setResultTab] = useState("estimation"); // estimation | statistiques
+  const [trendRange, setTrendRange] = useState("5a"); // période affichée sur la courbe de tendance
   const [correctionOpen, setCorrectionOpen] = useState(false); // affiche le champ "corriger un détail"
   const [correctionInput, setCorrectionInput] = useState(""); // texte de la correction en cours de saisie
   const [adText, setAdText] = useState(null); // { titre, description } | null — annonce générée par l'IA
@@ -1195,7 +1318,87 @@ export default function App() {
   const accentLight = activeGrade.accentLight;
   const accentRgb = hexToRgbString(activeGrade.accent);
 
+  // Nombre total de générations (et régénérations) d'annonce jamais
+  // demandées — sert à débloquer les "fonds" de couleur (même principe que
+  // lifetimeEstimations pour les habillages, mais rien n'est persisté côté
+  // Supabase ici : aucune table ne garde trace des générations d'annonce,
+  // donc uniquement du local, propre à l'appareil).
+  const [lifetimeAdGenerations, setLifetimeAdGenerations] = useState(() => {
+    try {
+      return parseInt(localStorage.getItem("estim_lifetime_adgen") || "0", 10) || 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("estim_lifetime_adgen", String(lifetimeAdGenerations));
+    } catch (e) {}
+  }, [lifetimeAdGenerations]);
+
+  function bgSkinForCount(n) {
+    let b = BG_SKINS[0];
+    for (const sk of BG_SKINS) {
+      if (n >= sk.threshold) b = sk;
+    }
+    return b;
+  }
+  const highestUnlockedBgSkin = bgSkinForCount(lifetimeAdGenerations);
+  const nextBgSkin = BG_SKINS.find((sk) => sk.threshold > lifetimeAdGenerations) || null;
+
+  const [selectedBgSkinKey, setSelectedBgSkinKey] = useState(() => {
+    try {
+      return localStorage.getItem("estim_bg_skin") || null;
+    } catch (e) {
+      return null;
+    }
+  });
+  useEffect(() => {
+    try {
+      if (selectedBgSkinKey) localStorage.setItem("estim_bg_skin", selectedBgSkinKey);
+    } catch (e) {}
+  }, [selectedBgSkinKey]);
+  const prevBgSkinKeyRef = useRef(highestUnlockedBgSkin.key);
+  const [bgSkinUnlockToast, setBgSkinUnlockToast] = useState(null);
+  useEffect(() => {
+    if (highestUnlockedBgSkin.key !== prevBgSkinKeyRef.current) {
+      prevBgSkinKeyRef.current = highestUnlockedBgSkin.key;
+      if (highestUnlockedBgSkin.key !== "bleu") {
+        setSelectedBgSkinKey(highestUnlockedBgSkin.key);
+        setBgSkinUnlockToast(highestUnlockedBgSkin);
+        setTimeout(() => setBgSkinUnlockToast(null), 5000);
+      }
+    }
+  }, [highestUnlockedBgSkin.key]);
+
+  const activeBgSkin =
+    (selectedBgSkinKey &&
+      BG_SKINS.find((sk) => sk.key === selectedBgSkinKey && (sk.threshold <= lifetimeAdGenerations || isOwnerPreview))) ||
+    highestUnlockedBgSkin;
+
   const pt = { ...(PANEL_THEMES[menuTheme] || PANEL_THEMES.dark) };
+  // Fond de couleur débloqué : on ne retouche que les grandes surfaces
+  // (page, panneaux, header, carte résultat, écran de chargement, zone
+  // photo) — le "bleu" par défaut reste strictement identique à avant.
+  if (activeBgSkin.key !== "bleu") {
+    if (menuTheme === "light") {
+      pt.pageBg = activeBgSkin.lightBase;
+      pt.sheetBg = activeBgSkin.lightBase;
+      pt.headerBg = `linear-gradient(135deg, #FFFFFF 0%, ${activeBgSkin.lightMid} 55%, ${activeBgSkin.lightHigh} 100%)`;
+      pt.resultCardBg = pt.headerBg;
+      pt.loadingBg = `linear-gradient(160deg, #FFFFFF 0%, ${activeBgSkin.lightMid} 100%)`;
+      pt.loadingBorder = activeBgSkin.lightHigh;
+      pt.dropZoneBg = `radial-gradient(circle at 50% 32%, ${activeBgSkin.lightMid} 0%, ${activeBgSkin.lightBase} 72%)`;
+    } else {
+      pt.pageBg = activeBgSkin.darkBase;
+      pt.sheetBg = `linear-gradient(160deg, ${activeBgSkin.darkBase} 0%, ${activeBgSkin.darkMid} 45%, ${activeBgSkin.darkHigh} 100%)`;
+      pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeBgSkin.darkMid} 52%, ${activeBgSkin.darkHigh} 100%)`;
+      pt.resultCardBg = pt.headerBg;
+      pt.loadingBg = `linear-gradient(160deg, ${activeBgSkin.darkHigh} 0%, ${activeBgSkin.darkMid} 100%)`;
+      pt.loadingBorder = activeBgSkin.darkHigh;
+      pt.dropZoneBg = `radial-gradient(circle at 50% 32%, ${activeBgSkin.darkMid} 0%, ${activeBgSkin.darkBase} 72%)`;
+    }
+  }
   // Le haut de l'appli (bandeau + poignée des panneaux) se termine toujours
   // sur l'accent actif: c'est ce qui donne l'impression que "tout change"
   // visuellement d'un palier à l'autre, sans toucher au fond navy/clair.
@@ -1810,6 +2013,7 @@ export default function App() {
       );
       const parsed = extractJson(adTextRaw);
       setAdText({ titre: parsed.titre || "", description: parsed.description || "" });
+      setLifetimeAdGenerations((prev) => prev + 1);
     } catch (e) {
       setAdError("Impossible de générer l'annonce, réessaie.");
     } finally {
@@ -2276,8 +2480,8 @@ export default function App() {
                 "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
                 "\"facilite_vente\" (0 = très difficile à vendre car peu de demande sur ce type de plateformes d'occasion, 10 = se vend très facilement/vite, en te basant sur le nombre d'annonces trouvées et ta connaissance générale de la demande pour ce type de produit), " +
                 "\"rarete\" (0 = produit courant qu'on trouve facilement partout, 10 = produit très rare/recherché/difficile à trouver). " +
-                "Donne aussi une tendance de marché sur les 5 dernières années pour CE TYPE de produit précis (\"tendance_marche\"): un tableau de 6 points allant d'il y a 5 ans à aujourd'hui, chaque point avec \"label\" (ex: \"2021\", \"2022\"... jusqu'à \"2026\" ou \"auj.\" pour le dernier) et \"indice\" (nombre, 100 = niveau de prix actuel de ce point précédent). Base-toi sur ta connaissance réelle de l'évolution de la cote de cette catégorie: les objets qui prennent de la valeur avec le temps (vintage recherché, collector, édition limitée) doivent avoir un indice qui MONTE vers 100 en fin de période, ceux qui se déprécient (électronique récente, mobilier neuf de grande diffusion) doivent avoir un indice qui BAISSE vers 100, et un marché de l'occasion ne bouge presque jamais en ligne parfaitement droite: varie légèrement chaque point plutôt qu'une progression linéaire. " +
-                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [{"label": "...", "indice": nombre}, ...]}',
+                "Donne aussi une tendance de marché sur les 10 dernières années pour CE TYPE de produit précis (\"tendance_marche\"): un tableau de EXACTEMENT 11 nombres (indices), un par an, du plus ancien (il y a 10 ans) au plus récent (aujourd'hui = toujours 100, c'est le niveau de prix actuel). Base-toi sur ta connaissance réelle de l'évolution de la cote de cette catégorie: les objets qui prennent de la valeur avec le temps (vintage recherché, collector, édition limitée) doivent avoir des indices qui MONTENT vers 100 en fin de période (donc plus bas au début), ceux qui se déprécient (électronique récente, mobilier neuf de grande diffusion) doivent avoir des indices qui BAISSENT vers 100 (donc plus hauts au début), et un marché de l'occasion ne bouge presque jamais en ligne parfaitement droite: varie légèrement chaque point plutôt qu'une progression linéaire. " +
+                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}',
             },
           ], "claude-haiku-4-5-20251001");
           const extra = extractJson(conseilText);
@@ -2304,7 +2508,9 @@ export default function App() {
             alerte: extra.alerte || null,
             facilite_vente: typeof extra.facilite_vente === "number" ? extra.facilite_vente : null,
             rarete: typeof extra.rarete === "number" ? extra.rarete : null,
-            tendance_marche: Array.isArray(extra.tendance_marche) ? extra.tendance_marche : null,
+            tendance_marche: Array.isArray(extra.tendance_marche)
+              ? extra.tendance_marche.filter((n) => typeof n === "number" && !isNaN(n))
+              : null,
             confiance: confidenceLevel === 2 ? "haute" : confidenceLevel === 1 ? "moyenne" : "basse",
             source: usedSource,
             listings: usedResults,
@@ -2331,8 +2537,8 @@ export default function App() {
               "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
               "\"facilite_vente\" (0 = très difficile à vendre car peu de demande, 10 = se vend très facilement/vite) et " +
               "\"rarete\" (0 = produit courant, 10 = produit très rare/recherché), en te basant sur ta connaissance générale du marché de l'occasion. " +
-              "Donne aussi une tendance de marché sur les 5 dernières années pour CE TYPE de produit (\"tendance_marche\"): un tableau de 6 points d'il y a 5 ans à aujourd'hui, chaque point avec \"label\" (ex: \"2021\"... jusqu'à \"auj.\") et \"indice\" (100 = niveau actuel), en montant vers 100 si ce type d'objet prend de la valeur avec le temps, en descendant vers 100 s'il se déprécie, avec de légères variations plutôt qu'une ligne droite. " +
-              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [{"label": "...", "indice": nombre}, ...]}',
+              "Donne aussi une tendance de marché sur les 10 dernières années pour CE TYPE de produit (\"tendance_marche\"): un tableau de EXACTEMENT 11 nombres (indices), un par an, du plus ancien (il y a 10 ans) au plus récent (aujourd'hui = toujours 100), en montant vers 100 en fin de période si ce type d'objet prend de la valeur avec le temps, en descendant vers 100 s'il se déprécie, avec de légères variations plutôt qu'une ligne droite. " +
+              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}',
           },
         ], "claude-haiku-4-5-20251001");
         const fallback = extractJson(priceText);
@@ -2347,7 +2553,9 @@ export default function App() {
           prix_haut: fbHaut,
           facilite_vente: typeof fallback.facilite_vente === "number" ? fallback.facilite_vente : null,
           rarete: typeof fallback.rarete === "number" ? fallback.rarete : null,
-          tendance_marche: Array.isArray(fallback.tendance_marche) ? fallback.tendance_marche : null,
+          tendance_marche: Array.isArray(fallback.tendance_marche)
+            ? fallback.tendance_marche.filter((n) => typeof n === "number" && !isNaN(n))
+            : null,
           confiance: "basse",
           source: "estimation IA (annonces réelles indisponibles: " + marketError.message + ")",
           listings: [],
@@ -2569,14 +2777,46 @@ export default function App() {
         </div>
       )}
 
+      {bgSkinUnlockToast && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            top: gradeUnlockToast ? 60 : 14,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 60,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: `linear-gradient(135deg, ${bgSkinUnlockToast.lightHigh} 0%, ${bgSkinUnlockToast.darkHigh} 100%)`,
+            color: "#FFFFFF",
+            borderRadius: 30,
+            padding: "10px 16px",
+            boxShadow: "0 8px 24px rgba(4, 6, 12, 0.4)",
+            maxWidth: "90vw",
+          }}
+        >
+          <span style={{ fontSize: 18 }}>{bgSkinUnlockToast.emoji}</span>
+          <span className="mono" style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
+            Fond {bgSkinUnlockToast.label} débloqué !
+          </span>
+        </div>
+      )}
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
         * { box-sizing: border-box; }
         .brand { font-family: 'Fraunces', serif; }
         .mono { font-family: 'JetBrains Mono', monospace; }
         button { font-family: inherit; cursor: pointer; }
+        @keyframes sparkle-pulse {
+          0%, 100% { opacity: 0.15; transform: scale(0.8); }
+          50% { opacity: 0.9; transform: scale(1.15); }
+        }
+        .sparkle { animation: sparkle-pulse 2.4s ease-in-out infinite; }
         .btn-primary {
-          background: linear-gradient(135deg, ${accent} 0%, ${accentDark} 100%);
+          background: linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%);
           color: #FFFFFF;
           border: none;
           padding: 14px 22px;
@@ -2589,7 +2829,7 @@ export default function App() {
           justify-content: center;
           gap: 8px;
           width: 100%;
-          box-shadow: 0 6px 16px rgba(${accentRgb}, 0.32);
+          box-shadow: 0 6px 16px rgba(${accentRgb}, ${0.32 + activeGrade.glow * 0.3});
           transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
         .btn-primary:active { transform: scale(0.98); box-shadow: 0 3px 10px rgba(${accentRgb}, 0.28); }
@@ -2700,8 +2940,8 @@ export default function App() {
         }
         .tag-card-result {
           background: ${pt.resultCardBg};
-          border-color: rgba(${accentRgb}, 0.4);
-          box-shadow: 0 14px 32px rgba(4, 6, 12, 0.35);
+          border-color: rgba(${accentRgb}, ${0.4 + activeGrade.glow * 0.4});
+          box-shadow: 0 14px 32px rgba(4, 6, 12, 0.35)${activeGrade.glow ? `, 0 0 26px rgba(${accentRgb}, ${activeGrade.glow * 0.55})` : ""};
           overflow: hidden;
         }
         .tag-card-result::before {
@@ -2720,7 +2960,8 @@ export default function App() {
           display: inline-flex;
           align-items: baseline;
           gap: 6px;
-          background: linear-gradient(135deg, ${accent} 0%, ${accentLight} 100%);
+          background: linear-gradient(135deg, ${accentDark} 0%, ${accent} 45%, ${accentLight} 100%);
+          box-shadow: ${activeGrade.glow ? `0 0 14px rgba(${accentRgb}, ${activeGrade.glow})` : "none"};
           color: #152238;
           border-radius: 12px;
           padding: 10px 16px;
@@ -2753,8 +2994,36 @@ export default function App() {
             borderRadius: 22,
             padding: "22px 20px 24px",
             background: pt.headerBg,
+            boxShadow: activeGrade.glow ? `0 0 0 1px rgba(${accentRgb}, ${activeGrade.glow * 0.6}), 0 18px 40px rgba(${accentRgb}, ${activeGrade.glow * 0.5})` : "none",
           }}
         >
+          {activeGrade.key === "diamant" && (
+            <>
+              {[
+                { top: "14%", left: "82%", size: 12, delay: "0s" },
+                { top: "68%", left: "90%", size: 8, delay: "0.6s" },
+                { top: "40%", left: "8%", size: 9, delay: "1.1s" },
+              ].map((s, i) => (
+                <span
+                  key={i}
+                  aria-hidden="true"
+                  className="sparkle"
+                  style={{
+                    position: "absolute",
+                    top: s.top,
+                    left: s.left,
+                    fontSize: s.size,
+                    color: accentLight,
+                    animationDelay: s.delay,
+                    pointerEvents: "none",
+                  }}
+                >
+                  ✦
+                </span>
+              ))}
+            </>
+          )}
+
           {/* Étiquette décorative géante en filigrane, pour le côté "fun" —
               purement décoratif (aria-hidden), reprend la forme du tag du
               logo, très discrète (faible opacité) pour ne jamais gêner la
@@ -2804,6 +3073,25 @@ export default function App() {
               alt="estim'"
               style={{ height: 26, width: "auto", display: "block" }}
             />
+            {activeGrade.key !== "defaut" && (
+              <span
+                title={`Habillage ${activeGrade.label}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  fontSize: 12,
+                  flexShrink: 0,
+                  background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
+                  boxShadow: `0 0 10px rgba(${accentRgb}, 0.65)`,
+                }}
+              >
+                {activeGrade.emoji}
+              </span>
+            )}
             <span
               className="mono"
               style={{
@@ -2812,7 +3100,7 @@ export default function App() {
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 color: "#152238",
-                background: accent,
+                background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
                 borderRadius: 20,
                 padding: "3px 9px",
               }}
@@ -3414,37 +3702,62 @@ export default function App() {
                     <Gauge label="Facilité à vendre" value={result.facilite_vente} lowLabel="Difficile" highLabel="Facile" theme={menuTheme} accent={accent} accentRgb={accentRgb} />
                     <Gauge label="Rareté" value={result.rarete} lowLabel="Pas rare" highLabel="Rare" theme={menuTheme} accent={accent} accentRgb={accentRgb} />
 
-                    {Array.isArray(result.tendance_marche) && result.tendance_marche.length >= 2 && (
-                      <div style={{ marginBottom: 22 }}>
-                        <div
-                          className="mono"
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            letterSpacing: "0.08em",
-                            textTransform: "uppercase",
-                            color: pt.strongColor,
-                            marginBottom: 10,
-                          }}
-                        >
-                          Tendance sur 5 ans
+                    {Array.isArray(result.tendance_marche) && result.tendance_marche.length >= 2 && (() => {
+                      const trendPoints = buildTrendSeries(
+                        result.tendance_marche,
+                        trendRange,
+                        result.objet || "objet",
+                        (result.prix_bas + result.prix_haut) / 2
+                      );
+                      const isShortRange = trendRange === "1j" || trendRange === "1s" || trendRange === "1m";
+                      return (
+                        <div style={{ marginBottom: 22 }}>
+                          <div
+                            className="mono"
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              letterSpacing: "0.08em",
+                              textTransform: "uppercase",
+                              color: pt.strongColor,
+                              marginBottom: 10,
+                            }}
+                          >
+                            Tendance de cote
+                          </div>
+                          <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+                            {TREND_RANGES.map((r) => (
+                              <button
+                                key={r.key}
+                                type="button"
+                                onClick={() => setTrendRange(r.key)}
+                                className="mono"
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: "4px 8px",
+                                  borderRadius: 6,
+                                  border: trendRange === r.key ? `1px solid ${accent}` : pt.rowBorder,
+                                  background: trendRange === r.key ? accent : "transparent",
+                                  color: trendRange === r.key ? "#FFFFFF" : pt.chevronColor,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {r.label}
+                              </button>
+                            ))}
+                          </div>
+                          {trendPoints && <PriceEvolutionChart theme={menuTheme} points={trendPoints} />}
+                          <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5, marginTop: 10 }}>
+                            Tendance de cote estimée par l'IA pour ce type de produit à partir de sa courbe sur 10
+                            ans (pas une donnée de marché vérifiée) — à prendre comme un repère indicatif, pas une
+                            valeur garantie.
+                            {isShortRange &&
+                              " Sur une période aussi courte, le prix de revente d'un objet d'occasion ne bouge en réalité presque jamais : cette vue sert surtout à zoomer dans la tendance de fond."}
+                          </div>
                         </div>
-                        <PriceEvolutionChart
-                          theme={menuTheme}
-                          points={result.tendance_marche.map((p) => ({
-                            label: p.label,
-                            value:
-                              typeof p.indice === "number"
-                                ? ((result.prix_bas + result.prix_haut) / 2) * (p.indice / 100)
-                                : null,
-                          }))}
-                        />
-                        <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5, marginTop: 10 }}>
-                          Tendance de cote estimée par l'IA pour ce type de produit (pas une donnée de marché
-                          vérifiée) — à prendre comme un repère indicatif, pas une valeur garantie.
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
                       Évaluation par l'IA à partir de la demande observée sur Leboncoin, Vinted et eBay pour ce
@@ -4764,6 +5077,72 @@ export default function App() {
                     <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
                       Prochain palier : {nextGrade.label} à {nextGrade.threshold} estimations (
                       {lifetimeEstimations}/{nextGrade.threshold})
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ borderTop: pt.dashedBorder, marginTop: 12, paddingTop: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
+                    Fonds ({lifetimeAdGenerations} annonce{lifetimeAdGenerations > 1 ? "s" : ""} générée
+                    {lifetimeAdGenerations > 1 ? "s" : ""} au total)
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {BG_SKINS.map((sk) => {
+                      const unlocked = lifetimeAdGenerations >= sk.threshold;
+                      const canSelect = unlocked || isOwnerPreview;
+                      const isActive = activeBgSkin.key === sk.key;
+                      return (
+                        <button
+                          key={sk.key}
+                          onClick={() => canSelect && setSelectedBgSkinKey(sk.key)}
+                          title={
+                            unlocked
+                              ? sk.label
+                              : isOwnerPreview
+                              ? `${sk.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${sk.threshold} annonces générées)`
+                              : `${sk.label} — débloqué à ${sk.threshold} annonces générées`
+                          }
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 4,
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: canSelect ? "pointer" : "default",
+                            opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: "50%",
+                              background: `linear-gradient(135deg, ${sk.lightHigh} 0%, ${sk.darkMid} 55%, ${sk.darkHigh} 100%)`,
+                              border: isActive ? "3px solid #FFFFFF" : "2px solid rgba(255, 255, 255, 0.25)",
+                              boxShadow: isActive ? `0 0 0 2px ${sk.darkHigh}` : "none",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {!unlocked && <Lock size={12} color="#FFFFFF" />}
+                          </div>
+                          <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
+                            {sk.emoji} {sk.label}
+                          </span>
+                          <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
+                            {sk.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${sk.threshold} annonces`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {nextBgSkin && (
+                    <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
+                      Prochain fond : {nextBgSkin.label} à {nextBgSkin.threshold} annonces générées (
+                      {lifetimeAdGenerations}/{nextBgSkin.threshold})
                     </div>
                   )}
                 </div>
