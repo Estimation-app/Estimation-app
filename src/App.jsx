@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
+import logoWordmarkDark from "./assets/logo-wordmark.png";
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
 // blocage CORS d'un appel direct depuis le navigateur.
@@ -83,14 +84,29 @@ const LANGUAGES = [
   { key: "es", label: "Español", flag: "🇪🇸" },
 ];
 
-// Thème des 5 panneaux du menu (tiroir, recherche produit, produits du
-// moment, abonnement, contact) : "dark" (navy, par défaut — reprend la
-// palette du header/des cartes de résultat) ou "light" pour les personnes
-// que le fond sombre gêne. Le header, le hero et les cartes de résultat
-// restent toujours en navy quel que soit ce choix — seul l'intérieur du
-// menu change, voir le sélecteur (deux pastilles) dans le tiroir.
+// Thème de TOUTE l'application (header, hero, zone photo, écrans de
+// chargement, cartes de résultat, formulaires véhicule/immobilier,
+// historique, connexion, abonnement...) : "dark" (navy, par défaut) ou
+// "light". Tout ce qui est bleu marine en mode dark devient blanc/clair en
+// mode light et inversement — seul l'orange (couleur de marque) reste
+// inchangé dans les deux thèmes. Choix mémorisé (voir menuTheme plus bas
+// dans le composant) et modifiable via les deux pastilles du menu.
 const PANEL_THEMES = {
   dark: {
+    pageBg: "#0A1220",
+    topBarGradient: "linear-gradient(90deg, #152238 0%, #29394F 35%, #F2662E 100%)",
+    headerBg: "linear-gradient(135deg, #04060C 0%, #152238 52%, #2E4159 100%)",
+    menuBtnBorder: "rgba(238, 241, 245, 0.35)",
+    menuBtnBg: "rgba(255, 255, 255, 0.06)",
+    menuBtnColor: "#EEF1F5",
+    dropZoneBg: "radial-gradient(circle at 50% 32%, #29394F 0%, #152238 72%)",
+    dropZoneText: "#EEF1F5",
+    loadingBg: "linear-gradient(160deg, #1B2A45 0%, #152238 100%)",
+    loadingBorder: "#29394F",
+    loadingText: "#EEF1F5",
+    resultCardBg: "linear-gradient(135deg, #04060C 0%, #152238 52%, #2E4159 100%)",
+    formCardBg: "rgba(255, 255, 255, 0.06)",
+    formCardBorder: "1px solid rgba(255, 255, 255, 0.14)",
     sheetBg: "linear-gradient(160deg, #0A1220 0%, #152238 45%, #26374E 100%)",
     grabBg: "linear-gradient(90deg, rgba(255,255,255,0.4) 0%, #F2662E 100%)",
     titleColor: "#FFFFFF",
@@ -121,6 +137,20 @@ const PANEL_THEMES = {
     strongColor: "#FFFFFF",
   },
   light: {
+    pageBg: "#E9EDF2",
+    topBarGradient: "linear-gradient(90deg, #D7DEE6 0%, #93A4BC 35%, #F2662E 100%)",
+    headerBg: "linear-gradient(135deg, #FFFFFF 0%, #F4F6F9 55%, #E9EDF2 100%)",
+    menuBtnBorder: "rgba(21, 34, 56, 0.18)",
+    menuBtnBg: "rgba(21, 34, 56, 0.05)",
+    menuBtnColor: "#152238",
+    dropZoneBg: "radial-gradient(circle at 50% 32%, #F4F6F9 0%, #E9EDF2 72%)",
+    dropZoneText: "#29394F",
+    loadingBg: "linear-gradient(160deg, #FFFFFF 0%, #F4F6F9 100%)",
+    loadingBorder: "#D7DEE6",
+    loadingText: "#152238",
+    resultCardBg: "linear-gradient(135deg, #FFFFFF 0%, #F4F6F9 55%, #E9EDF2 100%)",
+    formCardBg: "#F4F6F9",
+    formCardBorder: "1px solid #D7DEE6",
     sheetBg: "#E9EDF2",
     grabBg: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
     titleColor: "#152238",
@@ -326,7 +356,8 @@ const TRANSLATIONS = {
 // gauche à "facile" côté droit (ou "pas rare" / "rare" pour la rareté).
 // `value` peut être null/undefined si l'IA ne l'a pas renvoyée (ex: anciens
 // résultats de l'historique) — dans ce cas on affiche le rail vide, sans curseur.
-function Gauge({ label, value, lowLabel, highLabel }) {
+function Gauge({ label, value, lowLabel, highLabel, theme = "dark" }) {
+  const pt = PANEL_THEMES[theme] || PANEL_THEMES.dark;
   const v = typeof value === "number" && !isNaN(value) ? Math.max(0, Math.min(10, value)) : null;
   const pct = v !== null ? v * 10 : null;
   return (
@@ -339,7 +370,7 @@ function Gauge({ label, value, lowLabel, highLabel }) {
           fontWeight: 700,
           letterSpacing: "0.08em",
           textTransform: "uppercase",
-          color: "#FFFFFF",
+          color: pt.strongColor,
           marginBottom: 18,
         }}
       >
@@ -355,8 +386,11 @@ function Gauge({ label, value, lowLabel, highLabel }) {
             right: 0,
             height: 6,
             borderRadius: 3,
-            background: "linear-gradient(90deg, rgba(255,255,255,0.16) 0%, rgba(242,102,46,0.45) 100%)",
-            border: "1px solid rgba(255,255,255,0.2)",
+            background:
+              theme === "light"
+                ? "linear-gradient(90deg, rgba(21,34,56,0.12) 0%, rgba(242,102,46,0.45) 100%)"
+                : "linear-gradient(90deg, rgba(255,255,255,0.16) 0%, rgba(242,102,46,0.45) 100%)",
+            border: `1px solid ${pt.rowBorder.replace("1px solid ", "")}`,
           }}
         />
         {pct !== null && (
@@ -403,8 +437,8 @@ function Gauge({ label, value, lowLabel, highLabel }) {
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", margin: "2px 0 0" }}>
-        <span className="mono" style={{ fontSize: 11, color: "#93A4BC" }}>{lowLabel}</span>
-        <span className="mono" style={{ fontSize: 11, color: "#93A4BC" }}>{highLabel}</span>
+        <span className="mono" style={{ fontSize: 11, color: pt.chevronColor }}>{lowLabel}</span>
+        <span className="mono" style={{ fontSize: 11, color: pt.chevronColor }}>{highLabel}</span>
       </div>
     </div>
   );
@@ -1972,10 +2006,10 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#E9EDF2",
+        background: pt.pageBg,
         fontFamily:
           "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        color: "#152238",
+        color: pt.strongColor,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -1990,7 +2024,7 @@ export default function App() {
           left: 0,
           right: 0,
           height: 4,
-          background: "linear-gradient(90deg, #152238 0%, #29394F 35%, #F2662E 100%)",
+          background: pt.topBarGradient,
           zIndex: 50,
         }}
       />
@@ -2021,8 +2055,8 @@ export default function App() {
         .btn-primary:disabled { opacity: 0.55; box-shadow: none; }
         .btn-ghost {
           background: transparent;
-          color: #42536A;
-          border: 1px solid #A9B7C6;
+          color: ${pt.ghostColor};
+          border: 1px solid ${pt.ghostBorder};
           padding: 10px 16px;
           border-radius: 12px;
           font-size: 13px;
@@ -2032,8 +2066,8 @@ export default function App() {
         }
         .btn-mic {
           background: transparent;
-          color: #42536A;
-          border: 1px solid #A9B7C6;
+          color: ${pt.ghostColor};
+          border: 1px solid ${pt.ghostBorder};
           border-radius: 12px;
           width: 38px;
           height: 38px;
@@ -2086,8 +2120,8 @@ export default function App() {
           align-items: center;
           justify-content: center;
           gap: 10px;
-          color: #EEF1F5;
-          background: radial-gradient(circle at 50% 32%, #29394F 0%, #152238 72%);
+          color: ${pt.dropZoneText};
+          background: ${pt.dropZoneBg};
           text-align: center;
           position: relative;
           overflow: hidden;
@@ -2103,8 +2137,8 @@ export default function App() {
         }
         .drop-zone:active { transform: scale(0.99); }
         .tag-card {
-          background: #F4F6F9;
-          border: 1px solid #D7DEE6;
+          background: ${pt.formCardBg};
+          border: 1px solid ${pt.rowBorder.replace("1px solid ", "")};
           border-top: 3px solid #F2662E;
           border-radius: 16px;
           position: relative;
@@ -2119,18 +2153,18 @@ export default function App() {
           left: 24px;
           width: 18px;
           height: 18px;
-          background: #E9EDF2;
-          border: 1px solid #D7DEE6;
+          background: ${pt.pageBg};
+          border: 1px solid ${pt.rowBorder.replace("1px solid ", "")};
           border-radius: 50%;
         }
         .tag-card-result {
-          background: linear-gradient(135deg, #04060C 0%, #152238 52%, #2E4159 100%);
+          background: ${pt.resultCardBg};
           border-color: rgba(242, 102, 46, 0.4);
           box-shadow: 0 14px 32px rgba(4, 6, 12, 0.35);
           overflow: hidden;
         }
         .tag-card-result::before {
-          background: #152238;
+          background: ${pt.pageBg};
           border-color: rgba(242, 102, 46, 0.4);
         }
         .tag-card-result .tag-card-watermark {
@@ -2165,7 +2199,7 @@ export default function App() {
           padding: 4px;
           display: flex;
           align-items: center;
-          color: #647A93;
+          color: ${pt.subText};
         }
       `}</style>
 
@@ -2177,7 +2211,7 @@ export default function App() {
             overflow: "hidden",
             borderRadius: 22,
             padding: "22px 20px 24px",
-            background: "linear-gradient(135deg, #04060C 0%, #152238 52%, #2E4159 100%)",
+            background: pt.headerBg,
           }}
         >
           {/* Étiquette décorative géante en filigrane, pour le côté "fun" —
@@ -2216,15 +2250,19 @@ export default function App() {
               style={{
                 flexShrink: 0,
                 padding: 9,
-                borderColor: "rgba(238, 241, 245, 0.35)",
-                color: "#EEF1F5",
-                background: "rgba(255, 255, 255, 0.06)",
+                borderColor: pt.menuBtnBorder,
+                color: pt.menuBtnColor,
+                background: pt.menuBtnBg,
               }}
               aria-label={t("menu_title")}
             >
               <Menu size={16} />
             </button>
-            <img src={logoWordmarkLight} alt="estim'" style={{ height: 26, width: "auto", display: "block" }} />
+            <img
+              src={menuTheme === "light" ? logoWordmarkDark : logoWordmarkLight}
+              alt="estim'"
+              style={{ height: 26, width: "auto", display: "block" }}
+            />
             <span
               className="mono"
               style={{
@@ -2243,13 +2281,13 @@ export default function App() {
           </div>
           <h1
             className="brand"
-            style={{ fontSize: 33, fontWeight: 600, margin: 0, lineHeight: 1.12, color: "#FFFFFF", position: "relative" }}
+            style={{ fontSize: 33, fontWeight: 600, margin: 0, lineHeight: 1.12, color: pt.strongColor, position: "relative" }}
           >
             {t("hero_title_1")}
             <br />
             <span style={{ color: "#F2662E" }}>{t("hero_title_2")}</span>
           </h1>
-          <p style={{ marginTop: 10, fontSize: 14, color: "#B9C3D1", lineHeight: 1.5, position: "relative" }}>
+          <p style={{ marginTop: 10, fontSize: 14, color: pt.subText, lineHeight: 1.5, position: "relative" }}>
             {t("hero_subtitle")}
           </p>
 
@@ -2259,7 +2297,7 @@ export default function App() {
               style={{
                 marginTop: 12,
                 fontSize: 11,
-                color: "#C9D3E0",
+                color: pt.chipText,
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
@@ -2301,8 +2339,8 @@ export default function App() {
               style={{
                 marginTop: 6,
                 pointerEvents: "none",
-                borderColor: "rgba(238, 241, 245, 0.4)",
-                color: "#EEF1F5",
+                borderColor: pt.ghostBorder,
+                color: pt.ghostColor,
               }}
             >
               <Upload size={14} /> choisir un fichier
@@ -2339,11 +2377,11 @@ export default function App() {
                 aspectRatio: "4/3",
                 objectFit: "cover",
                 borderRadius: 4,
-                border: "1px solid #D7DEE6",
+                border: pt.formCardBorder,
               }}
             />
             {image.debug && (
-              <div className="mono" style={{ fontSize: 11, color: "#8C9CB0" }}>
+              <div className="mono" style={{ fontSize: 11, color: pt.chevronColor }}>
                 debug: {image.debug} · type: {image.mediaType}
               </div>
             )}
@@ -2357,8 +2395,8 @@ export default function App() {
                   gap: 14,
                   padding: "28px 20px",
                   borderRadius: 12,
-                  background: "linear-gradient(160deg, #1B2A45 0%, #152238 100%)",
-                  border: "1px solid #29394F",
+                  background: pt.loadingBg,
+                  border: `1px solid ${pt.loadingBorder}`,
                 }}
               >
                 <div className="tag-spin-scene">
@@ -2377,7 +2415,7 @@ export default function App() {
                   style={{
                     fontSize: 13,
                     fontWeight: 600,
-                    color: "#EEF1F5",
+                    color: pt.loadingText,
                     letterSpacing: "0.02em",
                     textAlign: "center",
                   }}
@@ -2402,7 +2440,7 @@ export default function App() {
                     marginBottom: 6,
                   }}
                 >
-                  <label className="mono" style={{ fontSize: 12, color: "#42536A" }}>
+                  <label className="mono" style={{ fontSize: 12, color: pt.subText }}>
                     Précisions (optionnel) — contenance, état, modèle exact...
                   </label>
                   {isListening && (
@@ -2423,9 +2461,9 @@ export default function App() {
                       fontSize: 13,
                       padding: "10px 12px",
                       borderRadius: 3,
-                      border: "1px solid #A9B7C6",
-                      background: "#F4F6F9",
-                      color: "#152238",
+                      border: pt.formCardBorder,
+                      background: pt.formCardBg,
+                      color: pt.strongColor,
                       resize: "vertical",
                     }}
                   />
@@ -2479,7 +2517,7 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
                       Année
                     </label>
                     <input
@@ -2493,15 +2531,15 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #A9B7C6",
-                        background: "#F4F6F9",
-                        color: "#152238",
+                        border: pt.inputBorder,
+                        background: pt.inputBg,
+                        color: pt.inputText,
                         boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
                       Kilométrage
                     </label>
                     <input
@@ -2515,15 +2553,15 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #A9B7C6",
-                        background: "#F4F6F9",
-                        color: "#152238",
+                        border: pt.inputBorder,
+                        background: pt.inputBg,
+                        color: pt.inputText,
                         boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
                       État général
                     </label>
                     <select
@@ -2535,9 +2573,9 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #A9B7C6",
-                        background: "#F4F6F9",
-                        color: "#152238",
+                        border: pt.inputBorder,
+                        background: pt.inputBg,
+                        color: pt.inputText,
                         boxSizing: "border-box",
                       }}
                     >
@@ -2567,7 +2605,7 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
                       Ville ou secteur
                     </label>
                     <input
@@ -2581,15 +2619,15 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #A9B7C6",
-                        background: "#F4F6F9",
-                        color: "#152238",
+                        border: pt.inputBorder,
+                        background: pt.inputBg,
+                        color: pt.inputText,
                         boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
                       Surface (m²)
                     </label>
                     <input
@@ -2603,15 +2641,15 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #A9B7C6",
-                        background: "#F4F6F9",
-                        color: "#152238",
+                        border: pt.inputBorder,
+                        background: pt.inputBg,
+                        color: pt.inputText,
                         boxSizing: "border-box",
                       }}
                     />
                   </div>
                   <div>
-                    <label className="mono" style={{ fontSize: 12, color: "#42536A", display: "block", marginBottom: 4 }}>
+                    <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
                       Nombre de pièces (optionnel)
                     </label>
                     <input
@@ -2625,9 +2663,9 @@ export default function App() {
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #A9B7C6",
-                        background: "#F4F6F9",
-                        color: "#152238",
+                        border: pt.inputBorder,
+                        background: pt.inputBg,
+                        color: pt.inputText,
                         boxSizing: "border-box",
                       }}
                     />
@@ -2675,7 +2713,7 @@ export default function App() {
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4, position: "relative" }}>
                   🎭 mode "estimer tout, même n'importe quoi"
                 </div>
-                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: "#FFFFFF", position: "relative" }}>
+                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
                   {result.objet}
                 </div>
 
@@ -2685,10 +2723,10 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
+                    borderTop: pt.dashedBorder,
                     paddingTop: 12,
                     fontSize: 14,
-                    color: "#E4E9F0",
+                    color: pt.rowText,
                     lineHeight: 1.6,
                     marginBottom: 10,
                     position: "relative",
@@ -2696,7 +2734,7 @@ export default function App() {
                 >
                   {result.commentaire}
                 </div>
-                <div style={{ fontSize: 12, color: "#93A4BC", fontStyle: "italic", lineHeight: 1.5, position: "relative" }}>
+                <div style={{ fontSize: 12, color: pt.chevronColor, fontStyle: "italic", lineHeight: 1.5, position: "relative" }}>
                   {result.rappel}
                 </div>
               </div>
@@ -2714,7 +2752,7 @@ export default function App() {
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4, position: "relative" }}>
                   {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
                 </div>
-                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: "#FFFFFF", position: "relative" }}>
+                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
                   {result.objet}
                 </div>
 
@@ -2724,10 +2762,10 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
+                    borderTop: pt.dashedBorder,
                     paddingTop: 12,
                     fontSize: 14,
-                    color: "#E4E9F0",
+                    color: pt.rowText,
                     lineHeight: 1.6,
                     marginBottom: result.hypothese ? 10 : 14,
                     position: "relative",
@@ -2736,11 +2774,11 @@ export default function App() {
                   {result.commentaire}
                 </div>
                 {result.hypothese && (
-                  <div style={{ fontSize: 12, color: "#93A4BC", fontStyle: "italic", lineHeight: 1.5, marginBottom: 10, position: "relative" }}>
+                  <div style={{ fontSize: 12, color: pt.chevronColor, fontStyle: "italic", lineHeight: 1.5, marginBottom: 10, position: "relative" }}>
                     Hypothèse : {result.hypothese}
                   </div>
                 )}
-                <div className="mono" style={{ fontSize: 11, color: "#93A4BC", lineHeight: 1.6, position: "relative" }}>
+                <div className="mono" style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.6, position: "relative" }}>
                   {result.source}
                 </div>
               </div>
@@ -2758,10 +2796,10 @@ export default function App() {
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: "#F2662E", marginBottom: 4, position: "relative" }}>
                   {result.categorie}
                 </div>
-                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4, color: "#FFFFFF", position: "relative" }}>
+                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4, color: pt.strongColor, position: "relative" }}>
                   {result.objet}
                 </div>
-                <div style={{ fontSize: 13, color: "#B9C3D1", marginBottom: 16, position: "relative" }}>
+                <div style={{ fontSize: 13, color: pt.subText, marginBottom: 16, position: "relative" }}>
                   {result.etat} · <em>{result.etat_note}</em>
                 </div>
 
@@ -2774,9 +2812,9 @@ export default function App() {
                       gap: 6,
                       flexWrap: "wrap",
                       fontSize: 10,
-                      color: "#B9C3D1",
-                      background: "rgba(255, 255, 255, 0.06)",
-                      border: "1px solid rgba(255, 255, 255, 0.14)",
+                      color: pt.subText,
+                      background: pt.rowBg,
+                      border: pt.rowBorder,
                       borderRadius: 8,
                       padding: "7px 10px",
                       marginBottom: 16,
@@ -2813,9 +2851,9 @@ export default function App() {
                         fontSize: 12,
                         padding: "8px 10px",
                         borderRadius: 4,
-                        border: "1px solid " + (resultTab === tab.key ? "#F2662E" : "rgba(255, 255, 255, 0.2)"),
+                        border: "1px solid " + (resultTab === tab.key ? "#F2662E" : pt.rowBorder.replace("1px solid ", "")),
                         background: resultTab === tab.key ? "#F2662E" : "transparent",
-                        color: resultTab === tab.key ? "#FFFFFF" : "#93A4BC",
+                        color: resultTab === tab.key ? "#FFFFFF" : pt.chevronColor,
                         cursor: "pointer",
                       }}
                     >
@@ -2827,14 +2865,14 @@ export default function App() {
                 {resultTab === "statistiques" && (
                   <div
                     style={{
-                      borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
+                      borderTop: pt.dashedBorder,
                       paddingTop: 14,
                       marginBottom: 12,
                     }}
                   >
-                    <Gauge label="Facilité à vendre" value={result.facilite_vente} lowLabel="Difficile" highLabel="Facile" />
-                    <Gauge label="Rareté" value={result.rarete} lowLabel="Pas rare" highLabel="Rare" />
-                    <div style={{ fontSize: 11, color: "#93A4BC", lineHeight: 1.5 }}>
+                    <Gauge label="Facilité à vendre" value={result.facilite_vente} lowLabel="Difficile" highLabel="Facile" theme={menuTheme} />
+                    <Gauge label="Rareté" value={result.rarete} lowLabel="Pas rare" highLabel="Rare" theme={menuTheme} />
+                    <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
                       Évaluation par l'IA à partir de la demande observée sur Leboncoin, Vinted et eBay pour ce
                       produit précis.
                     </div>
@@ -2846,7 +2884,7 @@ export default function App() {
                 <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
-                <div style={{ fontSize: 13, color: "#B9C3D1", marginBottom: 14 }}>
+                <div style={{ fontSize: 13, color: pt.subText, marginBottom: 14 }}>
                   {t("used_price_label")}
                 </div>
 
@@ -2871,12 +2909,12 @@ export default function App() {
                 {result.breakdown && Object.keys(result.breakdown).length > 0 && (
                   <div
                     style={{
-                      borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
+                      borderTop: pt.dashedBorder,
                       paddingTop: 12,
                       marginBottom: 12,
                     }}
                   >
-                    <div style={{ fontSize: 12, color: "#93A4BC", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
                       détail par plateforme :
                     </div>
                     {["leboncoin", "vinted", "ebay", "ebaySold"].map((key) => {
@@ -2888,7 +2926,7 @@ export default function App() {
                           key={key}
                           style={{
                             fontSize: 12,
-                            color: "#E4E9F0",
+                            color: pt.rowText,
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 8,
@@ -2905,7 +2943,7 @@ export default function App() {
                               {b.count > 1 ? "s" : ""})
                             </span>
                           ) : (
-                            <span style={{ color: "#93A4BC", fontStyle: "italic" }}>indisponible</span>
+                            <span style={{ color: pt.chevronColor, fontStyle: "italic" }}>indisponible</span>
                           )}
                         </div>
                       );
@@ -2916,12 +2954,12 @@ export default function App() {
                 {result.listings && result.listings.length > 0 && (
                   <div
                     style={{
-                      borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
+                      borderTop: pt.dashedBorder,
                       paddingTop: 12,
                       marginBottom: 12,
                     }}
                   >
-                    <div style={{ fontSize: 12, color: "#93A4BC", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
                       annonces retenues (même produit) :
                     </div>
                     {result.listings.map((l, i) => {
@@ -2935,7 +2973,7 @@ export default function App() {
                           {...rowProps}
                           style={{
                             fontSize: 12,
-                            color: "#E4E9F0",
+                            color: pt.rowText,
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 8,
@@ -2951,8 +2989,8 @@ export default function App() {
                                 style={{
                                   flexShrink: 0,
                                   fontSize: 10,
-                                  color: l.source === "ebaySold" ? "#4ADE80" : "#93A4BC",
-                                  border: l.source === "ebaySold" ? "1px solid #4ADE80" : "1px solid rgba(255, 255, 255, 0.2)",
+                                  color: l.source === "ebaySold" ? "#4ADE80" : pt.chevronColor,
+                                  border: l.source === "ebaySold" ? "1px solid #4ADE80" : "1px solid " + pt.rowBorder.replace("1px solid ", ""),
                                   borderRadius: 3,
                                   padding: "1px 4px",
                                 }}
@@ -2983,16 +3021,16 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
+                    borderTop: pt.dashedBorder,
                     paddingTop: 12,
                     fontSize: 13,
-                    color: "#E4E9F0",
+                    color: pt.rowText,
                     lineHeight: 1.5,
                   }}
                 >
                   <strong>En brocante :</strong> {result.prix_brocante}
                 </div>
-                <div style={{ fontSize: 13, color: "#E4E9F0", marginTop: 8, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 13, color: pt.rowText, marginTop: 8, lineHeight: 1.5 }}>
                   <strong>Conseil :</strong> {result.conseil}
                 </div>
                   </>
@@ -3000,7 +3038,7 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
+                    borderTop: pt.dashedBorder,
                     paddingTop: 12,
                     marginTop: 14,
                   }}
@@ -3012,7 +3050,7 @@ export default function App() {
                       className="mono"
                       style={{
                         fontSize: 12,
-                        color: "#93A4BC",
+                        color: pt.chevronColor,
                         background: "none",
                         border: "none",
                         padding: 0,
@@ -3024,7 +3062,7 @@ export default function App() {
                     </button>
                   ) : (
                     <div>
-                      <div style={{ fontSize: 12, color: "#93A4BC", marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
                         Précise ce qui ne va pas (ex : "en fait c'est une petite taille"), l'estimation sera
                         relancée avec cette info :
                       </div>
@@ -3036,9 +3074,9 @@ export default function App() {
                         style={{
                           width: "100%",
                           fontSize: 13,
-                          color: "#FFFFFF",
-                          background: "rgba(255, 255, 255, 0.08)",
-                          border: "1px solid rgba(255, 255, 255, 0.25)",
+                          color: pt.inputText,
+                          background: pt.inputBg,
+                          border: pt.inputBorder,
                           borderRadius: 4,
                           padding: "8px 10px",
                           marginBottom: 8,
@@ -3077,9 +3115,9 @@ export default function App() {
                             fontSize: 12,
                             padding: "8px 12px",
                             borderRadius: 4,
-                            border: "1px solid rgba(255, 255, 255, 0.2)",
+                            border: "1px solid " + pt.rowBorder.replace("1px solid ", ""),
                             background: "transparent",
-                            color: "#93A4BC",
+                            color: pt.chevronColor,
                             cursor: "pointer",
                           }}
                         >
@@ -3092,7 +3130,7 @@ export default function App() {
 
                 <div
                   style={{
-                    borderTop: "1px dashed rgba(255, 255, 255, 0.2)",
+                    borderTop: pt.dashedBorder,
                     paddingTop: 12,
                     marginTop: 14,
                   }}
@@ -3124,13 +3162,13 @@ export default function App() {
                   )}
 
                   {!adText && !adLoading && adGenCount >= 3 && (
-                    <div style={{ fontSize: 12, color: "#93A4BC" }}>
+                    <div style={{ fontSize: 12, color: pt.chevronColor }}>
                       Limite de 3 générations atteinte pour cette estimation.
                     </div>
                   )}
 
                   {adLoading && (
-                    <div style={{ fontSize: 12, color: "#93A4BC" }}>Génération de l'annonce…</div>
+                    <div style={{ fontSize: 12, color: pt.chevronColor }}>Génération de l'annonce…</div>
                   )}
 
                   {adError && (
@@ -3139,7 +3177,7 @@ export default function App() {
 
                   {adText && !adLoading && (
                     <div>
-                      <div style={{ fontSize: 12, color: "#93A4BC", marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
                         Annonce prête à coller (modifiable) :
                       </div>
                       <input
@@ -3149,9 +3187,9 @@ export default function App() {
                           width: "100%",
                           fontSize: 13,
                           fontWeight: 600,
-                          color: "#FFFFFF",
-                          background: "rgba(255, 255, 255, 0.08)",
-                          border: "1px solid rgba(255, 255, 255, 0.25)",
+                          color: pt.inputText,
+                          background: pt.inputBg,
+                          border: pt.inputBorder,
                           borderRadius: 4,
                           padding: "8px 10px",
                           marginBottom: 6,
@@ -3166,9 +3204,9 @@ export default function App() {
                         style={{
                           width: "100%",
                           fontSize: 13,
-                          color: "#FFFFFF",
-                          background: "rgba(255, 255, 255, 0.08)",
-                          border: "1px solid rgba(255, 255, 255, 0.25)",
+                          color: pt.inputText,
+                          background: pt.inputBg,
+                          border: pt.inputBorder,
                           borderRadius: 4,
                           padding: "8px 10px",
                           marginBottom: 8,
@@ -3203,9 +3241,9 @@ export default function App() {
                               fontSize: 12,
                               padding: "8px 12px",
                               borderRadius: 4,
-                              border: "1px solid rgba(255, 255, 255, 0.2)",
+                              border: "1px solid " + pt.rowBorder.replace("1px solid ", ""),
                               background: "transparent",
-                              color: "#93A4BC",
+                              color: pt.chevronColor,
                               cursor: "pointer",
                             }}
                           >
@@ -3214,12 +3252,12 @@ export default function App() {
                         )}
                       </div>
                       {adGenCount >= 3 && (
-                        <div style={{ fontSize: 11, color: "#93A4BC", marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: pt.chevronColor, marginBottom: 8 }}>
                           Limite de 3 générations atteinte pour cette estimation — tu peux encore modifier le texte
                           à la main juste au-dessus.
                         </div>
                       )}
-                      <div style={{ fontSize: 11, color: "#93A4BC", marginBottom: 6, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 11, color: pt.chevronColor, marginBottom: 6, lineHeight: 1.5 }}>
                         Copie le texte ci-dessus, puis clique sur une plateforme pour créer ton annonce (colle le
                         texte une fois sur la page) :
                       </div>
@@ -3236,10 +3274,10 @@ export default function App() {
                               gap: 7,
                               padding: "5px 12px 5px 5px",
                               borderRadius: 20,
-                              border: "1px solid rgba(255, 255, 255, 0.25)",
-                              color: "#FFFFFF",
+                              border: pt.inputBorder,
+                              color: pt.strongColor,
                               textDecoration: "none",
-                              background: "rgba(255, 255, 255, 0.08)",
+                              background: pt.inputBg,
                             }}
                           >
                             <span
@@ -3272,7 +3310,7 @@ export default function App() {
 
                 <div
                   className="mono"
-                  style={{ fontSize: 11, color: "#93A4BC", marginTop: 16, lineHeight: 1.6 }}
+                  style={{ fontSize: 11, color: pt.chevronColor, marginTop: 16, lineHeight: 1.6 }}
                 >
                   confiance: {result.confiance} · {result.source}
                 </div>
@@ -3298,7 +3336,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#E9EDF2",
+              background: pt.sheetBg,
               width: "100%",
               maxWidth: 420,
               maxHeight: "80vh",
@@ -3314,7 +3352,7 @@ export default function App() {
                 width: 40,
                 height: 4,
                 borderRadius: 3,
-                background: "linear-gradient(90deg, #152238 0%, #F2662E 100%)",
+                background: pt.grabBg,
                 margin: "0 auto 16px",
               }}
             />
@@ -3326,7 +3364,7 @@ export default function App() {
                 marginBottom: 16,
               }}
             >
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
                 <Tag size={16} color="#F2662E" style={{ transform: "rotate(90deg)" }} />
                 Historique
               </h2>
@@ -3338,7 +3376,7 @@ export default function App() {
                     style={{
                       background: "none",
                       border: "none",
-                      color: "#647A93",
+                      color: pt.subText,
                       fontSize: 12,
                       textDecoration: "underline",
                     }}
@@ -3351,15 +3389,15 @@ export default function App() {
                   style={{ background: "none", border: "none", padding: 4 }}
                   aria-label="fermer"
                 >
-                  <X size={20} color="#42536A" />
+                  <X size={20} color={pt.closeColor} />
                 </button>
               </div>
             </div>
 
             <div
               style={{
-                background: "#F4F6F9",
-                border: "1px solid #D7DEE6",
+                background: pt.rowBg,
+                border: pt.rowBorder,
                 borderRadius: 3,
                 padding: 12,
                 marginBottom: 16,
@@ -3374,9 +3412,9 @@ export default function App() {
                       alignItems: "center",
                     }}
                   >
-                    <div style={{ fontSize: 12, color: "#29394F" }}>
+                    <div style={{ fontSize: 12, color: pt.rowText }}>
                       Connecté : <strong>{user.email}</strong>
-                      <div className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 2 }}>
+                      <div className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 2 }}>
                         historique illimité, synchronisé
                       </div>
                     </div>
@@ -3386,16 +3424,16 @@ export default function App() {
                   </div>
 
                   {profile && (
-                    <div style={{ borderTop: "1px dashed #D7DEE6", marginTop: 10, paddingTop: 10 }}>
+                    <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                        <div style={{ fontSize: 12, color: "#29394F" }}>
+                        <div style={{ fontSize: 12, color: pt.rowText }}>
                           Plan :{" "}
                           <strong>
                             {profile.plan !== "gratuit" && profile.subscription_status === "active"
                               ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
                               : "Gratuit"}
                           </strong>
-                          <div className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 2 }}>
+                          <div className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 2 }}>
                             {profile.plan !== "gratuit" && profile.subscription_status === "active"
                               ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} estimations restantes ce mois`
                               : `${Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) gratuite(s) restante(s) ce mois`}
@@ -3426,14 +3464,14 @@ export default function App() {
                     </div>
                   )}
 
-                  <div style={{ borderTop: "1px dashed #D7DEE6", marginTop: 10, paddingTop: 10 }}>
+                  <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
                     {passwordStatus === "done" ? (
-                      <p style={{ fontSize: 12, color: "#29394F", margin: 0 }}>
+                      <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
                         Mot de passe défini ! Tu peux maintenant l'utiliser pour te connecter.
                       </p>
                     ) : (
                       <div>
-                        <p style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 6 }}>
+                        <p style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 6 }}>
                           Définir un mot de passe (pour te reconnecter sans lien par email) :
                         </p>
                         <div style={{ display: "flex", gap: 6 }}>
@@ -3449,8 +3487,9 @@ export default function App() {
                                 fontSize: 12,
                                 padding: "8px 34px 8px 10px",
                                 borderRadius: 3,
-                                border: "1px solid #A9B7C6",
-                                background: "#fff",
+                                border: pt.inputBorder,
+                                background: pt.inputBg,
+                                color: pt.inputText,
                                 boxSizing: "border-box",
                               }}
                             />
@@ -3482,17 +3521,17 @@ export default function App() {
                   </div>
                 </div>
               ) : authStatus === "sent" ? (
-                <p style={{ fontSize: 12, color: "#29394F", margin: 0 }}>
+                <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
                   Lien envoyé ! Vérifie ta boîte mail ({authEmail}) et clique dessus pour te connecter.
                 </p>
               ) : authStatus === "signup_sent" ? (
-                <p style={{ fontSize: 12, color: "#29394F", margin: 0 }}>
+                <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
                   Compte créé ! Vérifie ta boîte mail ({authEmail}) et clique sur le lien de confirmation pour
                   activer ton compte, puis reviens te connecter avec ton mot de passe.
                 </p>
               ) : (
                 <div>
-                  <p style={{ fontSize: 12, color: "#29394F", marginTop: 0, marginBottom: 8 }}>
+                  <p style={{ fontSize: 12, color: pt.rowText, marginTop: 0, marginBottom: 8 }}>
                     Connecte-toi pour un historique illimité, synchronisé entre appareils (optionnel).
                   </p>
                   <input
@@ -3506,8 +3545,9 @@ export default function App() {
                       fontSize: 12,
                       padding: "8px 10px",
                       borderRadius: 3,
-                      border: "1px solid #A9B7C6",
-                      background: "#fff",
+                      border: pt.inputBorder,
+                      background: pt.inputBg,
+                      color: pt.inputText,
                       marginBottom: 6,
                       boxSizing: "border-box",
                     }}
@@ -3524,8 +3564,9 @@ export default function App() {
                         fontSize: 12,
                         padding: "8px 34px 8px 10px",
                         borderRadius: 3,
-                        border: "1px solid #A9B7C6",
-                        background: "#fff",
+                        border: pt.inputBorder,
+                        background: pt.inputBg,
+                        color: pt.inputText,
                         boxSizing: "border-box",
                       }}
                     />
@@ -3562,13 +3603,13 @@ export default function App() {
                       alignItems: "center",
                       gap: 8,
                       margin: "10px 0",
-                      color: "#647A93",
+                      color: pt.subText,
                       fontSize: 11,
                     }}
                   >
-                    <div style={{ flex: 1, height: 1, background: "#D7DEE6" }} />
+                    <div style={{ flex: 1, height: 1, background: pt.rowBorder.replace("1px solid ", "") }} />
                     ou
-                    <div style={{ flex: 1, height: 1, background: "#D7DEE6" }} />
+                    <div style={{ flex: 1, height: 1, background: pt.rowBorder.replace("1px solid ", "") }} />
                   </div>
                   <button
                     className="btn-ghost"
@@ -3586,7 +3627,7 @@ export default function App() {
             </div>
 
             {history.length === 0 && (
-              <p className="mono" style={{ fontSize: 13, color: "#647A93" }}>
+              <p className="mono" style={{ fontSize: 13, color: pt.subText }}>
                 Aucune estimation pour l'instant.
               </p>
             )}
@@ -3599,8 +3640,8 @@ export default function App() {
                     display: "flex",
                     gap: 10,
                     alignItems: "center",
-                    background: "#F4F6F9",
-                    border: "1px solid #D7DEE6",
+                    background: pt.rowBg,
+                    border: pt.rowBorder,
                     borderRadius: 3,
                     padding: 8,
                   }}
@@ -3624,11 +3665,12 @@ export default function App() {
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
+                        color: pt.rowText,
                       }}
                     >
                       {h.objet}
                     </div>
-                    <div className="mono" style={{ fontSize: 12, color: "#647A93" }}>
+                    <div className="mono" style={{ fontSize: 12, color: pt.subText }}>
                       {h.prix_bas}–{h.prix_haut} € ·{" "}
                       {new Date(h.date).toLocaleDateString("fr-FR", {
                         day: "numeric",
@@ -4407,7 +4449,7 @@ export default function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#E9EDF2",
+              background: pt.sheetBg,
               width: "100%",
               maxWidth: 420,
               maxHeight: "85vh",
@@ -4417,7 +4459,7 @@ export default function App() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h2 className="brand" style={{ fontSize: 20, margin: 0 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, color: pt.titleColor }}>
                 Quota atteint
               </h2>
               <button
@@ -4425,11 +4467,11 @@ export default function App() {
                 style={{ background: "none", border: "none", padding: 4 }}
                 aria-label="fermer"
               >
-                <X size={20} color="#42536A" />
+                <X size={20} color={pt.closeColor} />
               </button>
             </div>
 
-            <p style={{ fontSize: 13, color: "#29394F", lineHeight: 1.5, marginTop: 0 }}>
+            <p style={{ fontSize: 13, color: pt.rowText, lineHeight: 1.5, marginTop: 0 }}>
               {paywallInfo?.reason === "quota_epuise" &&
                 "Tu as utilisé toutes les estimations comprises dans ton abonnement ce mois-ci."}
               {paywallInfo?.reason === "gratuit_epuise" &&
@@ -4460,8 +4502,8 @@ export default function App() {
               </button>
             )}
 
-            <div style={{ borderTop: "1px dashed #D7DEE6", paddingTop: 14 }}>
-              <p className="mono" style={{ fontSize: 11, color: "#647A93", marginTop: 0, marginBottom: 10 }}>
+            <div style={{ borderTop: pt.dashedBorder, paddingTop: 14 }}>
+              <p className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 10 }}>
                 ou passe à un abonnement pour beaucoup plus d'estimations :
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
