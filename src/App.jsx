@@ -1180,9 +1180,15 @@ export default function App() {
     }
   }, [highestUnlockedGrade.key]);
 
+  // Exception personnelle (compte de Dylan uniquement) : peut sélectionner
+  // n'importe quel habillage pour l'aperçu, même non débloqué. N'affecte que
+  // le style affiché sur SON compte — le vrai compteur/seuils de déblocage
+  // restent inchangés pour tout le monde (y compris pour lui).
+  const isOwnerPreview = !!(user && user.email && user.email.toLowerCase() === "dyloo999@gmail.com");
+
   const activeGrade =
     (selectedGradeKey &&
-      GRADES.find((g) => g.key === selectedGradeKey && g.threshold <= lifetimeEstimations)) ||
+      GRADES.find((g) => g.key === selectedGradeKey && (g.threshold <= lifetimeEstimations || isOwnerPreview))) ||
     highestUnlockedGrade;
   const accent = activeGrade.accent;
   const accentDark = activeGrade.accentDark;
@@ -4704,12 +4710,19 @@ export default function App() {
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     {GRADES.map((g) => {
                       const unlocked = lifetimeEstimations >= g.threshold;
+                      const canSelect = unlocked || isOwnerPreview;
                       const isActive = activeGrade.key === g.key;
                       return (
                         <button
                           key={g.key}
-                          onClick={() => unlocked && setSelectedGradeKey(g.key)}
-                          title={unlocked ? g.label : `${g.label} — débloqué à ${g.threshold} estimations`}
+                          onClick={() => canSelect && setSelectedGradeKey(g.key)}
+                          title={
+                            unlocked
+                              ? g.label
+                              : isOwnerPreview
+                              ? `${g.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${g.threshold} estimations)`
+                              : `${g.label} — débloqué à ${g.threshold} estimations`
+                          }
                           style={{
                             display: "flex",
                             flexDirection: "column",
@@ -4718,8 +4731,8 @@ export default function App() {
                             background: "none",
                             border: "none",
                             padding: 0,
-                            cursor: unlocked ? "pointer" : "default",
-                            opacity: unlocked ? 1 : 0.4,
+                            cursor: canSelect ? "pointer" : "default",
+                            opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
                           }}
                         >
                           <div
@@ -4737,8 +4750,11 @@ export default function App() {
                           >
                             {!unlocked && <Lock size={12} color="#FFFFFF" />}
                           </div>
-                          <span className="mono" style={{ fontSize: 9, color: pt.subText }}>
+                          <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
                             {g.emoji} {g.label}
+                          </span>
+                          <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
+                            {g.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${g.threshold} estim.`}
                           </span>
                         </button>
                       );
