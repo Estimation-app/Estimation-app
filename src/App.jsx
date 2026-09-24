@@ -1292,11 +1292,28 @@ export default function App() {
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
   const [showContact, setShowContact] = useState(false);
 
-  // "Ma collection" : panneau gamification/portefeuille (valeur totale,
-  // badges, streak, courbe de valeur dans le temps) — calculé côté client à
-  // partir de l'historique existant, pas de nouvel appel serveur.
+  // "Ma collection" (panneau) : juste l'état d'ouverture ici — les calculs
+  // (valeur totale, badges, streak...) sont plus bas, une fois `history`
+  // déclaré (ils en dépendent directement).
   const [showCollection, setShowCollection] = useState(false);
   const isPremiumPlan = !!(profile && profile.plan !== "gratuit" && profile.subscription_status === "active");
+
+  const HISTORY_KEY = "estimateur_historique";
+  const [history, setHistory] = useState(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [showHistory, setShowHistory] = useState(false);
+
+  // "Ma collection" : panneau gamification/portefeuille (valeur totale,
+  // badges, streak, courbe de valeur dans le temps) — calculé côté client à
+  // partir de l'historique existant, pas de nouvel appel serveur. Doit
+  // rester APRÈS la déclaration de `history` juste au-dessus (dépend
+  // directement dessus).
   const numericHistory = history.filter(
     (h) => typeof h.prix_bas === "number" && typeof h.prix_haut === "number" && h.date
   );
@@ -1334,17 +1351,6 @@ export default function App() {
     { id: "collector500", emoji: "📦", label: "Collection à 500 €", test: () => portfolioValue >= 500 },
     { id: "collector2000", emoji: "💎", label: "Collection à 2000 €", test: () => portfolioValue >= 2000 },
   ];
-
-  const HISTORY_KEY = "estimateur_historique";
-  const [history, setHistory] = useState(() => {
-    try {
-      const raw = localStorage.getItem(HISTORY_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [showHistory, setShowHistory] = useState(false);
 
   // Une fois connecté, on charge l'historique complet depuis Supabase
   // (illimité, synchronisé) à la place de l'historique local.
