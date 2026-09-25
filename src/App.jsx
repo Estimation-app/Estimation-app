@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3 } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 import logoWordmarkDark from "./assets/logo-wordmark.png";
 
@@ -108,6 +108,132 @@ const BG_SKINS = [
 // atteint / le prochain palier, sinon il court-circuiterait "bleu" comme
 // fond "le plus haut débloqué" par défaut puisque les deux ont le seuil 0).
 const BG_PROGRESSION = BG_SKINS.filter((sk) => sk.key !== "blanc");
+
+// Teintes de peau au choix pour l'avatar public — identitaires, pas des
+// récompenses : toujours toutes disponibles, jamais à débloquer (contrairement
+// aux coiffures/couleurs/vêtements/accessoires, voir AVATAR_WARDROBE plus bas
+// dans le composant App(), qui dépend des stats de l'utilisateur).
+const AVATAR_SKIN_TONES = ["#F6D8C0", "#E8B99A", "#C98F6B", "#9C6644", "#6B4226", "#4A2C17"];
+
+// Avatar "personnage" à vraie tête + corps (façon Habbo), composé de
+// couches SVG empilées : corps → cou → tête/oreilles/visage → cheveux →
+// accessoire (toujours dessiné en dernier, par-dessus tout le reste).
+// Un léger dégradé radial sur la tête/le corps donne un rendu "figurine"
+// avec un peu de relief, sans viser un vrai rendu 3D.
+function AvatarSVG({ skin = AVATAR_SKIN_TONES[1], hairStyle = "court", hairColor = "#2B2B2B", topColor = "#5C6773", accessory = "aucun", size = 96 }) {
+  const gradId = "avshade-" + Math.abs(
+    (skin + hairStyle + hairColor + topColor + accessory).split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)
+  );
+  const isRainbowHair = hairColor === "rainbow";
+  const isGoldTop = topColor === "gold";
+  return (
+    <svg viewBox="0 0 100 130" width={size} height={size * 1.3} aria-hidden="true">
+      <defs>
+        <radialGradient id={gradId} cx="35%" cy="28%" r="75%">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.35" />
+          <stop offset="55%" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.18" />
+        </radialGradient>
+        {isRainbowHair && (
+          <linearGradient id={gradId + "-rainbow"} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FF5C7A" />
+            <stop offset="25%" stopColor="#FFC85C" />
+            <stop offset="50%" stopColor="#5CE87A" />
+            <stop offset="75%" stopColor="#5CB8FF" />
+            <stop offset="100%" stopColor="#C05CFF" />
+          </linearGradient>
+        )}
+        {isGoldTop && (
+          <linearGradient id={gradId + "-gold"} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#F6D978" />
+            <stop offset="50%" stopColor="#D4A017" />
+            <stop offset="100%" stopColor="#96700D" />
+          </linearGradient>
+        )}
+      </defs>
+      {/* Cheveux (partie arrière, derrière la tête) — seul le style "afro" a
+          besoin d'un halo qui dépasse le contour de la tête. */}
+      {hairStyle === "afro" && <circle cx="50" cy="30" r="27" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />}
+      {/* Corps */}
+      <rect x="28" y="74" width="44" height="52" rx="18" fill={isGoldTop ? `url(#${gradId}-gold)` : topColor} />
+      {/* Cou */}
+      <rect x="44" y="60" width="12" height="16" fill={skin} />
+      {/* Oreilles */}
+      <circle cx="25" cy="42" r="5" fill={skin} />
+      <circle cx="75" cy="42" r="5" fill={skin} />
+      {/* Tête */}
+      <circle cx="50" cy="42" r="24" fill={skin} />
+      {/* Cheveux longs : deux mèches qui dépassent des épaules, sous la
+          tête mais visibles de chaque côté du corps. */}
+      {hairStyle === "longs" && (
+        <>
+          <rect x="19" y="30" width="10" height="52" rx="5" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />
+          <rect x="71" y="30" width="10" height="52" rx="5" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />
+        </>
+      )}
+      {/* Yeux + sourire */}
+      <circle cx="41" cy="40" r="2.6" fill="#152238" />
+      <circle cx="59" cy="40" r="2.6" fill="#152238" />
+      <path d="M40,50 Q50,57 60,50" stroke="#152238" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+      {/* Cheveux (dessus de la tête) — pas pour "afro" (son propre halo,
+          dessiné derrière la tête plus haut) ni "mohawk" (bande centrale
+          uniquement, cheveux rasés sur les côtés). */}
+      {hairStyle !== "chauve" && hairStyle !== "afro" && hairStyle !== "mohawk" && (
+        <ellipse cx="50" cy="29" rx="25" ry="18" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />
+      )}
+      {hairStyle === "boucles" &&
+        [
+          [22, 30], [30, 16], [42, 10], [58, 10], [70, 16], [78, 30],
+        ].map(([cx, cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r="7" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />
+        ))}
+      {hairStyle === "mohawk" && (
+        <path
+          d="M46,6 L54,6 L57,26 L50,20 L43,26 Z"
+          fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor}
+        />
+      )}
+      {/* Ombre/relief global (peau + corps) */}
+      <circle cx="50" cy="42" r="24" fill={`url(#${gradId})`} />
+      <rect x="28" y="74" width="44" height="52" rx="18" fill={`url(#${gradId})`} />
+      {/* Accessoire — toujours par-dessus tout le reste */}
+      {accessory === "bandeau" && <rect x="26" y="33" width="48" height="6" rx="3" fill="#B22B3A" />}
+      {accessory === "casquette" && (
+        <>
+          <path d="M25,33 Q25,10 50,10 Q75,10 75,33 Q50,24 25,33 Z" fill="#29394F" />
+          <ellipse cx="34" cy="33" rx="15" ry="5" fill="#1E2C3D" />
+        </>
+      )}
+      {accessory === "lunettes" && (
+        <>
+          <circle cx="41" cy="40" r="6.5" fill="none" stroke="#152238" strokeWidth="2" />
+          <circle cx="59" cy="40" r="6.5" fill="none" stroke="#152238" strokeWidth="2" />
+          <line x1="47.5" y1="40" x2="52.5" y2="40" stroke="#152238" strokeWidth="2" />
+        </>
+      )}
+      {accessory === "loupe" && (
+        <>
+          <circle cx="80" cy="92" r="8" fill="none" stroke="#D4A017" strokeWidth="3" />
+          <line x1="86" y1="98" x2="94" y2="106" stroke="#8C5225" strokeWidth="4" strokeLinecap="round" />
+        </>
+      )}
+      {accessory === "couronne" && (
+        <path
+          d="M30,18 L36,4 L43,15 L50,2 L57,15 L64,4 L70,18 Z"
+          fill="#D4A017"
+          stroke="#96700D"
+          strokeWidth="1"
+        />
+      )}
+      {accessory === "medaille" && (
+        <>
+          <circle cx="58" cy="92" r="8" fill="#D4A017" stroke="#96700D" strokeWidth="1.5" />
+          <text x="58" y="96" textAnchor="middle" fontSize="9" fill="#4A3500">★</text>
+        </>
+      )}
+    </svg>
+  );
+}
 
 // Sous-catégories affichées (triées de A à Z) dans le menu "Rechercher un
 // produit". Purement pour orienter la recherche — le texte de la catégorie
@@ -263,6 +389,7 @@ const TRANSLATIONS = {
     menu_trending: "Produits du moment",
     menu_leaderboard: "Classement",
     menu_collection: "Ma collection",
+    menu_avatar: "Avatar",
     menu_subscription: "Abonnement",
     menu_contact: "Contact",
     menu_language: "Langue",
@@ -339,6 +466,7 @@ const TRANSLATIONS = {
     menu_trending: "Trending products",
     menu_leaderboard: "Leaderboard",
     menu_collection: "My collection",
+    menu_avatar: "Avatar",
     menu_subscription: "Subscription",
     menu_contact: "Contact",
     menu_language: "Language",
@@ -415,6 +543,7 @@ const TRANSLATIONS = {
     menu_trending: "Productos del momento",
     menu_leaderboard: "Clasificación",
     menu_collection: "Mi colección",
+    menu_avatar: "Avatar",
     menu_subscription: "Suscripción",
     menu_contact: "Contacto",
     menu_language: "Idioma",
@@ -1107,7 +1236,7 @@ export default function App() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo"
+        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_skin, avatar_hair_style, avatar_hair_color, avatar_top_color, avatar_accessory"
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1608,14 +1737,14 @@ export default function App() {
   const [pseudoError, setPseudoError] = useState(null);
   const [pseudoSavedFlash, setPseudoSavedFlash] = useState(false);
 
-  async function loadLeaderboard(type, period) {
-    const cacheKey = `${type}:${period}`;
+  async function loadLeaderboard(type, period, limit = 20) {
+    const cacheKey = `${type}:${period}:${limit}`;
     if (leaderboardCache[cacheKey] || leaderboardLoadingKey === cacheKey) return;
     setLeaderboardLoadingKey(cacheKey);
     setLeaderboardError(null);
     try {
       const fn = type === "annonces" ? "leaderboard_ad_generations" : "leaderboard_estimations";
-      const { data, error } = await supabase.rpc(fn, { p_period: period, p_limit: 20 });
+      const { data, error } = await supabase.rpc(fn, { p_period: period, p_limit: limit });
       if (error) throw new Error(error.message);
       setLeaderboardCache((prev) => ({ ...prev, [cacheKey]: data || [] }));
     } catch (e) {
@@ -1626,16 +1755,33 @@ export default function App() {
     }
   }
   useEffect(() => {
-    if (showLeaderboard) loadLeaderboard(leaderboardType, leaderboardPeriod);
+    if (showLeaderboard) loadLeaderboard(leaderboardType, leaderboardPeriod, 20);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showLeaderboard, leaderboardType, leaderboardPeriod]);
   useEffect(() => {
     if (showLeaderboard) setPseudoInput((profile && profile.pseudo) || "");
   }, [showLeaderboard, profile]);
+  // Panneau "Avatar" — état d'ouverture déclaré ici (tôt) car le prochain
+  // effet en a besoin dans son tableau de dépendances ; le reste de l'état
+  // de l'avatar (peau/coiffure/couleurs/accessoire) est déclaré plus bas,
+  // juste après AVATAR_WARDROBE dont il dépend.
+  const [showAvatarPanel, setShowAvatarPanel] = useState(false);
+  // Vérifie si l'utilisateur figure ACTUELLEMENT dans le top 100 du
+  // classement total des estimations — sert au déblocage de l'accessoire
+  // "médaille" le plus rare de l'avatar (voir WARDROBE plus bas). Version
+  // volontairement simplifiée ("top 100 en ce moment") plutôt qu'un vrai
+  // suivi "3 mois d'affilée", qui demanderait une tâche planifiée côté
+  // serveur pour enregistrer un historique mensuel — non fait pour l'instant.
+  useEffect(() => {
+    if (showAvatarPanel && user) loadLeaderboard("estimations", "total", 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAvatarPanel, user]);
+  const top100TotalRows = leaderboardCache["estimations:total:100"];
+  const isTop100Total = !!(user && top100TotalRows && top100TotalRows.some((r) => r.user_id === user.id));
 
   const PSEUDO_ERROR_LABELS = {
     longueur_invalide: "3 à 20 caractères.",
-    caracteres_invalides: "Lettres, chiffres, - et _ uniquement (pas d'espace).",
+    caracteres_invalides: "Lettres, chiffres, espaces, apostrophes et tirets uniquement.",
     deja_pris: "Ce pseudo est déjà pris.",
     profil_introuvable: "Connecte-toi pour choisir un pseudo.",
   };
@@ -1679,6 +1825,9 @@ export default function App() {
   // (valeur totale, badges, streak...) sont plus bas, une fois `history`
   // déclaré (ils en dépendent directement).
   const [showCollection, setShowCollection] = useState(false);
+  // Détail des objets scannés, triés du plus cher au moins cher — ouvert en
+  // tapant sur le compteur "Objets scannés" dans "Ma collection".
+  const [showScannedObjectsList, setShowScannedObjectsList] = useState(false);
   const isPremiumPlan = !!(profile && profile.plan !== "gratuit" && profile.subscription_status === "active");
 
   const HISTORY_KEY = "estimateur_historique";
@@ -1697,13 +1846,29 @@ export default function App() {
   // partir de l'historique existant, pas de nouvel appel serveur. Doit
   // rester APRÈS la déclaration de `history` juste au-dessus (dépend
   // directement dessus).
+  // On exclut les estimations "humour" (être vivant: humain/animal — voir
+  // `type_sujet === "etre_vivant"` dans runEstimationCore, qui génère un
+  // prix volontairement fictif marqué `confiance: "humour"`) des calculs
+  // de valeur de la collection : ce ne sont pas des objets réellement
+  // estimés, leur prix n'a aucun sens à additionner avec de vraies estimations.
   const numericHistory = history.filter(
-    (h) => typeof h.prix_bas === "number" && typeof h.prix_haut === "number" && h.date
+    (h) => typeof h.prix_bas === "number" && typeof h.prix_haut === "number" && h.date && h.confiance !== "humour"
   );
+  // Nombre d'objets réellement scannés pour la carte "Objets scannés" de
+  // "Ma collection" — même exclusion des estimations "humour" que ci-dessus,
+  // pour ne jamais compter un humain/animal comme un objet.
+  const scannedObjectsCount = history.filter((h) => h.confiance !== "humour").length;
   const portfolioValue = numericHistory.reduce((sum, h) => sum + (h.prix_bas + h.prix_haut) / 2, 0);
   const portfolioBestFind = numericHistory.reduce(
     (best, h) => Math.max(best, (h.prix_bas + h.prix_haut) / 2),
     0
+  );
+  // Même liste d'objets réels, triée du plus cher au moins cher (prix moyen
+  // = (prix_bas + prix_haut) / 2) — pour le détail affiché quand on tape sur
+  // le compteur "Objets scannés" dans "Ma collection", afin de justifier la
+  // "Valeur estimée" affichée juste à côté.
+  const portfolioSortedByValueDesc = [...numericHistory].sort(
+    (a, b) => (b.prix_bas + b.prix_haut) / 2 - (a.prix_bas + a.prix_haut) / 2
   );
   const portfolioSortedAsc = [...numericHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
   let portfolioRunning = 0;
@@ -1724,16 +1889,185 @@ export default function App() {
     }
     return streak;
   })();
+  // Le plus grand nombre d'estimations faites en une seule journée — pour le
+  // badge "plusieurs estimations d'affilée dans la même journée" (distinct
+  // du streak ci-dessus, qui compte des JOURS consécutifs).
+  const portfolioMaxPerDay = (() => {
+    const counts = {};
+    history.forEach((h) => {
+      if (!h.date) return;
+      const key = new Date(h.date).toDateString();
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.values(counts).reduce((m, c) => Math.max(m, c), 0);
+  })();
+  // Catalogue des badges/"gadgets" affichés dans "Ma collection" — en
+  // faisant des estimations, en générant des annonces, en se connectant
+  // plusieurs jours de suite, ou en enchaînant plusieurs estimations le même
+  // jour. Distinct du catalogue d'habillage de l'avatar (AVATAR_WARDROBE plus
+  // bas), qui réutilise les mêmes stats mais pour un tout autre usage
+  // (coiffure/couleurs/accessoire du personnage, pas des icônes de badge).
   const COLLECTION_BADGES = [
     { id: "first", emoji: "🎉", label: "Premier scan", test: () => history.length >= 1 },
     { id: "five", emoji: "📸", label: "5 estimations", test: () => history.length >= 5 },
     { id: "ten", emoji: "🔥", label: "10 estimations", test: () => history.length >= 10 },
     { id: "fifty", emoji: "🏆", label: "50 estimations", test: () => history.length >= 50 },
     { id: "streak3", emoji: "⚡", label: "3 jours de suite", test: () => portfolioStreak >= 3 },
+    { id: "streak7", emoji: "🌟", label: "7 jours de suite", test: () => portfolioStreak >= 7 },
+    { id: "streak30", emoji: "👑", label: "30 jours de suite", test: () => portfolioStreak >= 30 },
+    { id: "powerday5", emoji: "🚀", label: "5 estimations en 1 jour", test: () => portfolioMaxPerDay >= 5 },
     { id: "bigfind", emoji: "💰", label: "Trouvaille à +200 €", test: () => portfolioBestFind >= 200 },
     { id: "collector500", emoji: "📦", label: "Collection à 500 €", test: () => portfolioValue >= 500 },
     { id: "collector2000", emoji: "💎", label: "Collection à 2000 €", test: () => portfolioValue >= 2000 },
+    { id: "adgen10", emoji: "📣", label: "10 annonces générées", test: () => lifetimeAdGenerations >= 10 },
+    { id: "adgen50", emoji: "📢", label: "50 annonces générées", test: () => lifetimeAdGenerations >= 50 },
   ];
+
+  // Panneau "Avatar" : un vrai petit personnage (tête + corps, façon Habbo)
+  // à personnaliser — peau (toujours libre), coiffure, couleur de cheveux,
+  // couleur de vêtement, et un accessoire (casquette/lunettes/loupe/
+  // couronne/médaille...). Chaque option (hors peau) se débloque en
+  // remplissant un défi (estimations, annonces générées, jours de suite,
+  // classement...) — les mêmes règles pour tout le monde, gratuit ou abonné
+  // (l'abonnement ne change que le quota d'estimations, pas l'avatar).
+  // Accessible depuis le menu ET depuis "Classement" (à côté du pseudo).
+  const AVATAR_WARDROBE = {
+    hairStyle: [
+      { id: "chauve", label: "Chauve", free: true },
+      { id: "court", label: "Court", free: true },
+      { id: "longs", label: "Longs", test: () => lifetimeEstimations >= 15 },
+      { id: "boucles", label: "Bouclés", test: () => portfolioStreak >= 5 },
+      { id: "mohawk", label: "Mohawk", test: () => lifetimeEstimations >= 75 },
+      { id: "afro", label: "Afro", test: () => lifetimeAdGenerations >= 30 },
+    ],
+    hairColor: [
+      { id: "noir", hex: "#1A1A1A", label: "Noir", free: true },
+      { id: "chatain", hex: "#5C3A21", label: "Châtain", free: true },
+      { id: "blond", hex: "#D9B26F", label: "Blond", free: true },
+      { id: "roux", hex: "#B5502A", label: "Roux", free: true },
+      { id: "gris", hex: "#9CA3AF", label: "Gris", free: true },
+      { id: "bleu", hex: "#3B82C4", label: "Bleu", test: () => portfolioStreak >= 7 },
+      { id: "rose", hex: "#E85D9E", label: "Rose", test: () => lifetimeAdGenerations >= 40 },
+      { id: "arcenciel", hex: "rainbow", label: "Arc-en-ciel", test: () => lifetimeEstimations >= 5000 },
+    ],
+    topColor: [
+      { id: "gris", hex: "#5C6773", label: "Gris", free: true },
+      { id: "blanc", hex: "#E9EDF2", label: "Blanc", free: true },
+      { id: "marine", hex: "#29394F", label: "Marine", free: true },
+      { id: "beige", hex: "#C9AD8F", label: "Beige", free: true },
+      { id: "rouge", hex: "#B22B3A", label: "Rouge", test: () => lifetimeEstimations >= 10 },
+      { id: "vert", hex: "#17824C", label: "Vert", test: () => lifetimeEstimations >= 25 },
+      { id: "violet", hex: "#6D2FB0", label: "Violet", test: () => lifetimeAdGenerations >= 20 },
+      { id: "jaune", hex: "#D4A017", label: "Jaune", test: () => portfolioBestFind >= 200 },
+      { id: "or", hex: "gold", label: "Doré", test: () => lifetimeEstimations >= 1000 },
+    ],
+    accessory: [
+      { id: "aucun", label: "Aucun", free: true },
+      { id: "bandeau", label: "Bandeau", test: () => portfolioStreak >= 3 },
+      { id: "casquette", label: "Casquette", test: () => lifetimeEstimations >= 20 },
+      { id: "lunettes", label: "Lunettes", test: () => lifetimeAdGenerations >= 10 },
+      { id: "loupe", label: "Loupe d'enquêteur", test: () => lifetimeEstimations >= 50 },
+      { id: "couronne", label: "Couronne", test: () => lifetimeEstimations >= 1000 },
+      // Version simplifiée du défi "top 100 du mois, 3 mois d'affilée"
+      // demandé : ici, être ACTUELLEMENT dans le top 100 du classement total
+      // des estimations (voir isTop100Total plus haut) — un vrai suivi
+      // "3 mois d'affilée" demanderait une tâche planifiée côté serveur pour
+      // enregistrer un historique mensuel, pas encore en place.
+      { id: "medaille", label: "Médaille top 100", test: () => isTop100Total },
+    ],
+  };
+  const AVATAR_DEFAULTS = {
+    skin: AVATAR_SKIN_TONES[1],
+    hairStyle: "court",
+    hairColor: "noir",
+    topColor: "gris",
+    accessory: "aucun",
+  };
+  function avatarWardrobeUnlocked(category, id) {
+    const item = AVATAR_WARDROBE[category].find((it) => it.id === id);
+    return !!item && (item.free || item.test());
+  }
+  const [avatarSkinInput, setAvatarSkinInput] = useState(AVATAR_DEFAULTS.skin);
+  const [avatarHairStyleInput, setAvatarHairStyleInput] = useState(AVATAR_DEFAULTS.hairStyle);
+  const [avatarHairColorInput, setAvatarHairColorInput] = useState(AVATAR_DEFAULTS.hairColor);
+  const [avatarTopColorInput, setAvatarTopColorInput] = useState(AVATAR_DEFAULTS.topColor);
+  const [avatarAccessoryInput, setAvatarAccessoryInput] = useState(AVATAR_DEFAULTS.accessory);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarError, setAvatarError] = useState(null);
+  const [avatarSavedFlash, setAvatarSavedFlash] = useState(false);
+  useEffect(() => {
+    if (showAvatarPanel) {
+      setAvatarSkinInput((profile && profile.avatar_skin) || AVATAR_DEFAULTS.skin);
+      setAvatarHairStyleInput((profile && profile.avatar_hair_style) || AVATAR_DEFAULTS.hairStyle);
+      setAvatarHairColorInput((profile && profile.avatar_hair_color) || AVATAR_DEFAULTS.hairColor);
+      setAvatarTopColorInput((profile && profile.avatar_top_color) || AVATAR_DEFAULTS.topColor);
+      setAvatarAccessoryInput((profile && profile.avatar_accessory) || AVATAR_DEFAULTS.accessory);
+      setAvatarError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAvatarPanel, profile]);
+  function pickAvatarItem(category, id) {
+    if (!avatarWardrobeUnlocked(category, id)) return;
+    if (category === "hairStyle") setAvatarHairStyleInput(id);
+    else if (category === "hairColor") setAvatarHairColorInput(id);
+    else if (category === "topColor") setAvatarTopColorInput(id);
+    else if (category === "accessory") setAvatarAccessoryInput(id);
+  }
+  function avatarSwatchBg(hex) {
+    if (hex === "rainbow") return "linear-gradient(135deg, #FF5C7A 0%, #FFC85C 25%, #5CE87A 50%, #5CB8FF 75%, #C05CFF 100%)";
+    if (hex === "gold") return "linear-gradient(135deg, #F6D978 0%, #D4A017 50%, #96700D 100%)";
+    return hex;
+  }
+  const avatarHairColorHex = (AVATAR_WARDROBE.hairColor.find((h) => h.id === avatarHairColorInput) || {}).hex || "#1A1A1A";
+  const avatarTopColorHex = (AVATAR_WARDROBE.topColor.find((h) => h.id === avatarTopColorInput) || {}).hex || "#5C6773";
+  const avatarDirty =
+    !!profile &&
+    (avatarSkinInput !== (profile.avatar_skin || AVATAR_DEFAULTS.skin) ||
+      avatarHairStyleInput !== (profile.avatar_hair_style || AVATAR_DEFAULTS.hairStyle) ||
+      avatarHairColorInput !== (profile.avatar_hair_color || AVATAR_DEFAULTS.hairColor) ||
+      avatarTopColorInput !== (profile.avatar_top_color || AVATAR_DEFAULTS.topColor) ||
+      avatarAccessoryInput !== (profile.avatar_accessory || AVATAR_DEFAULTS.accessory));
+  async function saveAvatar() {
+    if (!user || avatarSaving) return;
+    setAvatarSaving(true);
+    setAvatarError(null);
+    try {
+      const { data, error } = await supabase.rpc("set_avatar", {
+        p_skin: avatarSkinInput,
+        p_hair_style: avatarHairStyleInput,
+        p_hair_color: avatarHairColorInput,
+        p_top_color: avatarTopColorInput,
+        p_accessory: avatarAccessoryInput,
+      });
+      if (error) throw new Error(error.message);
+      if (data && data.ok) {
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                avatar_skin: data.avatar_skin,
+                avatar_hair_style: data.avatar_hair_style,
+                avatar_hair_color: data.avatar_hair_color,
+                avatar_top_color: data.avatar_top_color,
+                avatar_accessory: data.avatar_accessory,
+              }
+            : prev
+        );
+        setAvatarSavedFlash(true);
+        setTimeout(() => setAvatarSavedFlash(false), 2500);
+        // L'avatar peut avoir changé l'affichage du classement — on vide le
+        // cache pour forcer un rechargement à la prochaine vue.
+        setLeaderboardCache({});
+      } else {
+        setAvatarError("Erreur, réessaie.");
+      }
+    } catch (e) {
+      console.error(e);
+      setAvatarError("Erreur, réessaie.");
+    } finally {
+      setAvatarSaving(false);
+    }
+  }
 
   // Une fois connecté, on charge l'historique complet depuis Supabase
   // (illimité, synchronisé) à la place de l'historique local.
@@ -4930,14 +5264,32 @@ export default function App() {
                       {Math.round(portfolioValue)} €
                     </div>
                   </div>
-                  <div style={{ flex: 1, background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "14px 12px" }}>
-                    <div className="mono" style={{ fontSize: 10, color: pt.subText, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      Objets scannés
+                  <button
+                    onClick={() => portfolioSortedByValueDesc.length > 0 && setShowScannedObjectsList(true)}
+                    disabled={portfolioSortedByValueDesc.length === 0}
+                    style={{
+                      flex: 1,
+                      textAlign: "left",
+                      background: pt.rowBg,
+                      border: pt.rowBorder,
+                      borderRadius: 10,
+                      padding: "14px 12px",
+                      cursor: portfolioSortedByValueDesc.length > 0 ? "pointer" : "default",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 0,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                      <span className="mono" style={{ fontSize: 10, color: pt.subText, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        Objets scannés
+                      </span>
+                      {portfolioSortedByValueDesc.length > 0 && <ChevronRight size={11} color={pt.chevronColor} />}
                     </div>
                     <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: pt.strongColor }}>
-                      {history.length}
+                      {scannedObjectsCount}
                     </div>
-                  </div>
+                  </button>
                 </div>
 
                 {portfolioStreak >= 2 && (
@@ -5036,6 +5388,104 @@ export default function App() {
         </div>
       )}
 
+      {/* ============ Détail des objets scannés (du plus cher au moins cher) ============ */}
+      {showScannedObjectsList && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 31,
+          }}
+          onClick={() => setShowScannedObjectsList(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: pt.sheetBg,
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+              boxShadow: "0 -10px 30px rgba(21, 34, 56, 0.18)",
+            }}
+          >
+            <div aria-hidden="true" style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
+                <BarChart3 size={16} color={accent} />
+                Objets scannés
+              </h2>
+              <button onClick={() => setShowScannedObjectsList(false)} style={{ background: "none", border: "none", padding: 4 }} aria-label="fermer">
+                <X size={20} color={pt.closeColor} />
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: pt.subText, marginTop: 0, marginBottom: 14 }}>
+              Du plus cher au moins cher — prix moyen de chaque objet, dont la somme fait ta{" "}
+              <strong style={{ color: pt.rowText }}>valeur estimée</strong> ({Math.round(portfolioValue)} €).
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {portfolioSortedByValueDesc.map((h, i) => {
+                const avgPrice = Math.round((h.prix_bas + h.prix_haut) / 2);
+                return (
+                  <div
+                    key={h.id || i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      background: pt.rowBg,
+                      border: pt.rowBorder,
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                    }}
+                  >
+                    <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: pt.chevronColor, width: 22, flexShrink: 0 }}>
+                      {i + 1}
+                    </span>
+                    {h.image && (
+                      <img
+                        src={h.image}
+                        alt=""
+                        style={{ width: 34, height: 34, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}
+                      />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: pt.rowText,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {h.objet || "Objet"}
+                      </div>
+                      {h.categorie && (
+                        <div className="mono" style={{ fontSize: 10, color: pt.subText }}>
+                          {h.categorie}
+                        </div>
+                      )}
+                    </div>
+                    <span className="mono" style={{ fontSize: 14, fontWeight: 800, color: accent, flexShrink: 0 }}>
+                      {avgPrice} €
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ============ Menu principal (☰) ============ */}
       {showMenu && (
         <div
@@ -5117,6 +5567,14 @@ export default function App() {
                   onClick: () => {
                     setShowMenu(false);
                     setShowLeaderboard(true);
+                  },
+                },
+                {
+                  icon: <Smile size={16} color={accent} />,
+                  label: t("menu_avatar"),
+                  onClick: () => {
+                    setShowMenu(false);
+                    setShowAvatarPanel(true);
                   },
                 },
                 {
@@ -5441,6 +5899,220 @@ export default function App() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ Avatar (émoji + badges exposés au classement) ============ */}
+      {showAvatarPanel && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 30,
+          }}
+          onClick={() => setShowAvatarPanel(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: pt.sheetBg,
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+              boxShadow: "0 -10px 30px rgba(4, 6, 12, 0.45)",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <h2
+                className="brand"
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+              >
+                <Smile size={17} color={accent} />
+                {t("menu_avatar")}
+              </h2>
+              <button
+                onClick={() => setShowAvatarPanel(false)}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color={pt.closeColor} />
+              </button>
+            </div>
+
+            {!user ? (
+              <p className="mono" style={{ fontSize: 12, color: pt.subText }}>
+                {t("leaderboard_pseudo_login_required")}
+              </p>
+            ) : (
+              <>
+                <p style={{ fontSize: 13, color: pt.subText, marginTop: 0, marginBottom: 16 }}>
+                  Personnalise ton personnage : il s'affiche à côté de ton pseudo dans le classement. Chaque coiffure, couleur ou accessoire se débloque en remplissant un défi — plus tu utilises l'appli, plus tu peux le personnaliser.
+                </p>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    marginBottom: 20,
+                    background: `radial-gradient(circle at 50% 30%, rgba(${accentRgb}, 0.16) 0%, transparent 70%)`,
+                    borderRadius: 16,
+                    padding: "12px 0",
+                  }}
+                >
+                  <AvatarSVG
+                    skin={avatarSkinInput}
+                    hairStyle={avatarHairStyleInput}
+                    hairColor={avatarHairColorHex}
+                    topColor={avatarTopColorHex}
+                    accessory={avatarAccessoryInput}
+                    size={104}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 18 }}>
+                  <div
+                    className="mono"
+                    style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}
+                  >
+                    Peau
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {AVATAR_SKIN_TONES.map((hex) => {
+                      const selected = avatarSkinInput === hex;
+                      return (
+                        <button
+                          key={hex}
+                          onClick={() => setAvatarSkinInput(hex)}
+                          title="Teinte de peau"
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: "50%",
+                            background: hex,
+                            border: selected ? `3px solid ${accent}` : "2px solid rgba(255, 255, 255, 0.25)",
+                            boxShadow: selected ? `0 0 0 2px ${accent}` : "none",
+                            cursor: "pointer",
+                            padding: 0,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {[
+                  { category: "hairStyle", title: "Coiffure", kind: "avatar" },
+                  { category: "hairColor", title: "Couleur de cheveux", kind: "swatch" },
+                  { category: "topColor", title: "Couleur de vêtement", kind: "swatch" },
+                  { category: "accessory", title: "Accessoire", kind: "avatar" },
+                ].map(({ category, title, kind }) => {
+                  const currentInput =
+                    category === "hairStyle"
+                      ? avatarHairStyleInput
+                      : category === "hairColor"
+                      ? avatarHairColorInput
+                      : category === "topColor"
+                      ? avatarTopColorInput
+                      : avatarAccessoryInput;
+                  return (
+                    <div key={category} style={{ marginBottom: 20 }}>
+                      <div
+                        className="mono"
+                        style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}
+                      >
+                        {title}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {AVATAR_WARDROBE[category].map((item) => {
+                          const unlocked = item.free || item.test();
+                          const selected = currentInput === item.id;
+                          const clickable = unlocked;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => pickAvatarItem(category, item.id)}
+                              disabled={!clickable}
+                              title={unlocked ? item.label : `${item.label} — verrouillé`}
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: 4,
+                                width: 66,
+                                background: selected ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
+                                border: selected ? `2px solid ${accent}` : pt.rowBorder,
+                                borderRadius: 10,
+                                padding: "8px 4px",
+                                opacity: unlocked ? 1 : 0.4,
+                                cursor: clickable ? "pointer" : "default",
+                              }}
+                            >
+                              {kind === "avatar" ? (
+                                <AvatarSVG
+                                  skin={avatarSkinInput}
+                                  hairStyle={category === "hairStyle" ? item.id : avatarHairStyleInput}
+                                  hairColor={avatarHairColorHex}
+                                  topColor={avatarTopColorHex}
+                                  accessory={category === "accessory" ? item.id : "aucun"}
+                                  size={38}
+                                />
+                              ) : (
+                                <span
+                                  style={{
+                                    width: 26,
+                                    height: 26,
+                                    borderRadius: "50%",
+                                    background: avatarSwatchBg(item.hex),
+                                    display: "block",
+                                    border: "1px solid rgba(255,255,255,0.25)",
+                                  }}
+                                />
+                              )}
+                              <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center", lineHeight: 1.2 }}>
+                                {item.label}
+                              </span>
+                              {!unlocked && <Lock size={9} color={pt.chevronColor} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <button
+                  className="btn-primary"
+                  onClick={saveAvatar}
+                  disabled={avatarSaving || !avatarDirty}
+                  style={{ marginTop: 16, opacity: avatarSaving || !avatarDirty ? 0.6 : 1 }}
+                >
+                  {avatarSaving && <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />}
+                  Enregistrer mon avatar
+                </button>
+                {avatarError && (
+                  <div className="mono" style={{ fontSize: 11, color: pt.errorColor, marginTop: 8 }}>
+                    {avatarError}
+                  </div>
+                )}
+                {avatarSavedFlash && (
+                  <div className="mono" style={{ fontSize: 11, color: "#4ADE80", marginTop: 8 }}>
+                    Avatar enregistré !
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -5927,6 +6599,45 @@ export default function App() {
                       {t("leaderboard_pseudo_saved")}
                     </div>
                   )}
+                  <button
+                    onClick={() => {
+                      setShowLeaderboard(false);
+                      setShowAvatarPanel(true);
+                    }}
+                    className="mono"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      marginTop: 10,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: accent,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ display: "inline-flex", verticalAlign: "middle" }}>
+                      <AvatarSVG
+                        skin={(profile && profile.avatar_skin) || AVATAR_DEFAULTS.skin}
+                        hairStyle={(profile && profile.avatar_hair_style) || AVATAR_DEFAULTS.hairStyle}
+                        hairColor={
+                          (AVATAR_WARDROBE.hairColor.find((h) => h.id === ((profile && profile.avatar_hair_color) || AVATAR_DEFAULTS.hairColor)) || {}).hex ||
+                          "#1A1A1A"
+                        }
+                        topColor={
+                          (AVATAR_WARDROBE.topColor.find((h) => h.id === ((profile && profile.avatar_top_color) || AVATAR_DEFAULTS.topColor)) || {}).hex ||
+                          "#5C6773"
+                        }
+                        accessory={(profile && profile.avatar_accessory) || AVATAR_DEFAULTS.accessory}
+                        size={17}
+                      />
+                    </span>
+                    Personnaliser mon avatar
+                    <ChevronRight size={12} color={accent} />
+                  </button>
                 </>
               ) : (
                 <div className="mono" style={{ fontSize: 12, color: pt.subText }}>
@@ -5985,7 +6696,7 @@ export default function App() {
             </div>
 
             {(() => {
-              const cacheKey = `${leaderboardType}:${leaderboardPeriod}`;
+              const cacheKey = `${leaderboardType}:${leaderboardPeriod}:20`;
               const rows = leaderboardCache[cacheKey];
               if (leaderboardLoadingKey === cacheKey && !rows) {
                 return (
@@ -6012,6 +6723,15 @@ export default function App() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {rows.map((row, i) => {
                     const isYou = !!(user && row.user_id === user.id);
+                    // L'avatar de chaque joueur (peau/coiffure/couleurs/
+                    // accessoire) est stocké côté serveur comme de simples
+                    // ids/hex — on résout les couleurs de cheveux/vêtement via
+                    // le même catalogue AVATAR_WARDROBE que celui qui sert à
+                    // les débloquer chez soi.
+                    const rowHairColor =
+                      (AVATAR_WARDROBE.hairColor.find((h) => h.id === row.avatar_hair_color) || {}).hex || "#1A1A1A";
+                    const rowTopColor =
+                      (AVATAR_WARDROBE.topColor.find((h) => h.id === row.avatar_top_color) || {}).hex || "#5C6773";
                     return (
                       <div
                         key={row.user_id || i}
@@ -6028,7 +6748,17 @@ export default function App() {
                         <span className="mono" style={{ fontSize: 13, fontWeight: 800, width: 26, color: i < 3 ? accent : pt.chevronColor }}>
                           {MEDALS[i] || i + 1}
                         </span>
-                        <span style={{ flex: 1, fontSize: 13, fontWeight: isYou ? 700 : 500, color: pt.rowText }}>
+                        <span style={{ flexShrink: 0, display: "flex" }}>
+                          <AvatarSVG
+                            skin={row.avatar_skin || AVATAR_DEFAULTS.skin}
+                            hairStyle={row.avatar_hair_style || AVATAR_DEFAULTS.hairStyle}
+                            hairColor={rowHairColor}
+                            topColor={rowTopColor}
+                            accessory={row.avatar_accessory || AVATAR_DEFAULTS.accessory}
+                            size={22}
+                          />
+                        </span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: isYou ? 700 : 500, color: pt.rowText }}>
                           {row.pseudo}
                           {isYou && (
                             <span className="mono" style={{ fontSize: 10, color: accent, marginLeft: 6 }}>
@@ -6036,7 +6766,7 @@ export default function App() {
                             </span>
                           )}
                         </span>
-                        <span className="mono" style={{ fontSize: 13, fontWeight: 800, color: pt.rowText }}>
+                        <span className="mono" style={{ fontSize: 13, fontWeight: 800, color: pt.rowText, flexShrink: 0 }}>
                           {row.cnt}
                         </span>
                       </div>
