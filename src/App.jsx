@@ -294,6 +294,318 @@ function AvatarSVG({
   );
 }
 
+// ---------------------------------------------------------------------
+// Avatar3D : le même personnage, mais en VRAIE 3D — un maillage de formes
+// en volume (sphères/cylindres/boîtes), projeté avec une vraie caméra en
+// perspective sur un <canvas>, tourné en glissant le doigt/la souris (vraie
+// rotation de caméra, pas un dessin plat tourné en CSS comme AvatarSVG).
+// C'est un petit moteur 3D écrit à la main (rotation matricielle,
+// projection, tri des faces par profondeur, ombrage simple par face) : les
+// bibliothèques comme three.js ne sont pas installables depuis cet
+// environnement (le registre npm est bloqué par la politique réseau), donc
+// tout est fait ici en JS pur, sans aucune dépendance. Volontairement
+// stylisé/low-poly (façon figurine) plutôt qu'un visage photoréaliste type
+// Bitmoji — voir la conversation avec l'utilisateur : les services tiers
+// capables de ce rendu (Ready Player Me, disparu depuis, ou ses
+// remplaçants) coûtent ~800 €/mois sans palier gratuit viable pour cette
+// app, donc on reste sur une solution 100% maison et gratuite.
+
+function rotY3([x, y, z], rad) {
+  const c = Math.cos(rad), s = Math.sin(rad);
+  return [x * c + z * s, y, -x * s + z * c];
+}
+function rotX3([x, y, z], rad) {
+  const c = Math.cos(rad), s = Math.sin(rad);
+  return [x, y * c - z * s, y * s + z * c];
+}
+function hexToRgb3(hex) {
+  const h = (hex || "#808080").replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  return [Number.isFinite(r) ? r : 128, Number.isFinite(g) ? g : 128, Number.isFinite(b) ? b : 128];
+}
+function shadeColor3(hex, factor) {
+  const [r, g, b] = hexToRgb3(hex);
+  const k = 0.35 + 0.65 * factor;
+  return `rgb(${Math.round(r * k)}, ${Math.round(g * k)}, ${Math.round(b * k)})`;
+}
+function faceNormal3([p0, p1, p2]) {
+  const u = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
+  const v = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
+  const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  const len = Math.hypot(n[0], n[1], n[2]) || 1;
+  return [n[0] / len, n[1] / len, n[2] / len];
+}
+function dot3(a, b) {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+// -- Générateurs de maillages : chaque "face" = { pts: [[x,y,z], ...], color } --
+function meshSphere3(cx, cy, cz, r, color, segU = 10, segV = 7, vStart = 0, vEnd = Math.PI) {
+  const faces = [];
+  const pt = (v, u) => [cx + r * Math.sin(v) * Math.cos(u), cy + r * Math.cos(v), cz + r * Math.sin(v) * Math.sin(u)];
+  for (let i = 0; i < segV; i++) {
+    const v0 = vStart + ((vEnd - vStart) * i) / segV;
+    const v1 = vStart + ((vEnd - vStart) * (i + 1)) / segV;
+    for (let j = 0; j < segU; j++) {
+      const u0 = (j / segU) * Math.PI * 2;
+      const u1 = ((j + 1) / segU) * Math.PI * 2;
+      faces.push({ pts: [pt(v0, u0), pt(v0, u1), pt(v1, u1), pt(v1, u0)], color });
+    }
+  }
+  return faces;
+}
+function meshCylinder3(cx, cyBase, cz, rTop, rBottom, height, color, seg = 10, zScale = 1, capTop = true, capBottom = true) {
+  const faces = [];
+  const topY = cyBase + height;
+  const top = [], bottom = [];
+  for (let i = 0; i <= seg; i++) {
+    const a = (i / seg) * Math.PI * 2;
+    top.push([cx + rTop * Math.cos(a), topY, cz + rTop * Math.sin(a) * zScale]);
+    bottom.push([cx + rBottom * Math.cos(a), cyBase, cz + rBottom * Math.sin(a) * zScale]);
+  }
+  for (let i = 0; i < seg; i++) {
+    faces.push({ pts: [bottom[i], bottom[i + 1], top[i + 1], top[i]], color });
+  }
+  if (capTop) faces.push({ pts: top.slice(0, seg), color });
+  if (capBottom) faces.push({ pts: bottom.slice(0, seg).slice().reverse(), color });
+  return faces;
+}
+function meshCone3(cx, cyBase, cz, r, height, color, seg = 8, zScale = 1) {
+  return meshCylinder3(cx, cyBase, cz, 0.001, r, height, color, seg, zScale, true, true);
+}
+function meshBox3(cx, cy, cz, w, h, d, color) {
+  const x0 = cx - w / 2, x1 = cx + w / 2;
+  const y0 = cy - h / 2, y1 = cy + h / 2;
+  const z0 = cz - d / 2, z1 = cz + d / 2;
+  const p = (x, y, z) => [x, y, z];
+  return [
+    { pts: [p(x0, y0, z1), p(x1, y0, z1), p(x1, y1, z1), p(x0, y1, z1)], color },
+    { pts: [p(x1, y0, z0), p(x0, y0, z0), p(x0, y1, z0), p(x1, y1, z0)], color },
+    { pts: [p(x0, y0, z0), p(x0, y0, z1), p(x0, y1, z1), p(x0, y1, z0)], color },
+    { pts: [p(x1, y0, z1), p(x1, y0, z0), p(x1, y1, z0), p(x1, y1, z1)], color },
+    { pts: [p(x0, y1, z1), p(x1, y1, z1), p(x1, y1, z0), p(x0, y1, z0)], color },
+    { pts: [p(x0, y0, z0), p(x1, y0, z0), p(x1, y0, z1), p(x0, y0, z1)], color },
+  ];
+}
+
+// Construit la liste de faces (unités "monde", pieds à y=0) pour un jeu
+// d'attributs donné — même logique de silhouette homme/femme et même
+// catalogue de coiffures/accessoires que AvatarSVG, transposée en volumes.
+function buildAvatarFaces({ skin, hairStyle, hairColor, topColor, accessory, gender }) {
+  const isFemme = gender === "femme";
+  const isRainbowHair = hairColor === "rainbow";
+  const isGoldTop = topColor === "gold";
+  const hairC = isRainbowHair ? "#C05CFF" : hairColor || "#2B2B2B";
+  const bodyC = isGoldTop ? "#D4A017" : topColor || "#5C6773";
+  const skinC = skin || "#E8B99A";
+
+  const shoulderR = isFemme ? 0.2 : 0.25;
+  const waistR = isFemme ? 0.15 : 0.21;
+  const hipR = isFemme ? 0.21 : 0.22;
+  const hipY = 0.78, waistY = 1.0, shoulderY = 1.22, headY = 1.5, headR = 0.155;
+
+  const faces = [];
+
+  // Jambes + chaussures
+  const legR = hipR * 0.42;
+  const legGap = hipR * 0.22;
+  [-1, 1].forEach((side) => {
+    const lx = side * (hipR * 0.5 + legGap / 2);
+    faces.push(...meshCylinder3(lx, 0.07, 0, legR * 0.92, legR, hipY - 0.07, bodyC, 8, 0.85, false, true));
+    faces.push(...meshCylinder3(lx, 0, 0, legR + 0.02, legR * 0.95 + 0.02, 0.08, "#1A1A1A", 8, 0.9, true, true));
+  });
+
+  // Bras + mains
+  const armR = isFemme ? 0.06 : 0.075;
+  [-1, 1].forEach((side) => {
+    const ax = side * (shoulderR + armR * 0.9);
+    faces.push(...meshCylinder3(ax, shoulderY - 0.32, 0, armR * 0.85, armR, 0.3, bodyC, 8, 0.85, false, false));
+    faces.push(...meshSphere3(ax, shoulderY - 0.34, 0, armR * 0.85, skinC, 8, 6));
+  });
+
+  // Torse (2 tronçons : épaules→taille, taille→hanches — hourglass si femme)
+  faces.push(...meshCylinder3(0, waistY, 0, shoulderR, waistR, shoulderY - waistY, bodyC, 12, 0.7, true, false));
+  faces.push(...meshCylinder3(0, hipY, 0, waistR, hipR, waistY - hipY, bodyC, 12, 0.7, false, true));
+
+  // Cou
+  faces.push(...meshCylinder3(0, shoulderY, 0, 0.06, 0.065, headY - 0.09 - shoulderY, skinC, 8, 1, false, false));
+
+  // Oreilles + tête
+  [-1, 1].forEach((side) => {
+    faces.push(...meshSphere3(side * (headR + 0.01), headY - 0.02, 0, 0.03, skinC, 6, 4));
+  });
+  faces.push(...meshSphere3(0, headY, 0, headR, skinC, 12, 9));
+
+  // Yeux + bouche
+  [-1, 1].forEach((side) => {
+    faces.push(...meshSphere3(side * headR * 0.42, headY + 0.01, headR * 0.86, 0.017, "#152238", 6, 4));
+  });
+  faces.push(...meshBox3(0, headY - headR * 0.42, headR * 0.88, headR * 0.5, 0.014, 0.012, "#152238"));
+
+  // Cheveux
+  if (hairStyle === "afro") {
+    faces.push(...meshSphere3(0, headY, 0, headR * 1.5, hairC, 12, 9));
+  } else if (hairStyle !== "chauve" && hairStyle !== "mohawk") {
+    faces.push(...meshSphere3(0, headY + headR * 0.15, 0, headR * 1.14, hairC, 12, 6, 0, Math.PI * 0.55));
+  }
+  if (hairStyle === "longs") {
+    [-1, 1].forEach((side) => {
+      faces.push(...meshCylinder3(side * headR * 0.85, headY - 0.42, 0, 0.025, 0.03, 0.42, hairC, 6, 0.8, true, true));
+    });
+  }
+  if (hairStyle === "boucles") {
+    [
+      [-0.75, 0.55], [-0.4, 0.95], [0, 1.05], [0.4, 0.95], [0.75, 0.55], [-0.55, 0.85], [0.55, 0.85],
+    ].forEach(([sx, sy]) => {
+      faces.push(...meshSphere3(sx * headR, headY + sy * headR * 0.5, headR * 0.3, headR * 0.34, hairC, 8, 6));
+    });
+  }
+  if (hairStyle === "mohawk") {
+    faces.push(...meshBox3(0, headY + headR * 0.72, 0, 0.05, headR * 0.85, headR * 1.7, hairC));
+  }
+
+  // Accessoires (par-dessus tout le reste)
+  if (accessory === "bandeau") {
+    faces.push(...meshCylinder3(0, headY - headR * 0.15, 0, headR * 1.08, headR * 1.08, 0.035, "#B22B3A", 14, 1, false, false));
+  } else if (accessory === "casquette") {
+    faces.push(...meshSphere3(0, headY + headR * 0.1, 0, headR * 1.18, "#29394F", 12, 6, 0, Math.PI * 0.52));
+    faces.push(...meshCylinder3(0, headY + headR * 0.05, headR * 0.9, headR * 0.9, headR * 0.9, 0.02, "#1E2C3D", 10, 0.4, true, false));
+  } else if (accessory === "lunettes") {
+    [-1, 1].forEach((side) => {
+      faces.push(...meshCylinder3(side * headR * 0.42, headY + 0.01, headR * 0.88, headR * 0.2, headR * 0.2, 0.015, "#152238", 10, 1, false, false));
+    });
+    faces.push(...meshBox3(0, headY + 0.01, headR * 0.9, headR * 0.24, 0.012, 0.012, "#152238"));
+  } else if (accessory === "loupe") {
+    const lx = hipR + 0.14, ly = waistY - 0.03, lz = 0.06;
+    faces.push(...meshCylinder3(lx, ly, lz, 0.045, 0.045, 0.014, "#D4A017", 10, 1, false, false));
+    faces.push(...meshCylinder3(lx + 0.05, ly - 0.06, lz, 0.012, 0.012, 0.1, "#8C5225", 6, 1, true, true));
+  } else if (accessory === "couronne") {
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 4 - 0.5) * headR * 1.6;
+      faces.push(...meshCone3(a, headY + headR * 0.82, 0, 0.04, 0.09, "#D4A017", 6, 1));
+    }
+  } else if (accessory === "medaille") {
+    faces.push(...meshCylinder3(0, waistY + 0.06, headR * 0.5, 0.05, 0.05, 0.015, "#D4A017", 10, 0.5, true, true));
+  }
+
+  return faces;
+}
+
+// Fait tourner (lacet + léger tangage fixe autour du centre du buste) puis
+// projette un point 3D vers l'écran, caméra en perspective simple.
+function transformVertex3(p, yaw, tilt, midY, camDist) {
+  let q = [p[0], p[1] - midY, p[2]];
+  q = rotY3(q, yaw);
+  q = rotX3(q, tilt);
+  return [q[0], q[1] + midY, q[2] + camDist];
+}
+function projectPoint3(p, { cx, cy, focal, scale }) {
+  const depth = Math.max(p[2], 0.05);
+  const k = (focal / depth) * scale;
+  return { x: cx + p[0] * k, y: cy - p[1] * k };
+}
+const AVATAR3D_LIGHT = (() => {
+  const v = [0.4, 0.65, 0.7];
+  const len = Math.hypot(v[0], v[1], v[2]);
+  return [v[0] / len, v[1] / len, v[2] / len];
+})();
+
+function drawAvatar3D(ctx, faces, { width, height, yaw, tilt = -0.1, midY = 0.82, camDist = 2.7, focal = 2.1 }) {
+  ctx.clearRect(0, 0, width, height);
+  const cx = width / 2;
+  const cy = height * 0.93;
+  const scale = height * 0.62;
+  const drawList = [];
+  for (let i = 0; i < faces.length; i++) {
+    const f = faces[i];
+    const tpts = f.pts.map((p) => transformVertex3(p, yaw, tilt, midY, camDist));
+    const spts = tpts.map((p) => projectPoint3(p, { cx, cy, focal, scale }));
+    let avgDepth = 0;
+    for (let j = 0; j < tpts.length; j++) avgDepth += tpts[j][2];
+    avgDepth /= tpts.length;
+    const n = faceNormal3(tpts);
+    const shade = Math.max(0.22, Math.min(1, Math.abs(dot3(n, AVATAR3D_LIGHT))));
+    drawList.push({ spts, depth: avgDepth, color: f.color, shade });
+  }
+  drawList.sort((a, b) => b.depth - a.depth);
+  for (let i = 0; i < drawList.length; i++) {
+    const item = drawList[i];
+    ctx.beginPath();
+    for (let j = 0; j < item.spts.length; j++) {
+      const p = item.spts[j];
+      if (j === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = shadeColor3(item.color, item.shade);
+    ctx.fill();
+  }
+}
+
+// Composant React : personnage 3D interactif (glisser pour tourner autour
+// de lui, léger auto-tourne quand on ne touche pas). `interactive=false`
+// permet de le figer (aperçu statique) si besoin ailleurs.
+function Avatar3D({ skin, hairStyle, hairColor, topColor, accessory, gender = "homme", size = 140, interactive = true }) {
+  const width = size;
+  const height = Math.round(size * 1.3);
+  const canvasRef = useRef(null);
+  const yawRef = useRef(0.6);
+  const dragRef = useRef(null);
+  const facesRef = useRef(null);
+  facesRef.current = buildAvatarFaces({ skin, hairStyle, hairColor, topColor, accessory, gender });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    let raf = 0;
+    let last = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const loop = (t) => {
+      const now = typeof t === "number" ? t : Date.now();
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+      last = now;
+      if (!dragRef.current) yawRef.current += dt * 0.35;
+      drawAvatar3D(ctx, facesRef.current, { width, height, yaw: yawRef.current });
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [width, height]);
+
+  function onPointerDown3(e) {
+    if (!interactive) return;
+    dragRef.current = { startX: e.clientX, startYaw: yawRef.current };
+    if (e.currentTarget.setPointerCapture) {
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+  }
+  function onPointerMove3(e) {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    yawRef.current = dragRef.current.startYaw + dx * 0.012;
+  }
+  function onPointerUp3() {
+    dragRef.current = null;
+  }
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ width, height, touchAction: "none", cursor: interactive ? "grab" : "default", display: "block" }}
+      onPointerDown={onPointerDown3}
+      onPointerMove={onPointerMove3}
+      onPointerUp={onPointerUp3}
+      onPointerCancel={onPointerUp3}
+    />
+  );
+}
+
 // Sous-catégories affichées (triées de A à Z) dans le menu "Rechercher un
 // produit". Purement pour orienter la recherche — le texte de la catégorie
 // est simplement ajouté à la requête envoyée au serveur, qui interroge les
@@ -2059,30 +2371,9 @@ export default function App() {
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
   const [avatarSavedFlash, setAvatarSavedFlash] = useState(false);
-  // Rotation 360° (glisser au doigt ou à la souris) du grand aperçu du
-  // panneau Avatar — une rotation CSS du dessin 2D pour donner une
-  // sensation de figurine qu'on tourne dans la main, pas un vrai moteur 3D.
-  const [avatarRotation, setAvatarRotation] = useState(0);
-  const [avatarDragging, setAvatarDragging] = useState(false);
-  const avatarDragRef = useRef(null);
-  function avatarRotateStart(e) {
-    avatarDragRef.current = { startX: e.clientX, startRotation: avatarRotation };
-    setAvatarDragging(true);
-    if (e.currentTarget.setPointerCapture) {
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } catch (err) {}
-    }
-  }
-  function avatarRotateMove(e) {
-    if (!avatarDragRef.current) return;
-    const dx = e.clientX - avatarDragRef.current.startX;
-    setAvatarRotation(avatarDragRef.current.startRotation + dx * 0.7);
-  }
-  function avatarRotateEnd() {
-    avatarDragRef.current = null;
-    setAvatarDragging(false);
-  }
+  // La rotation 360° du grand aperçu (glisser au doigt ou à la souris) est
+  // gérée directement par le composant Avatar3D lui-même (vraie caméra 3D),
+  // plus besoin d'état de rotation ici comme avec l'ancien rendu CSS.
   useEffect(() => {
     if (showAvatarPanel) {
       setAvatarSkinInput((profile && profile.avatar_skin) || AVATAR_DEFAULTS.skin);
@@ -2091,7 +2382,6 @@ export default function App() {
       setAvatarTopColorInput((profile && profile.avatar_top_color) || AVATAR_DEFAULTS.topColor);
       setAvatarAccessoryInput((profile && profile.avatar_accessory) || AVATAR_DEFAULTS.accessory);
       setAvatarGenderInput((profile && profile.avatar_gender) || AVATAR_DEFAULTS.gender);
-      setAvatarRotation(0);
       setAvatarError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -6214,34 +6504,15 @@ export default function App() {
                     padding: "16px 0 10px",
                   }}
                 >
-                  <div
-                    onPointerDown={avatarRotateStart}
-                    onPointerMove={avatarRotateMove}
-                    onPointerUp={avatarRotateEnd}
-                    onPointerCancel={avatarRotateEnd}
-                    style={{
-                      perspective: 500,
-                      touchAction: "none",
-                      cursor: avatarDragging ? "grabbing" : "grab",
-                    }}
-                  >
-                    <div
-                      style={{
-                        transform: `rotateY(${avatarRotation}deg)`,
-                        transition: avatarDragging ? "none" : "transform 0.5s ease",
-                      }}
-                    >
-                      <AvatarSVG
-                        skin={avatarSkinInput}
-                        hairStyle={avatarHairStyleInput}
-                        hairColor={avatarHairColorHex}
-                        topColor={avatarTopColorHex}
-                        accessory={avatarAccessoryInput}
-                        gender={avatarGenderInput}
-                        size={104}
-                      />
-                    </div>
-                  </div>
+                  <Avatar3D
+                    skin={avatarSkinInput}
+                    hairStyle={avatarHairStyleInput}
+                    hairColor={avatarHairColorHex}
+                    topColor={avatarTopColorHex}
+                    accessory={avatarAccessoryInput}
+                    gender={avatarGenderInput}
+                    size={150}
+                  />
                   <span
                     className="mono"
                     style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: pt.subText, marginTop: 4 }}
