@@ -30,7 +30,6 @@ import charCowboyEncheres from "./assets/cowboyEncheres.jpg";
 import charChouetteDoree from "./assets/chouetteDoree.jpg";
 import charPieuvreMystique from "./assets/pieuvreMystique.jpg";
 import charPhenixArdent from "./assets/phenixArdent.jpg";
-import charLoupArgenteAlpha from "./assets/loupArgenteAlpha.jpg";
 import charGriffonCeleste from "./assets/griffonCeleste.jpg";
 import charChevalierDore from "./assets/chevalierDore.jpg";
 import charSpectreElegant from "./assets/spectreElegant.jpg";
@@ -61,7 +60,6 @@ const CHARACTER_IMAGES = {
   chouetteDoree: charChouetteDoree,
   pieuvreMystique: charPieuvreMystique,
   phenixArdent: charPhenixArdent,
-  loupArgenteAlpha: charLoupArgenteAlpha,
   griffonCeleste: charGriffonCeleste,
   chevalierDore: charChevalierDore,
   spectreElegant: charSpectreElegant,
@@ -202,15 +200,17 @@ function CharacterAvatar({ id, size = 96 }) {
         src={src}
         alt=""
         style={{
-          // Pastille ronde pour tous les personnages : on cadre sur un carré
-          // centré horizontalement et légèrement remonté verticalement (les
-          // portraits sont des bustes/pleins pieds, pas tous cadrés pareil —
-          // ce réglage garde le visage bien visible sans couper la tête, que
-          // le corps du perso aille jusqu'en bas de l'image d'origine ou non).
-          width: "100%",
-          height: "100%",
+          // Les portraits sont déjà carrés (mêmes proportions que la
+          // pastille), donc object-fit: cover ne rogne rien tout seul — le
+          // seul découpage vient du masque rond (borderRadius 50% ci-dessus),
+          // qui coupe net tout ce qui dépasse dans les 4 coins du carré
+          // (oreilles de chat/renard/hibou, pointe du bonnet, antenne...).
+          // On réduit donc légèrement l'image (86%) à l'intérieur de sa
+          // pastille pour que ces extrémités restent dans le cercle visible,
+          // au prix d'un léger liseré du fond sombre de l'image tout autour.
+          width: "86%",
+          height: "86%",
           objectFit: "cover",
-          objectPosition: "center 22%",
           display: "block",
         }}
       />
@@ -1219,7 +1219,7 @@ export default function App() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_skin, avatar_hair_style, avatar_hair_color, avatar_top_color, avatar_accessory, avatar_gender"
+        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_character"
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1965,7 +1965,10 @@ export default function App() {
     { id: "singeFarceur", name: "Singe Farceur", tier: 1, test: () => lifetimeEstimations >= 100, hint: "dès 100 estimations" },
     { id: "hiboo", name: "Hibou Sage", tier: 1, test: () => lifetimeEstimations >= 150, hint: "dès 150 estimations" },
     // --- Palier 2 ---
-    { id: "capitainePirate", name: "Capitaine Pirate", tier: 2, test: () => lifetimeEstimations >= 200, hint: "dès 200 estimations" },
+    // Cowboy des Enchères <-> Capitaine Pirate : seuils inversés (demandé
+    // par Dylan) — c'est bien le cowboy qui est maintenant le plus facile
+    // à débloquer, et le capitaine pirate qui a migré plus loin (palier 3).
+    { id: "cowboyEncheres", name: "Cowboy des Enchères", tier: 2, test: () => lifetimeEstimations >= 200, hint: "dès 200 estimations" },
     { id: "astroDebutant", name: "Astro Débutant", tier: 2, test: () => lifetimeEstimations >= 300, hint: "dès 300 estimations" },
     { id: "loupDetective", name: "Loup Détective", tier: 2, test: () => lifetimeEstimations >= 400, hint: "dès 400 estimations" },
     { id: "tigreStyle", name: "Tigre Stylé", tier: 2, test: () => lifetimeEstimations >= 500, hint: "dès 500 estimations" },
@@ -1973,19 +1976,20 @@ export default function App() {
     // --- Palier 3 ---
     { id: "alienCurieux", name: "Alien Curieux", tier: 3, test: () => lifetimeEstimations >= 800, hint: "dès 800 estimations" },
     { id: "ninjaSilencieux", name: "Ninja Silencieux", tier: 3, test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
-    { id: "panthereNuit", name: "Panthère des Nuits", tier: 3, test: () => lifetimeEstimations >= 1250, hint: "dès 1250 estimations" },
+    // Chevalier Doré <-> Panthère des Nuits : seuils inversés (demandé par
+    // Dylan) — le chevalier est maintenant le plus facile des deux.
+    { id: "chevalierDore", name: "Chevalier Doré", tier: 3, test: () => lifetimeEstimations >= 1250, hint: "dès 1250 estimations" },
     { id: "robotChrome", name: "Robot Chrome", tier: 3, test: () => lifetimeEstimations >= 1500, hint: "dès 1500 estimations" },
     { id: "bebeDragon", name: "Bébé Dragon", tier: 3, test: () => lifetimeEstimations >= 2000, hint: "dès 2000 estimations" },
     // --- Palier 4 ---
-    { id: "cowboyEncheres", name: "Cowboy des Enchères", tier: 4, test: () => lifetimeEstimations >= 3000, hint: "dès 3000 estimations" },
+    { id: "capitainePirate", name: "Capitaine Pirate", tier: 4, test: () => lifetimeEstimations >= 3000, hint: "dès 3000 estimations" },
     { id: "ratonMasque", name: "Raton Masqué", tier: 4, test: () => lifetimeEstimations >= 4000, hint: "dès 4000 estimations" },
     { id: "chouetteDoree", name: "Chouette Dorée", tier: 4, test: () => lifetimeEstimations >= 5000, hint: "dès 5000 estimations" },
     { id: "pieuvreMystique", name: "Pieuvre Mystique", tier: 4, test: () => lifetimeEstimations >= 7500, hint: "dès 7500 estimations" },
     { id: "phenixArdent", name: "Phénix Ardent", tier: 4, test: () => lifetimeEstimations >= 10000, hint: "dès 10 000 estimations" },
-    // --- Palier 5 ---
-    { id: "loupArgenteAlpha", name: "Loup Argenté Alpha", tier: 5, test: () => lifetimeEstimations >= 15000, hint: "dès 15 000 estimations" },
+    // --- Palier 5 (Loup Argenté Alpha retiré du catalogue) ---
     { id: "griffonCeleste", name: "Griffon Céleste", tier: 5, test: () => lifetimeEstimations >= 20000, hint: "dès 20 000 estimations" },
-    { id: "chevalierDore", name: "Chevalier Doré", tier: 5, test: () => lifetimeEstimations >= 30000, hint: "dès 30 000 estimations" },
+    { id: "panthereNuit", name: "Panthère des Nuits", tier: 5, test: () => lifetimeEstimations >= 30000, hint: "dès 30 000 estimations" },
     { id: "spectreElegant", name: "Spectre Élégant", tier: 5, test: () => lifetimeEstimations >= 50000, hint: "dès 50 000 estimations" },
     // --- Palier 6 : les 2 secrets ---
     { id: "diableEcarlate", name: "Le Diable Écarlate", tier: 6, secret: true, test: () => lifetimeEstimations >= 100000, hint: "??? (secret)" },
