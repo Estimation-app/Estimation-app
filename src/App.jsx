@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, RotateCw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 import logoWordmarkDark from "./assets/logo-wordmark.png";
 
@@ -115,15 +115,17 @@ const BG_PROGRESSION = BG_SKINS.filter((sk) => sk.key !== "blanc");
 // dans le composant App(), qui dépend des stats de l'utilisateur).
 const AVATAR_SKIN_TONES = ["#F6D8C0", "#E8B99A", "#C98F6B", "#9C6644", "#6B4226", "#4A2C17"];
 
-// Avatar "personnage" à vraie tête + corps + bras + jambes (façon Habbo),
-// composé de couches SVG empilées : jambes → bras → torse → cou →
-// tête/oreilles/visage → cheveux → accessoire (toujours dessiné en
-// dernier, par-dessus tout le reste). Un léger dégradé radial sur la
-// tête/le corps donne un rendu "figurine" avec un peu de relief, sans
-// viser un vrai rendu 3D (la rotation 360° du panneau Avatar simule la
-// profondeur via une rotation CSS de ce même dessin bidimensionnel).
-// "gender" ("homme" | "femme") ne change que la silhouette (largeur
-// d'épaules/taille/hanches) — jamais le catalogue d'habillage disponible.
+// Avatar "vignette" : un buste (tête + épaules, sans bras/jambes) en 2D —
+// c'est LA représentation de l'avatar utilisée partout (icône du header,
+// classement, garde-robe, aperçu du panneau) : on a abandonné à la fois le
+// personnage entier (bras/jambes) et la piste "vraie 3D" (three.js n'est
+// pas installable ici, et le rendu obtenu ne convainquait pas) pour se
+// concentrer sur UNE vignette 2D mais bien plus détaillée : visage avec
+// iris/pupille/reflet/sourcils/nez/lèvres pleines (pas juste deux points et
+// un trait), et un catalogue beaucoup plus large de coiffures/accessoires.
+// Un léger dégradé radial sur la tête/le buste garde le rendu "figurine"
+// avec un peu de relief. "gender" ne change que la largeur des épaules —
+// jamais le catalogue d'habillage disponible.
 function AvatarSVG({
   skin = AVATAR_SKIN_TONES[1],
   hairStyle = "court",
@@ -138,41 +140,29 @@ function AvatarSVG({
   );
   const isRainbowHair = hairColor === "rainbow";
   const isGoldTop = topColor === "gold";
+  const hairFill = isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor;
   const bodyFill = isGoldTop ? `url(#${gradId}-gold)` : topColor;
   const isFemme = gender === "femme";
 
-  // Silhouette du torse (hexagone épaules → taille → hanches) : plus
-  // carrée pour "homme", plus cintrée ("hourglass") pour "femme".
-  const shoulderHalf = isFemme ? 19 : 23;
-  const waistHalf = isFemme ? 14 : 20;
-  const hipHalf = isFemme ? 20 : 21;
-  const torsoTop = 76;
-  const waistY = 92;
-  const torsoBottom = 106;
-  const torsoPath = `M${50 - shoulderHalf},${torsoTop} L${50 + shoulderHalf},${torsoTop} L${50 + waistHalf},${waistY} L${50 + hipHalf},${torsoBottom} L${50 - hipHalf},${torsoBottom} L${50 - waistHalf},${waistY} Z`;
+  // Buste (épaules + haut du buste, coupé au cadre) : plus étroit pour
+  // "femme", plus carré pour "homme" — même principe que l'ancienne
+  // silhouette du torse, mais on s'arrête aux épaules.
+  const shoulderHalf = isFemme ? 29 : 33;
+  const neckHalf = 9;
+  const bustTopY = 80;
+  const bustBottomY = 120;
+  const bustPath = `M${50 - neckHalf},${bustTopY} Q${50 - shoulderHalf},${bustTopY} ${50 - shoulderHalf},${bustTopY + 15} L${50 - shoulderHalf},${bustBottomY} L${50 + shoulderHalf},${bustBottomY} L${50 + shoulderHalf},${bustTopY + 15} Q${50 + shoulderHalf},${bustTopY} ${50 + neckHalf},${bustTopY} Z`;
 
-  // Jambes : deux rectangles arrondis sous le torse, alignés sur ses
-  // hanches pour un raccord propre (pas d'interstice visible).
-  const legGap = isFemme ? 4 : 6;
-  const legW = (hipHalf * 2 - legGap) / 2;
-  const legTop = torsoBottom - 4;
-  const legBottom = 124;
-  const legLeftX = 50 - hipHalf;
-  const legRightX = 50 + hipHalf - legW;
-
-  // Bras : deux capsules le long du torse, se terminant par une petite
-  // "main" de la couleur de peau ; le torse (dessiné par-dessus) recouvre
-  // proprement leur attache à l'épaule.
-  const armW = isFemme ? 9 : 11;
-  const armTop = torsoTop + 2;
-  const armBottom = 103;
-  const armLeftCx = 50 - shoulderHalf - armW * 0.35;
-  const armRightCx = 50 + shoulderHalf + armW * 0.35;
+  // Casque de cheveux par défaut (dessus/devant) : sert de base à toutes
+  // les coiffures sauf "chauve" (rien), "afro" (son propre halo, dessiné
+  // derrière la tête) et "mohawk" (bande centrale seule, côtés rasés).
+  // Chaque style ajoute ensuite ses propres formes par-dessus cette base.
+  const showDefaultCap = hairStyle !== "chauve" && hairStyle !== "afro" && hairStyle !== "mohawk";
 
   return (
-    <svg viewBox="0 0 100 130" width={size} height={size * 1.3} aria-hidden="true">
+    <svg viewBox="0 0 100 120" width={size} height={size * 1.2} aria-hidden="true">
       <defs>
-        <radialGradient id={gradId} cx="35%" cy="28%" r="75%">
+        <radialGradient id={gradId} cx="35%" cy="26%" r="75%">
           <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.35" />
           <stop offset="55%" stopColor="#FFFFFF" stopOpacity="0" />
           <stop offset="100%" stopColor="#000000" stopOpacity="0.18" />
@@ -194,415 +184,145 @@ function AvatarSVG({
           </linearGradient>
         )}
       </defs>
-      {/* Cheveux (partie arrière, derrière la tête) — seul le style "afro" a
-          besoin d'un halo qui dépasse le contour de la tête. */}
-      {hairStyle === "afro" && <circle cx="50" cy="30" r="27" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />}
-      {/* Jambes */}
-      <rect x={legLeftX} y={legTop} width={legW} height={legBottom - legTop} rx={legW / 2.4} fill={bodyFill} />
-      <rect x={legRightX} y={legTop} width={legW} height={legBottom - legTop} rx={legW / 2.4} fill={bodyFill} />
-      {/* Chaussures */}
-      <ellipse cx={legLeftX + legW / 2} cy={legBottom + 2} rx={legW / 2 + 2} ry="4" fill="#1A1A1A" />
-      <ellipse cx={legRightX + legW / 2} cy={legBottom + 2} rx={legW / 2 + 2} ry="4" fill="#1A1A1A" />
-      {/* Bras */}
-      <rect x={armLeftCx - armW / 2} y={armTop} width={armW} height={armBottom - armTop} rx={armW / 2} fill={bodyFill} />
-      <rect x={armRightCx - armW / 2} y={armTop} width={armW} height={armBottom - armTop} rx={armW / 2} fill={bodyFill} />
-      {/* Mains */}
-      <circle cx={armLeftCx} cy={armBottom} r={armW / 2 - 0.5} fill={skin} />
-      <circle cx={armRightCx} cy={armBottom} r={armW / 2 - 0.5} fill={skin} />
-      {/* Torse */}
-      <path d={torsoPath} fill={bodyFill} />
+
+      {/* Cheveux (partie arrière) — seul "afro" a besoin d'un halo qui
+          dépasse le contour de la tête, dessiné avant elle. */}
+      {hairStyle === "afro" && <circle cx="50" cy="32" r="32" fill={hairFill} />}
+
+      {/* Buste */}
+      <path d={bustPath} fill={bodyFill} />
       {/* Cou */}
-      <rect x="44" y="60" width="12" height="18" fill={skin} />
+      <rect x={50 - neckHalf} y="62" width={neckHalf * 2} height="22" fill={skin} />
       {/* Oreilles */}
-      <circle cx="25" cy="42" r="5" fill={skin} />
-      <circle cx="75" cy="42" r="5" fill={skin} />
+      <circle cx="24" cy="46" r="5.5" fill={skin} />
+      <circle cx="76" cy="46" r="5.5" fill={skin} />
       {/* Tête */}
-      <circle cx="50" cy="42" r="24" fill={skin} />
-      {/* Cheveux longs : deux mèches qui dépassent des épaules, sous la
-          tête mais visibles de chaque côté du corps. */}
+      <circle cx="50" cy="44" r="25" fill={skin} />
+
+      {/* --- Cheveux (dessus/devant) — AVANT le visage, pour que les yeux
+          restent toujours visibles par-dessus (une coiffure ne doit jamais
+          recouvrir le regard). --- */}
+      {showDefaultCap && <ellipse cx="50" cy="31" rx="27" ry="19" fill={hairFill} />}
       {hairStyle === "longs" && (
         <>
-          <rect x="19" y="30" width="10" height="52" rx="5" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />
-          <rect x="71" y="30" width="10" height="52" rx="5" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />
+          <rect x="17" y="28" width="11" height="66" rx="5.5" fill={hairFill} />
+          <rect x="72" y="28" width="11" height="66" rx="5.5" fill={hairFill} />
         </>
       )}
-      {/* Yeux + sourire */}
-      <circle cx="41" cy="40" r="2.6" fill="#152238" />
-      <circle cx="59" cy="40" r="2.6" fill="#152238" />
-      <path d="M40,50 Q50,57 60,50" stroke="#152238" strokeWidth="2.4" fill="none" strokeLinecap="round" />
-      {/* Cheveux (dessus de la tête) — pas pour "afro" (son propre halo,
-          dessiné derrière la tête plus haut) ni "mohawk" (bande centrale
-          uniquement, cheveux rasés sur les côtés). */}
-      {hairStyle !== "chauve" && hairStyle !== "afro" && hairStyle !== "mohawk" && (
-        <ellipse cx="50" cy="29" rx="25" ry="18" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />
+      {hairStyle === "ondules" && (
+        <>
+          <path d="M20,28 Q30,40 20,50 Q30,62 20,74 Q30,86 22,98 L32,98 Q26,86 34,74 Q26,62 34,50 Q26,40 34,28 Z" fill={hairFill} />
+          <path d="M80,28 Q70,40 80,50 Q70,62 80,74 Q70,86 78,98 L68,98 Q74,86 66,74 Q74,62 66,50 Q74,40 66,28 Z" fill={hairFill} />
+        </>
       )}
+      {hairStyle === "carre" && (
+        <>
+          <rect x="22" y="28" width="10" height="32" rx="5" fill={hairFill} />
+          <rect x="68" y="28" width="10" height="32" rx="5" fill={hairFill} />
+        </>
+      )}
+      {hairStyle === "queue" && (
+        <>
+          <path d="M67,18 Q80,28 74,55 Q70,72 63,60 Q70,40 61,22 Z" fill={hairFill} />
+          <rect x="62" y="20" width="9" height="4.5" rx="2.2" fill="#2B2B2B" opacity="0.55" />
+        </>
+      )}
+      {hairStyle === "chignon" && <circle cx="50" cy="13" r="9.5" fill={hairFill} />}
+      {hairStyle === "frange" && <path d="M27,31 Q50,38 73,31 L73,36 Q50,31 27,36 Z" fill={hairFill} />}
       {hairStyle === "boucles" &&
         [
-          [22, 30], [30, 16], [42, 10], [58, 10], [70, 16], [78, 30],
-        ].map(([cx, cy], i) => (
-          <circle key={i} cx={cx} cy={cy} r="7" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />
-        ))}
-      {hairStyle === "mohawk" && (
-        <path
-          d="M46,6 L54,6 L57,26 L50,20 L43,26 Z"
-          fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor}
-        />
+          [21, 31], [29, 16], [42, 9], [58, 9], [71, 16], [79, 31],
+        ].map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="7.6" fill={hairFill} />)}
+      {hairStyle === "mohawk" && <path d="M46,2 L54,2 L58,27 L50,19 L42,27 Z" fill={hairFill} />}
+
+      {/* --- Visage détaillé (toujours par-dessus les cheveux) : sourcils,
+          yeux (blanc + iris + pupille + reflet), nez (ombre subtile),
+          joues, bouche pleine --- */}
+      <path d="M35,37 Q41,33 47,36.5" stroke={hairFill} strokeWidth="1.7" fill="none" strokeLinecap="round" />
+      <path d="M53,36.5 Q59,33 65,37" stroke={hairFill} strokeWidth="1.7" fill="none" strokeLinecap="round" />
+      {[41, 59].map((ex) => (
+        <g key={ex}>
+          <ellipse cx={ex} cy="44" rx="5.2" ry="3.6" fill="#FFFFFF" />
+          <circle cx={ex} cy="44.3" r="2.7" fill="#3A2A1E" />
+          <circle cx={ex} cy="44.3" r="1.3" fill="#0B0B0B" />
+          <circle cx={ex - 1} cy="43.3" r="0.6" fill="#FFFFFF" />
+        </g>
+      ))}
+      <path d="M49,45 Q46.5,51 49,53" stroke="#00000030" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+      <ellipse cx="47.3" cy="53.3" rx="1" ry="0.7" fill="#00000025" />
+      <ellipse cx="51.5" cy="53.3" rx="1" ry="0.7" fill="#00000025" />
+      <ellipse cx="33" cy="53" rx="5" ry="3.4" fill="#FF8A7A" opacity="0.14" />
+      <ellipse cx="67" cy="53" rx="5" ry="3.4" fill="#FF8A7A" opacity="0.14" />
+      <path d="M43,58.5 Q50,57.5 57,58.5 Q50,66 43,58.5 Z" fill="#C97A6E" stroke="#A65C52" strokeWidth="0.6" />
+
+      {/* Ombre/relief global (tête + buste) */}
+      <circle cx="50" cy="44" r="25" fill={`url(#${gradId})`} />
+      <path d={bustPath} fill={`url(#${gradId})`} />
+
+      {/* --- Accessoires — toujours par-dessus tout le reste --- */}
+      {accessory === "bandeau" && <rect x="24" y="35" width="52" height="6" rx="3" fill="#B22B3A" />}
+      {accessory === "bandana" && (
+        <>
+          <path d="M24,35 Q24,15 50,13 Q76,15 76,35 Q50,27 24,35 Z" fill="#B22B3A" />
+          <circle cx="76" cy="31" r="4" fill="#8C1F2B" />
+        </>
       )}
-      {/* Ombre/relief global (tête + torse + bras + jambes) */}
-      <circle cx="50" cy="42" r="24" fill={`url(#${gradId})`} />
-      <path d={torsoPath} fill={`url(#${gradId})`} />
-      <rect x={legLeftX} y={legTop} width={legW} height={legBottom - legTop} rx={legW / 2.4} fill={`url(#${gradId})`} />
-      <rect x={legRightX} y={legTop} width={legW} height={legBottom - legTop} rx={legW / 2.4} fill={`url(#${gradId})`} />
-      <rect x={armLeftCx - armW / 2} y={armTop} width={armW} height={armBottom - armTop} rx={armW / 2} fill={`url(#${gradId})`} />
-      <rect x={armRightCx - armW / 2} y={armTop} width={armW} height={armBottom - armTop} rx={armW / 2} fill={`url(#${gradId})`} />
-      {/* Accessoire — toujours par-dessus tout le reste */}
-      {accessory === "bandeau" && <rect x="26" y="33" width="48" height="6" rx="3" fill="#B22B3A" />}
+      {accessory === "bonnet" && (
+        <>
+          <path d="M23,32 Q23,7 50,7 Q77,7 77,32 L77,33 L23,33 Z" fill="#6D2FB0" />
+          <rect x="21" y="30" width="58" height="8" rx="4" fill="#5A2591" />
+        </>
+      )}
       {accessory === "casquette" && (
         <>
-          <path d="M25,33 Q25,10 50,10 Q75,10 75,33 Q50,24 25,33 Z" fill="#29394F" />
-          <ellipse cx="34" cy="33" rx="15" ry="5" fill="#1E2C3D" />
+          <path d="M23,34 Q23,9 50,8 Q77,9 77,34 Q50,24 23,34 Z" fill="#29394F" />
+          <ellipse cx="32" cy="34" rx="16" ry="5" fill="#1E2C3D" />
         </>
       )}
       {accessory === "lunettes" && (
         <>
-          <circle cx="41" cy="40" r="6.5" fill="none" stroke="#152238" strokeWidth="2" />
-          <circle cx="59" cy="40" r="6.5" fill="none" stroke="#152238" strokeWidth="2" />
-          <line x1="47.5" y1="40" x2="52.5" y2="40" stroke="#152238" strokeWidth="2" />
+          <circle cx="41" cy="44" r="7" fill="none" stroke="#152238" strokeWidth="2" />
+          <circle cx="59" cy="44" r="7" fill="none" stroke="#152238" strokeWidth="2" />
+          <line x1="48" y1="44" x2="52" y2="44" stroke="#152238" strokeWidth="2" />
+        </>
+      )}
+      {accessory === "soleil" && (
+        <>
+          <circle cx="41" cy="44" r="7.5" fill="#1A1A1A" stroke="#0B0B0B" strokeWidth="1.5" />
+          <circle cx="59" cy="44" r="7.5" fill="#1A1A1A" stroke="#0B0B0B" strokeWidth="1.5" />
+          <line x1="48.5" y1="44" x2="51.5" y2="44" stroke="#0B0B0B" strokeWidth="2" />
+          <circle cx="38.5" cy="41.5" r="1.3" fill="#FFFFFF" opacity="0.5" />
+          <circle cx="56.5" cy="41.5" r="1.3" fill="#FFFFFF" opacity="0.5" />
+        </>
+      )}
+      {accessory === "bijoux" && (
+        <>
+          <circle cx="24" cy="54" r="2.2" fill="#D4A017" />
+          <circle cx="76" cy="54" r="2.2" fill="#D4A017" />
+        </>
+      )}
+      {accessory === "foulard" && (
+        <>
+          <path d="M38,78 Q50,89 62,78 L62,87 Q50,97 38,87 Z" fill="#17824C" />
+          <path d="M58,85 L67,93 L60,95 Z" fill="#12613A" />
         </>
       )}
       {accessory === "loupe" && (
         <>
-          <circle cx="80" cy="92" r="8" fill="none" stroke="#D4A017" strokeWidth="3" />
-          <line x1="86" y1="98" x2="94" y2="106" stroke="#8C5225" strokeWidth="4" strokeLinecap="round" />
+          <circle cx="79" cy="101" r="8" fill="none" stroke="#D4A017" strokeWidth="3" />
+          <line x1="85" y1="107" x2="93" y2="115" stroke="#8C5225" strokeWidth="4" strokeLinecap="round" />
         </>
       )}
       {accessory === "couronne" && (
-        <path
-          d="M30,18 L36,4 L43,15 L50,2 L57,15 L64,4 L70,18 Z"
-          fill="#D4A017"
-          stroke="#96700D"
-          strokeWidth="1"
-        />
+        <path d="M28,20 L35,4 L43,16 L50,2 L57,16 L65,4 L72,20 Z" fill="#D4A017" stroke="#96700D" strokeWidth="1" />
       )}
       {accessory === "medaille" && (
         <>
-          <circle cx="58" cy="92" r="8" fill="#D4A017" stroke="#96700D" strokeWidth="1.5" />
-          <text x="58" y="96" textAnchor="middle" fontSize="9" fill="#4A3500">★</text>
+          <circle cx="61" cy="99" r="8" fill="#D4A017" stroke="#96700D" strokeWidth="1.5" />
+          <text x="61" y="103" textAnchor="middle" fontSize="9" fill="#4A3500">★</text>
         </>
       )}
     </svg>
-  );
-}
-
-// ---------------------------------------------------------------------
-// Avatar3D : le même personnage, mais en VRAIE 3D — un maillage de formes
-// en volume (sphères/cylindres/boîtes), projeté avec une vraie caméra en
-// perspective sur un <canvas>, tourné en glissant le doigt/la souris (vraie
-// rotation de caméra, pas un dessin plat tourné en CSS comme AvatarSVG).
-// C'est un petit moteur 3D écrit à la main (rotation matricielle,
-// projection, tri des faces par profondeur, ombrage simple par face) : les
-// bibliothèques comme three.js ne sont pas installables depuis cet
-// environnement (le registre npm est bloqué par la politique réseau), donc
-// tout est fait ici en JS pur, sans aucune dépendance. Volontairement
-// stylisé/low-poly (façon figurine) plutôt qu'un visage photoréaliste type
-// Bitmoji — voir la conversation avec l'utilisateur : les services tiers
-// capables de ce rendu (Ready Player Me, disparu depuis, ou ses
-// remplaçants) coûtent ~800 €/mois sans palier gratuit viable pour cette
-// app, donc on reste sur une solution 100% maison et gratuite.
-
-function rotY3([x, y, z], rad) {
-  const c = Math.cos(rad), s = Math.sin(rad);
-  return [x * c + z * s, y, -x * s + z * c];
-}
-function rotX3([x, y, z], rad) {
-  const c = Math.cos(rad), s = Math.sin(rad);
-  return [x, y * c - z * s, y * s + z * c];
-}
-function hexToRgb3(hex) {
-  const h = (hex || "#808080").replace("#", "");
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  return [Number.isFinite(r) ? r : 128, Number.isFinite(g) ? g : 128, Number.isFinite(b) ? b : 128];
-}
-function shadeColor3(hex, factor) {
-  const [r, g, b] = hexToRgb3(hex);
-  const k = 0.35 + 0.65 * factor;
-  return `rgb(${Math.round(r * k)}, ${Math.round(g * k)}, ${Math.round(b * k)})`;
-}
-function faceNormal3([p0, p1, p2]) {
-  const u = [p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]];
-  const v = [p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]];
-  const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
-  const len = Math.hypot(n[0], n[1], n[2]) || 1;
-  return [n[0] / len, n[1] / len, n[2] / len];
-}
-function dot3(a, b) {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-// -- Générateurs de maillages : chaque "face" = { pts: [[x,y,z], ...], color } --
-function meshSphere3(cx, cy, cz, r, color, segU = 10, segV = 7, vStart = 0, vEnd = Math.PI) {
-  const faces = [];
-  const pt = (v, u) => [cx + r * Math.sin(v) * Math.cos(u), cy + r * Math.cos(v), cz + r * Math.sin(v) * Math.sin(u)];
-  for (let i = 0; i < segV; i++) {
-    const v0 = vStart + ((vEnd - vStart) * i) / segV;
-    const v1 = vStart + ((vEnd - vStart) * (i + 1)) / segV;
-    for (let j = 0; j < segU; j++) {
-      const u0 = (j / segU) * Math.PI * 2;
-      const u1 = ((j + 1) / segU) * Math.PI * 2;
-      faces.push({ pts: [pt(v0, u0), pt(v0, u1), pt(v1, u1), pt(v1, u0)], color });
-    }
-  }
-  return faces;
-}
-function meshCylinder3(cx, cyBase, cz, rTop, rBottom, height, color, seg = 10, zScale = 1, capTop = true, capBottom = true) {
-  const faces = [];
-  const topY = cyBase + height;
-  const top = [], bottom = [];
-  for (let i = 0; i <= seg; i++) {
-    const a = (i / seg) * Math.PI * 2;
-    top.push([cx + rTop * Math.cos(a), topY, cz + rTop * Math.sin(a) * zScale]);
-    bottom.push([cx + rBottom * Math.cos(a), cyBase, cz + rBottom * Math.sin(a) * zScale]);
-  }
-  for (let i = 0; i < seg; i++) {
-    faces.push({ pts: [bottom[i], bottom[i + 1], top[i + 1], top[i]], color });
-  }
-  if (capTop) faces.push({ pts: top.slice(0, seg), color });
-  if (capBottom) faces.push({ pts: bottom.slice(0, seg).slice().reverse(), color });
-  return faces;
-}
-function meshCone3(cx, cyBase, cz, r, height, color, seg = 8, zScale = 1) {
-  return meshCylinder3(cx, cyBase, cz, 0.001, r, height, color, seg, zScale, true, true);
-}
-function meshBox3(cx, cy, cz, w, h, d, color) {
-  const x0 = cx - w / 2, x1 = cx + w / 2;
-  const y0 = cy - h / 2, y1 = cy + h / 2;
-  const z0 = cz - d / 2, z1 = cz + d / 2;
-  const p = (x, y, z) => [x, y, z];
-  return [
-    { pts: [p(x0, y0, z1), p(x1, y0, z1), p(x1, y1, z1), p(x0, y1, z1)], color },
-    { pts: [p(x1, y0, z0), p(x0, y0, z0), p(x0, y1, z0), p(x1, y1, z0)], color },
-    { pts: [p(x0, y0, z0), p(x0, y0, z1), p(x0, y1, z1), p(x0, y1, z0)], color },
-    { pts: [p(x1, y0, z1), p(x1, y0, z0), p(x1, y1, z0), p(x1, y1, z1)], color },
-    { pts: [p(x0, y1, z1), p(x1, y1, z1), p(x1, y1, z0), p(x0, y1, z0)], color },
-    { pts: [p(x0, y0, z0), p(x1, y0, z0), p(x1, y0, z1), p(x0, y0, z1)], color },
-  ];
-}
-
-// Construit la liste de faces (unités "monde", pieds à y=0) pour un jeu
-// d'attributs donné — même logique de silhouette homme/femme et même
-// catalogue de coiffures/accessoires que AvatarSVG, transposée en volumes.
-function buildAvatarFaces({ skin, hairStyle, hairColor, topColor, accessory, gender }) {
-  const isFemme = gender === "femme";
-  const isRainbowHair = hairColor === "rainbow";
-  const isGoldTop = topColor === "gold";
-  const hairC = isRainbowHair ? "#C05CFF" : hairColor || "#2B2B2B";
-  const bodyC = isGoldTop ? "#D4A017" : topColor || "#5C6773";
-  const skinC = skin || "#E8B99A";
-
-  const shoulderR = isFemme ? 0.2 : 0.25;
-  const waistR = isFemme ? 0.15 : 0.21;
-  const hipR = isFemme ? 0.21 : 0.22;
-  const hipY = 0.78, waistY = 1.0, shoulderY = 1.22, headY = 1.5, headR = 0.155;
-
-  const faces = [];
-
-  // Jambes + chaussures
-  const legR = hipR * 0.42;
-  const legGap = hipR * 0.22;
-  [-1, 1].forEach((side) => {
-    const lx = side * (hipR * 0.5 + legGap / 2);
-    faces.push(...meshCylinder3(lx, 0.07, 0, legR * 0.92, legR, hipY - 0.07, bodyC, 8, 0.85, false, true));
-    faces.push(...meshCylinder3(lx, 0, 0, legR + 0.02, legR * 0.95 + 0.02, 0.08, "#1A1A1A", 8, 0.9, true, true));
-  });
-
-  // Bras + mains
-  const armR = isFemme ? 0.06 : 0.075;
-  [-1, 1].forEach((side) => {
-    const ax = side * (shoulderR + armR * 0.9);
-    faces.push(...meshCylinder3(ax, shoulderY - 0.32, 0, armR * 0.85, armR, 0.3, bodyC, 8, 0.85, false, false));
-    faces.push(...meshSphere3(ax, shoulderY - 0.34, 0, armR * 0.85, skinC, 8, 6));
-  });
-
-  // Torse (2 tronçons : épaules→taille, taille→hanches — hourglass si femme)
-  faces.push(...meshCylinder3(0, waistY, 0, shoulderR, waistR, shoulderY - waistY, bodyC, 12, 0.7, true, false));
-  faces.push(...meshCylinder3(0, hipY, 0, waistR, hipR, waistY - hipY, bodyC, 12, 0.7, false, true));
-
-  // Cou
-  faces.push(...meshCylinder3(0, shoulderY, 0, 0.06, 0.065, headY - 0.09 - shoulderY, skinC, 8, 1, false, false));
-
-  // Oreilles + tête
-  [-1, 1].forEach((side) => {
-    faces.push(...meshSphere3(side * (headR + 0.01), headY - 0.02, 0, 0.03, skinC, 6, 4));
-  });
-  faces.push(...meshSphere3(0, headY, 0, headR, skinC, 12, 9));
-
-  // Yeux + bouche
-  [-1, 1].forEach((side) => {
-    faces.push(...meshSphere3(side * headR * 0.42, headY + 0.01, headR * 0.86, 0.017, "#152238", 6, 4));
-  });
-  faces.push(...meshBox3(0, headY - headR * 0.42, headR * 0.88, headR * 0.5, 0.014, 0.012, "#152238"));
-
-  // Cheveux
-  if (hairStyle === "afro") {
-    faces.push(...meshSphere3(0, headY, 0, headR * 1.5, hairC, 12, 9));
-  } else if (hairStyle !== "chauve" && hairStyle !== "mohawk") {
-    faces.push(...meshSphere3(0, headY + headR * 0.15, 0, headR * 1.14, hairC, 12, 6, 0, Math.PI * 0.55));
-  }
-  if (hairStyle === "longs") {
-    [-1, 1].forEach((side) => {
-      faces.push(...meshCylinder3(side * headR * 0.85, headY - 0.42, 0, 0.025, 0.03, 0.42, hairC, 6, 0.8, true, true));
-    });
-  }
-  if (hairStyle === "boucles") {
-    [
-      [-0.75, 0.55], [-0.4, 0.95], [0, 1.05], [0.4, 0.95], [0.75, 0.55], [-0.55, 0.85], [0.55, 0.85],
-    ].forEach(([sx, sy]) => {
-      faces.push(...meshSphere3(sx * headR, headY + sy * headR * 0.5, headR * 0.3, headR * 0.34, hairC, 8, 6));
-    });
-  }
-  if (hairStyle === "mohawk") {
-    faces.push(...meshBox3(0, headY + headR * 0.72, 0, 0.05, headR * 0.85, headR * 1.7, hairC));
-  }
-
-  // Accessoires (par-dessus tout le reste)
-  if (accessory === "bandeau") {
-    faces.push(...meshCylinder3(0, headY - headR * 0.15, 0, headR * 1.08, headR * 1.08, 0.035, "#B22B3A", 14, 1, false, false));
-  } else if (accessory === "casquette") {
-    faces.push(...meshSphere3(0, headY + headR * 0.1, 0, headR * 1.18, "#29394F", 12, 6, 0, Math.PI * 0.52));
-    faces.push(...meshCylinder3(0, headY + headR * 0.05, headR * 0.9, headR * 0.9, headR * 0.9, 0.02, "#1E2C3D", 10, 0.4, true, false));
-  } else if (accessory === "lunettes") {
-    [-1, 1].forEach((side) => {
-      faces.push(...meshCylinder3(side * headR * 0.42, headY + 0.01, headR * 0.88, headR * 0.2, headR * 0.2, 0.015, "#152238", 10, 1, false, false));
-    });
-    faces.push(...meshBox3(0, headY + 0.01, headR * 0.9, headR * 0.24, 0.012, 0.012, "#152238"));
-  } else if (accessory === "loupe") {
-    const lx = hipR + 0.14, ly = waistY - 0.03, lz = 0.06;
-    faces.push(...meshCylinder3(lx, ly, lz, 0.045, 0.045, 0.014, "#D4A017", 10, 1, false, false));
-    faces.push(...meshCylinder3(lx + 0.05, ly - 0.06, lz, 0.012, 0.012, 0.1, "#8C5225", 6, 1, true, true));
-  } else if (accessory === "couronne") {
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 4 - 0.5) * headR * 1.6;
-      faces.push(...meshCone3(a, headY + headR * 0.82, 0, 0.04, 0.09, "#D4A017", 6, 1));
-    }
-  } else if (accessory === "medaille") {
-    faces.push(...meshCylinder3(0, waistY + 0.06, headR * 0.5, 0.05, 0.05, 0.015, "#D4A017", 10, 0.5, true, true));
-  }
-
-  return faces;
-}
-
-// Fait tourner (lacet + léger tangage fixe autour du centre du buste) puis
-// projette un point 3D vers l'écran, caméra en perspective simple.
-function transformVertex3(p, yaw, tilt, midY, camDist) {
-  let q = [p[0], p[1] - midY, p[2]];
-  q = rotY3(q, yaw);
-  q = rotX3(q, tilt);
-  return [q[0], q[1] + midY, q[2] + camDist];
-}
-function projectPoint3(p, { cx, cy, focal, scale }) {
-  const depth = Math.max(p[2], 0.05);
-  const k = (focal / depth) * scale;
-  return { x: cx + p[0] * k, y: cy - p[1] * k };
-}
-const AVATAR3D_LIGHT = (() => {
-  const v = [0.4, 0.65, 0.7];
-  const len = Math.hypot(v[0], v[1], v[2]);
-  return [v[0] / len, v[1] / len, v[2] / len];
-})();
-
-function drawAvatar3D(ctx, faces, { width, height, yaw, tilt = -0.1, midY = 0.82, camDist = 2.7, focal = 2.1 }) {
-  ctx.clearRect(0, 0, width, height);
-  const cx = width / 2;
-  const cy = height * 0.93;
-  const scale = height * 0.62;
-  const drawList = [];
-  for (let i = 0; i < faces.length; i++) {
-    const f = faces[i];
-    const tpts = f.pts.map((p) => transformVertex3(p, yaw, tilt, midY, camDist));
-    const spts = tpts.map((p) => projectPoint3(p, { cx, cy, focal, scale }));
-    let avgDepth = 0;
-    for (let j = 0; j < tpts.length; j++) avgDepth += tpts[j][2];
-    avgDepth /= tpts.length;
-    const n = faceNormal3(tpts);
-    const shade = Math.max(0.22, Math.min(1, Math.abs(dot3(n, AVATAR3D_LIGHT))));
-    drawList.push({ spts, depth: avgDepth, color: f.color, shade });
-  }
-  drawList.sort((a, b) => b.depth - a.depth);
-  for (let i = 0; i < drawList.length; i++) {
-    const item = drawList[i];
-    ctx.beginPath();
-    for (let j = 0; j < item.spts.length; j++) {
-      const p = item.spts[j];
-      if (j === 0) ctx.moveTo(p.x, p.y);
-      else ctx.lineTo(p.x, p.y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = shadeColor3(item.color, item.shade);
-    ctx.fill();
-  }
-}
-
-// Composant React : personnage 3D interactif (glisser pour tourner autour
-// de lui, léger auto-tourne quand on ne touche pas). `interactive=false`
-// permet de le figer (aperçu statique) si besoin ailleurs.
-function Avatar3D({ skin, hairStyle, hairColor, topColor, accessory, gender = "homme", size = 140, interactive = true }) {
-  const width = size;
-  const height = Math.round(size * 1.3);
-  const canvasRef = useRef(null);
-  const yawRef = useRef(0.6);
-  const dragRef = useRef(null);
-  const facesRef = useRef(null);
-  facesRef.current = buildAvatarFaces({ skin, hairStyle, hairColor, topColor, accessory, gender });
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-    const ctx = canvas.getContext("2d");
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    let raf = 0;
-    let last = typeof performance !== "undefined" ? performance.now() : Date.now();
-    const loop = (t) => {
-      const now = typeof t === "number" ? t : Date.now();
-      const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
-      last = now;
-      if (!dragRef.current) yawRef.current += dt * 0.35;
-      drawAvatar3D(ctx, facesRef.current, { width, height, yaw: yawRef.current });
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [width, height]);
-
-  function onPointerDown3(e) {
-    if (!interactive) return;
-    dragRef.current = { startX: e.clientX, startYaw: yawRef.current };
-    if (e.currentTarget.setPointerCapture) {
-      try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-    }
-  }
-  function onPointerMove3(e) {
-    if (!dragRef.current) return;
-    const dx = e.clientX - dragRef.current.startX;
-    yawRef.current = dragRef.current.startYaw + dx * 0.012;
-  }
-  function onPointerUp3() {
-    dragRef.current = null;
-  }
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ width, height, touchAction: "none", cursor: interactive ? "grab" : "default", display: "block" }}
-      onPointerDown={onPointerDown3}
-      onPointerMove={onPointerMove3}
-      onPointerUp={onPointerUp3}
-      onPointerCancel={onPointerUp3}
-    />
   );
 }
 
@@ -2309,9 +2029,14 @@ export default function App() {
     hairStyle: [
       { id: "chauve", label: "Chauve", free: true },
       { id: "court", label: "Court", free: true },
+      { id: "frange", label: "Frange", free: true },
       { id: "longs", label: "Longs", test: () => lifetimeEstimations >= 15, hint: "dès 15 estimations" },
+      { id: "carre", label: "Carré", test: () => portfolioStreak >= 4, hint: "4 jours de suite" },
       { id: "boucles", label: "Bouclés", test: () => portfolioStreak >= 5, hint: "5 jours de suite" },
+      { id: "queue", label: "Queue de cheval", test: () => lifetimeAdGenerations >= 15, hint: "15 annonces générées" },
+      { id: "chignon", label: "Chignon", test: () => lifetimeEstimations >= 45, hint: "dès 45 estimations" },
       { id: "mohawk", label: "Mohawk", test: () => lifetimeEstimations >= 75, hint: "dès 75 estimations" },
+      { id: "ondules", label: "Longs ondulés", test: () => lifetimeEstimations >= 200, hint: "dès 200 estimations" },
       { id: "afro", label: "Afro", test: () => lifetimeAdGenerations >= 30, hint: "30 annonces générées" },
     ],
     hairColor: [
@@ -2337,9 +2062,14 @@ export default function App() {
     ],
     accessory: [
       { id: "aucun", label: "Aucun", free: true },
+      { id: "bonnet", label: "Bonnet", test: () => lifetimeEstimations >= 5, hint: "dès 5 estimations" },
       { id: "bandeau", label: "Bandeau", test: () => portfolioStreak >= 3, hint: "3 jours de suite" },
+      { id: "bandana", label: "Bandana", test: () => portfolioStreak >= 4, hint: "4 jours de suite" },
       { id: "casquette", label: "Casquette", test: () => lifetimeEstimations >= 20, hint: "dès 20 estimations" },
       { id: "lunettes", label: "Lunettes", test: () => lifetimeAdGenerations >= 10, hint: "10 annonces générées" },
+      { id: "bijoux", label: "Boucles d'oreilles", test: () => lifetimeAdGenerations >= 15, hint: "15 annonces générées" },
+      { id: "soleil", label: "Lunettes de soleil", test: () => lifetimeEstimations >= 35, hint: "dès 35 estimations" },
+      { id: "foulard", label: "Foulard", test: () => lifetimeEstimations >= 60, hint: "dès 60 estimations" },
       { id: "loupe", label: "Loupe d'enquêteur", test: () => lifetimeEstimations >= 50, hint: "dès 50 estimations" },
       { id: "couronne", label: "Couronne", test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
       // Version simplifiée du défi "top 100 du mois, 3 mois d'affilée"
@@ -2371,9 +2101,6 @@ export default function App() {
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
   const [avatarSavedFlash, setAvatarSavedFlash] = useState(false);
-  // La rotation 360° du grand aperçu (glisser au doigt ou à la souris) est
-  // gérée directement par le composant Avatar3D lui-même (vraie caméra 3D),
-  // plus besoin d'état de rotation ici comme avec l'ancien rendu CSS.
   useEffect(() => {
     if (showAvatarPanel) {
       setAvatarSkinInput((profile && profile.avatar_skin) || AVATAR_DEFAULTS.skin);
@@ -6504,7 +6231,7 @@ export default function App() {
                     padding: "16px 0 10px",
                   }}
                 >
-                  <Avatar3D
+                  <AvatarSVG
                     skin={avatarSkinInput}
                     hairStyle={avatarHairStyleInput}
                     hairColor={avatarHairColorHex}
@@ -6517,7 +6244,7 @@ export default function App() {
                     className="mono"
                     style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: pt.subText, marginTop: 4 }}
                   >
-                    <RotateCw size={11} /> glisse au doigt (ou à la souris) pour le faire tourner
+                    c'est cette vignette qui s'affiche dans le classement et en haut à droite
                   </span>
                 </div>
 
