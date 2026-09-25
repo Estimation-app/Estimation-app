@@ -1670,6 +1670,10 @@ export default function App() {
   // quand le quota est épuisé) et "Contact" (mail de support statique).
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  // "Affichage" (Habillage + Fonds) : auparavant toujours déplié directement
+  // dans le menu (prenait beaucoup de place) — maintenant un panneau à part,
+  // masqué comme les autres entrées du menu (historique, classement, etc.).
+  const [showDisplayPanel, setShowDisplayPanel] = useState(false);
 
   // "Ma collection" (panneau) : juste l'état d'ouverture ici — les calculs
   // (valeur totale, badges, streak...) sont plus bas, une fois `history`
@@ -5124,6 +5128,14 @@ export default function App() {
                   },
                 },
                 {
+                  icon: <Moon size={16} color={accent} />,
+                  label: t("menu_display"),
+                  onClick: () => {
+                    setShowMenu(false);
+                    setShowDisplayPanel(true);
+                  },
+                },
+                {
                   icon: <Sparkles size={16} color={accent} />,
                   label: t("menu_subscription"),
                   onClick: () => {
@@ -5198,165 +5210,6 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "13px 14px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 500, color: pt.rowText, marginBottom: 10 }}>
-                  <Moon size={16} color={accent} />
-                  <span style={{ flex: 1 }}>{t("menu_display")}</span>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
-                    Habillage ({lifetimeEstimations} estimation{lifetimeEstimations > 1 ? "s" : ""} au total)
-                  </div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {GRADES.map((g) => {
-                      const unlocked = lifetimeEstimations >= g.threshold;
-                      const canSelect = unlocked || isOwnerPreview;
-                      const isActive = activeGrade.key === g.key;
-                      return (
-                        <button
-                          key={g.key}
-                          onClick={() => canSelect && setSelectedGradeKey(g.key)}
-                          title={
-                            unlocked
-                              ? g.label
-                              : isOwnerPreview
-                              ? `${g.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${g.threshold} estimations)`
-                              : `${g.label} — débloqué à ${g.threshold} estimations`
-                          }
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: 4,
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            cursor: canSelect ? "pointer" : "default",
-                            opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 34,
-                              height: 34,
-                              borderRadius: "50%",
-                              background: `linear-gradient(135deg, ${g.accentLight} 0%, ${g.accent} 55%, ${g.accentDark} 100%)`,
-                              border: isActive ? "3px solid #FFFFFF" : "2px solid rgba(255, 255, 255, 0.25)",
-                              boxShadow: isActive ? `0 0 0 2px ${g.accent}` : "none",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
-                          >
-                            {!unlocked && <Lock size={12} color="#FFFFFF" />}
-                          </div>
-                          <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
-                            {g.emoji} {g.label}
-                          </span>
-                          <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
-                            {g.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${g.threshold} estim.`}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {nextGrade && (
-                    <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
-                      Prochain palier : {nextGrade.label} à {nextGrade.threshold} estimations (
-                      {lifetimeEstimations}/{nextGrade.threshold})
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ borderTop: pt.dashedBorder, marginTop: 12, paddingTop: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
-                    Fonds ({lifetimeAdGenerations} annonce{lifetimeAdGenerations > 1 ? "s" : ""} générée
-                    {lifetimeAdGenerations > 1 ? "s" : ""} au total)
-                  </div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {BG_SKINS.map((sk) => {
-                      const unlocked = lifetimeAdGenerations >= sk.threshold;
-                      const canSelect = unlocked || isOwnerPreview;
-                      const isActive = activeBgSkin.key === sk.key;
-                      return (
-                        <button
-                          key={sk.key}
-                          onClick={() => canSelect && setSelectedBgSkinKey(sk.key)}
-                          title={
-                            unlocked
-                              ? sk.label
-                              : isOwnerPreview
-                              ? `${sk.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${sk.threshold} annonces générées)`
-                              : `${sk.label} — débloqué à ${sk.threshold} annonces générées`
-                          }
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: 4,
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            cursor: canSelect ? "pointer" : "default",
-                            opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: 34,
-                              height: 34,
-                              borderRadius: "50%",
-                              background: `linear-gradient(135deg, ${sk.high} 0%, ${sk.mid} 55%, ${sk.base} 100%)`,
-                              border: isActive ? "3px solid #FFFFFF" : sk.key === "platine" ? "2px solid rgba(217, 243, 255, 0.55)" : "2px solid rgba(255, 255, 255, 0.25)",
-                              boxShadow: isActive
-                                ? `0 0 0 2px ${sk.high}`
-                                : sk.key === "platine"
-                                ? `0 0 10px rgba(${hexToRgbString(sk.high)}, 0.55)`
-                                : "none",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              position: "relative",
-                            }}
-                          >
-                            {!unlocked && <Lock size={12} color="#FFFFFF" />}
-                            {unlocked && sk.key === "platine" && (
-                              <span
-                                aria-hidden="true"
-                                className="sparkle"
-                                style={{
-                                  position: "absolute",
-                                  top: -3,
-                                  right: -3,
-                                  fontSize: 10,
-                                  color: sk.high,
-                                  textShadow: `0 0 6px rgba(${hexToRgbString(sk.high)}, 0.9)`,
-                                }}
-                              >
-                                ✦
-                              </span>
-                            )}
-                          </div>
-                          <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
-                            {sk.emoji} {sk.label}
-                          </span>
-                          <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
-                            {sk.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${sk.threshold} annonces`}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {nextBgSkin && (
-                    <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
-                      Prochain fond : {nextBgSkin.label} à {nextBgSkin.threshold} annonces générées (
-                      {lifetimeAdGenerations}/{nextBgSkin.threshold})
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {user && (
                 <button
                   onClick={() => {
@@ -5383,6 +5236,209 @@ export default function App() {
                   <LogOut size={16} color="#FF9466" />
                   <span style={{ flex: 1 }}>{t("menu_logout")}</span>
                 </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ Affichage (Habillage + Fonds) ============ */}
+      {showDisplayPanel && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 30,
+          }}
+          onClick={() => setShowDisplayPanel(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: pt.sheetBg,
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+              boxShadow: "0 -10px 30px rgba(4, 6, 12, 0.45)",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2
+                className="brand"
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+              >
+                <Moon size={17} color={accent} />
+                {t("menu_display")}
+              </h2>
+              <button
+                onClick={() => setShowDisplayPanel(false)}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color={pt.closeColor} />
+              </button>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
+                Habillage ({lifetimeEstimations} estimation{lifetimeEstimations > 1 ? "s" : ""} au total)
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {GRADES.map((g) => {
+                  const unlocked = lifetimeEstimations >= g.threshold;
+                  const canSelect = unlocked || isOwnerPreview;
+                  const isActive = activeGrade.key === g.key;
+                  return (
+                    <button
+                      key={g.key}
+                      onClick={() => canSelect && setSelectedGradeKey(g.key)}
+                      title={
+                        unlocked
+                          ? g.label
+                          : isOwnerPreview
+                          ? `${g.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${g.threshold} estimations)`
+                          : `${g.label} — débloqué à ${g.threshold} estimations`
+                      }
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 4,
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: canSelect ? "pointer" : "default",
+                        opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: "50%",
+                          background: `linear-gradient(135deg, ${g.accentLight} 0%, ${g.accent} 55%, ${g.accentDark} 100%)`,
+                          border: isActive ? "3px solid #FFFFFF" : "2px solid rgba(255, 255, 255, 0.25)",
+                          boxShadow: isActive ? `0 0 0 2px ${g.accent}` : "none",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {!unlocked && <Lock size={12} color="#FFFFFF" />}
+                      </div>
+                      <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
+                        {g.emoji} {g.label}
+                      </span>
+                      <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
+                        {g.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${g.threshold} estim.`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {nextGrade && (
+                <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
+                  Prochain palier : {nextGrade.label} à {nextGrade.threshold} estimations (
+                  {lifetimeEstimations}/{nextGrade.threshold})
+                </div>
+              )}
+            </div>
+
+            <div style={{ borderTop: pt.dashedBorder, marginTop: 16, paddingTop: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
+                Fonds ({lifetimeAdGenerations} annonce{lifetimeAdGenerations > 1 ? "s" : ""} générée
+                {lifetimeAdGenerations > 1 ? "s" : ""} au total)
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {BG_SKINS.map((sk) => {
+                  const unlocked = lifetimeAdGenerations >= sk.threshold;
+                  const canSelect = unlocked || isOwnerPreview;
+                  const isActive = activeBgSkin.key === sk.key;
+                  return (
+                    <button
+                      key={sk.key}
+                      onClick={() => canSelect && setSelectedBgSkinKey(sk.key)}
+                      title={
+                        unlocked
+                          ? sk.label
+                          : isOwnerPreview
+                          ? `${sk.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${sk.threshold} annonces générées)`
+                          : `${sk.label} — débloqué à ${sk.threshold} annonces générées`
+                      }
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 4,
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: canSelect ? "pointer" : "default",
+                        opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: "50%",
+                          background: `linear-gradient(135deg, ${sk.high} 0%, ${sk.mid} 55%, ${sk.base} 100%)`,
+                          border: isActive ? "3px solid #FFFFFF" : sk.key === "platine" ? "2px solid rgba(217, 243, 255, 0.55)" : "2px solid rgba(255, 255, 255, 0.25)",
+                          boxShadow: isActive
+                            ? `0 0 0 2px ${sk.high}`
+                            : sk.key === "platine"
+                            ? `0 0 10px rgba(${hexToRgbString(sk.high)}, 0.55)`
+                            : "none",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          position: "relative",
+                        }}
+                      >
+                        {!unlocked && <Lock size={12} color="#FFFFFF" />}
+                        {unlocked && sk.key === "platine" && (
+                          <span
+                            aria-hidden="true"
+                            className="sparkle"
+                            style={{
+                              position: "absolute",
+                              top: -3,
+                              right: -3,
+                              fontSize: 10,
+                              color: sk.high,
+                              textShadow: `0 0 6px rgba(${hexToRgbString(sk.high)}, 0.9)`,
+                            }}
+                          >
+                            ✦
+                          </span>
+                        )}
+                      </div>
+                      <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
+                        {sk.emoji} {sk.label}
+                      </span>
+                      <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
+                        {sk.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${sk.threshold} annonces`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {nextBgSkin && (
+                <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
+                  Prochain fond : {nextBgSkin.label} à {nextBgSkin.threshold} annonces générées (
+                  {lifetimeAdGenerations}/{nextBgSkin.threshold})
+                </div>
               )}
             </div>
           </div>
