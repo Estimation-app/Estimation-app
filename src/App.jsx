@@ -10,31 +10,31 @@ import logoWordmarkDark from "./assets/logo-wordmark.png";
 // qu'un personnage n'a pas encore son portrait, il n'apparaît pas du tout
 // dans CHARACTERS_META plus bas — Dylan les ajoute au catalogue au fur et
 // à mesure qu'il envoie les images.
-import charChineur from "./assets/characters/chineur.jpg";
-import charChineuse from "./assets/characters/chineuse.jpg";
-import charRenard from "./assets/characters/renard.jpg";
-import charRobotFerraille from "./assets/characters/robotFerraille.jpg";
-import charChatCurieux from "./assets/characters/chatCurieux.jpg";
-import charSingeFarceur from "./assets/characters/singeFarceur.jpg";
-import charHibouSage from "./assets/characters/hibouSage.jpg";
-import charCapitainePirate from "./assets/characters/capitainePirate.jpg";
-import charAstroDebutant from "./assets/characters/astroDebutant.jpg";
-import charLoupDetective from "./assets/characters/loupDetective.jpg";
-import charTigreStyle from "./assets/characters/tigreStyle.jpg";
-import charSorciereFutee from "./assets/characters/sorciereFutee.jpg";
-import charAlienCurieux from "./assets/characters/alienCurieux.jpg";
-import charNinjaSilencieux from "./assets/characters/ninjaSilencieux.jpg";
-import charRobotChrome from "./assets/characters/robotChrome.jpg";
-import charBebeDragon from "./assets/characters/bebeDragon.jpg";
-import charCowboyEncheres from "./assets/characters/cowboyEncheres.jpg";
-import charChouetteDoree from "./assets/characters/chouetteDoree.jpg";
-import charPieuvreMystique from "./assets/characters/pieuvreMystique.jpg";
-import charPhenixArdent from "./assets/characters/phenixArdent.jpg";
-import charLoupArgenteAlpha from "./assets/characters/loupArgenteAlpha.jpg";
-import charGriffonCeleste from "./assets/characters/griffonCeleste.jpg";
-import charChevalierDore from "./assets/characters/chevalierDore.jpg";
-import charSpectreElegant from "./assets/characters/spectreElegant.jpg";
-import charDiableEcarlate from "./assets/characters/diableEcarlate.jpg";
+import charChineur from "./assets/chineur.jpg";
+import charChineuse from "./assets/chineuse.jpg";
+import charRenard from "./assets/renard.jpg";
+import charRobotFerraille from "./assets/robotFerraille.jpg";
+import charChatCurieux from "./assets/chatCurieux.jpg";
+import charSingeFarceur from "./assets/singeFarceur.jpg";
+import charHibouSage from "./assets/hibouSage.jpg";
+import charCapitainePirate from "./assets/capitainePirate.jpg";
+import charAstroDebutant from "./assets/astroDebutant.jpg";
+import charLoupDetective from "./assets/loupDetective.jpg";
+import charTigreStyle from "./assets/tigreStyle.jpg";
+import charSorciereFutee from "./assets/sorciereFutee.jpg";
+import charAlienCurieux from "./assets/alienCurieux.jpg";
+import charNinjaSilencieux from "./assets/ninjaSilencieux.jpg";
+import charRobotChrome from "./assets/robotChrome.jpg";
+import charBebeDragon from "./assets/bebeDragon.jpg";
+import charCowboyEncheres from "./assets/cowboyEncheres.jpg";
+import charChouetteDoree from "./assets/chouetteDoree.jpg";
+import charPieuvreMystique from "./assets/pieuvreMystique.jpg";
+import charPhenixArdent from "./assets/phenixArdent.jpg";
+import charLoupArgenteAlpha from "./assets/loupArgenteAlpha.jpg";
+import charGriffonCeleste from "./assets/griffonCeleste.jpg";
+import charChevalierDore from "./assets/chevalierDore.jpg";
+import charSpectreElegant from "./assets/spectreElegant.jpg";
+import charDiableEcarlate from "./assets/diableEcarlate.jpg";
 
 const CHARACTER_IMAGES = {
   chineur: charChineur,
