@@ -90,11 +90,17 @@ function hexToRgbString(hex) {
 const BG_SKINS = [
   { key: "bleu", threshold: 0, label: "Bleu nuit", emoji: "🔵", mode: "dark", base: "#0A1220", mid: "#152238", high: "#26374E" },
   { key: "blanc", threshold: 0, label: "Blanc", emoji: "⚪", mode: "light", base: "#E9EDF2", mid: "#F4F6F9", high: "#D7DEE6" },
-  { key: "rouge", threshold: 10, label: "Rouge", emoji: "🔴", mode: "dark", base: "#210609", mid: "#6E1620", high: "#B22B3A" },
-  { key: "violet", threshold: 25, label: "Violet", emoji: "🟣", mode: "dark", base: "#180A28", mid: "#3F1768", high: "#6D2FB0" },
-  { key: "vert", threshold: 50, label: "Vert", emoji: "🟢", mode: "dark", base: "#051A10", mid: "#0F3D26", high: "#17824C" },
-  { key: "jaune", threshold: 100, label: "Jaune", emoji: "🟡", mode: "dark", base: "#1F1605", mid: "#4D3800", high: "#8A6800" },
-  { key: "marron", threshold: 200, label: "Marron", emoji: "🟤", mode: "dark", base: "#1C120A", mid: "#442A17", high: "#7A4A26" },
+  { key: "vert", threshold: 10, label: "Vert", emoji: "🟢", mode: "dark", base: "#051A10", mid: "#0F3D26", high: "#17824C" },
+  { key: "jaune", threshold: 40, label: "Jaune", emoji: "🟡", mode: "dark", base: "#1F1605", mid: "#4D3800", high: "#8A6800" },
+  { key: "marron", threshold: 90, label: "Marron", emoji: "🟤", mode: "dark", base: "#1C120A", mid: "#442A17", high: "#7A4A26" },
+  { key: "rouge", threshold: 180, label: "Rouge", emoji: "🔴", mode: "dark", base: "#210609", mid: "#6E1620", high: "#B22B3A" },
+  { key: "violet", threshold: 320, label: "Violet", emoji: "🟣", mode: "dark", base: "#180A28", mid: "#3F1768", high: "#6D2FB0" },
+  // "Platine" : palier ultime ("masterclass" demandé) — argenté/brillant,
+  // avec des nuances qui tirent vers le bleu-cyan du grade "diamant" (voir
+  // GRADES plus haut) pour rappeler la pierre précieuse sans le copier.
+  // Seul palier avec `glow` (halo lumineux) et petits glyphes "incrustés"
+  // (voir le bloc `activeBgSkin.key === "platine"` dans le header).
+  { key: "platine", threshold: 500, label: "Platine", emoji: "💠", mode: "dark", base: "#10141B", mid: "#5A6C82", high: "#D9F3FF", glow: 0.4 },
 ];
 // Progression réelle des paliers à débloquer (le "blanc" est un fond
 // alternatif toujours disponible, pas une récompense — il ne fait donc pas
@@ -1437,6 +1443,10 @@ export default function App() {
     (selectedBgSkinKey &&
       BG_SKINS.find((sk) => sk.key === selectedBgSkinKey && (sk.threshold <= lifetimeAdGenerations || isOwnerPreview))) ||
     highestUnlockedBgSkin;
+  // Utilisé pour le halo et les petits glyphes "incrustés" du palier
+  // "platine" (voir header plus bas) — calculé une fois ici, indépendant
+  // du système de halo existant (`activeGrade.glow`) lié aux habillages.
+  const bgSkinAccentRgb = hexToRgbString(activeBgSkin.high);
 
   // Le thème clair/sombre est désormais entièrement dérivé du fond choisi
   // ("blanc" → light, tout le reste → dark) — il n'y a plus de bascule
@@ -3161,9 +3171,45 @@ export default function App() {
             borderRadius: 22,
             padding: "22px 20px 24px",
             background: pt.headerBg,
-            boxShadow: activeGrade.glow ? `0 0 0 1px rgba(${accentRgb}, ${activeGrade.glow * 0.6}), 0 18px 40px rgba(${accentRgb}, ${activeGrade.glow * 0.5})` : "none",
+            boxShadow: [
+              activeGrade.glow ? `0 0 0 1px rgba(${accentRgb}, ${activeGrade.glow * 0.6}), 0 18px 40px rgba(${accentRgb}, ${activeGrade.glow * 0.5})` : null,
+              activeBgSkin.key === "platine" ? `0 0 0 1px rgba(${bgSkinAccentRgb}, 0.5), 0 0 30px rgba(${bgSkinAccentRgb}, ${activeBgSkin.glow || 0.4})` : null,
+            ]
+              .filter(Boolean)
+              .join(", ") || "none",
           }}
         >
+          {activeBgSkin.key === "platine" && (
+            <>
+              {[
+                { top: "9%", left: "16%", size: 10, glyph: "✦", delay: "0s" },
+                { top: "20%", left: "72%", size: 15, glyph: "❖", delay: "0.35s" },
+                { top: "54%", left: "93%", size: 9, glyph: "✧", delay: "0.9s" },
+                { top: "80%", left: "28%", size: 11, glyph: "✦", delay: "1.3s" },
+                { top: "46%", left: "5%", size: 8, glyph: "✧", delay: "1.7s" },
+                { top: "6%", left: "48%", size: 12, glyph: "❖", delay: "0.6s" },
+              ].map((s, i) => (
+                <span
+                  key={`pl-${i}`}
+                  aria-hidden="true"
+                  className="sparkle"
+                  style={{
+                    position: "absolute",
+                    top: s.top,
+                    left: s.left,
+                    fontSize: s.size,
+                    color: activeBgSkin.high,
+                    textShadow: `0 0 8px rgba(${bgSkinAccentRgb}, 0.9)`,
+                    animationDelay: s.delay,
+                    pointerEvents: "none",
+                  }}
+                >
+                  {s.glyph}
+                </span>
+              ))}
+            </>
+          )}
+
           {activeGrade.key === "diamant" && (
             <>
               {[
@@ -5262,14 +5308,35 @@ export default function App() {
                               height: 34,
                               borderRadius: "50%",
                               background: `linear-gradient(135deg, ${sk.high} 0%, ${sk.mid} 55%, ${sk.base} 100%)`,
-                              border: isActive ? "3px solid #FFFFFF" : "2px solid rgba(255, 255, 255, 0.25)",
-                              boxShadow: isActive ? `0 0 0 2px ${sk.high}` : "none",
+                              border: isActive ? "3px solid #FFFFFF" : sk.key === "platine" ? "2px solid rgba(217, 243, 255, 0.55)" : "2px solid rgba(255, 255, 255, 0.25)",
+                              boxShadow: isActive
+                                ? `0 0 0 2px ${sk.high}`
+                                : sk.key === "platine"
+                                ? `0 0 10px rgba(${hexToRgbString(sk.high)}, 0.55)`
+                                : "none",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
+                              position: "relative",
                             }}
                           >
                             {!unlocked && <Lock size={12} color="#FFFFFF" />}
+                            {unlocked && sk.key === "platine" && (
+                              <span
+                                aria-hidden="true"
+                                className="sparkle"
+                                style={{
+                                  position: "absolute",
+                                  top: -3,
+                                  right: -3,
+                                  fontSize: 10,
+                                  color: sk.high,
+                                  textShadow: `0 0 6px rgba(${hexToRgbString(sk.high)}, 0.9)`,
+                                }}
+                              >
+                                ✦
+                              </span>
+                            )}
                           </div>
                           <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
                             {sk.emoji} {sk.label}
