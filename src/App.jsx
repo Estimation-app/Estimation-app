@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, RotateCw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 import logoWordmarkDark from "./assets/logo-wordmark.png";
 
@@ -115,17 +115,60 @@ const BG_PROGRESSION = BG_SKINS.filter((sk) => sk.key !== "blanc");
 // dans le composant App(), qui dépend des stats de l'utilisateur).
 const AVATAR_SKIN_TONES = ["#F6D8C0", "#E8B99A", "#C98F6B", "#9C6644", "#6B4226", "#4A2C17"];
 
-// Avatar "personnage" à vraie tête + corps (façon Habbo), composé de
-// couches SVG empilées : corps → cou → tête/oreilles/visage → cheveux →
-// accessoire (toujours dessiné en dernier, par-dessus tout le reste).
-// Un léger dégradé radial sur la tête/le corps donne un rendu "figurine"
-// avec un peu de relief, sans viser un vrai rendu 3D.
-function AvatarSVG({ skin = AVATAR_SKIN_TONES[1], hairStyle = "court", hairColor = "#2B2B2B", topColor = "#5C6773", accessory = "aucun", size = 96 }) {
+// Avatar "personnage" à vraie tête + corps + bras + jambes (façon Habbo),
+// composé de couches SVG empilées : jambes → bras → torse → cou →
+// tête/oreilles/visage → cheveux → accessoire (toujours dessiné en
+// dernier, par-dessus tout le reste). Un léger dégradé radial sur la
+// tête/le corps donne un rendu "figurine" avec un peu de relief, sans
+// viser un vrai rendu 3D (la rotation 360° du panneau Avatar simule la
+// profondeur via une rotation CSS de ce même dessin bidimensionnel).
+// "gender" ("homme" | "femme") ne change que la silhouette (largeur
+// d'épaules/taille/hanches) — jamais le catalogue d'habillage disponible.
+function AvatarSVG({
+  skin = AVATAR_SKIN_TONES[1],
+  hairStyle = "court",
+  hairColor = "#2B2B2B",
+  topColor = "#5C6773",
+  accessory = "aucun",
+  gender = "homme",
+  size = 96,
+}) {
   const gradId = "avshade-" + Math.abs(
-    (skin + hairStyle + hairColor + topColor + accessory).split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)
+    (skin + hairStyle + hairColor + topColor + accessory + gender).split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)
   );
   const isRainbowHair = hairColor === "rainbow";
   const isGoldTop = topColor === "gold";
+  const bodyFill = isGoldTop ? `url(#${gradId}-gold)` : topColor;
+  const isFemme = gender === "femme";
+
+  // Silhouette du torse (hexagone épaules → taille → hanches) : plus
+  // carrée pour "homme", plus cintrée ("hourglass") pour "femme".
+  const shoulderHalf = isFemme ? 19 : 23;
+  const waistHalf = isFemme ? 14 : 20;
+  const hipHalf = isFemme ? 20 : 21;
+  const torsoTop = 76;
+  const waistY = 92;
+  const torsoBottom = 106;
+  const torsoPath = `M${50 - shoulderHalf},${torsoTop} L${50 + shoulderHalf},${torsoTop} L${50 + waistHalf},${waistY} L${50 + hipHalf},${torsoBottom} L${50 - hipHalf},${torsoBottom} L${50 - waistHalf},${waistY} Z`;
+
+  // Jambes : deux rectangles arrondis sous le torse, alignés sur ses
+  // hanches pour un raccord propre (pas d'interstice visible).
+  const legGap = isFemme ? 4 : 6;
+  const legW = (hipHalf * 2 - legGap) / 2;
+  const legTop = torsoBottom - 4;
+  const legBottom = 124;
+  const legLeftX = 50 - hipHalf;
+  const legRightX = 50 + hipHalf - legW;
+
+  // Bras : deux capsules le long du torse, se terminant par une petite
+  // "main" de la couleur de peau ; le torse (dessiné par-dessus) recouvre
+  // proprement leur attache à l'épaule.
+  const armW = isFemme ? 9 : 11;
+  const armTop = torsoTop + 2;
+  const armBottom = 103;
+  const armLeftCx = 50 - shoulderHalf - armW * 0.35;
+  const armRightCx = 50 + shoulderHalf + armW * 0.35;
+
   return (
     <svg viewBox="0 0 100 130" width={size} height={size * 1.3} aria-hidden="true">
       <defs>
@@ -154,10 +197,22 @@ function AvatarSVG({ skin = AVATAR_SKIN_TONES[1], hairStyle = "court", hairColor
       {/* Cheveux (partie arrière, derrière la tête) — seul le style "afro" a
           besoin d'un halo qui dépasse le contour de la tête. */}
       {hairStyle === "afro" && <circle cx="50" cy="30" r="27" fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor} />}
-      {/* Corps */}
-      <rect x="28" y="74" width="44" height="52" rx="18" fill={isGoldTop ? `url(#${gradId}-gold)` : topColor} />
+      {/* Jambes */}
+      <rect x={legLeftX} y={legTop} width={legW} height={legBottom - legTop} rx={legW / 2.4} fill={bodyFill} />
+      <rect x={legRightX} y={legTop} width={legW} height={legBottom - legTop} rx={legW / 2.4} fill={bodyFill} />
+      {/* Chaussures */}
+      <ellipse cx={legLeftX + legW / 2} cy={legBottom + 2} rx={legW / 2 + 2} ry="4" fill="#1A1A1A" />
+      <ellipse cx={legRightX + legW / 2} cy={legBottom + 2} rx={legW / 2 + 2} ry="4" fill="#1A1A1A" />
+      {/* Bras */}
+      <rect x={armLeftCx - armW / 2} y={armTop} width={armW} height={armBottom - armTop} rx={armW / 2} fill={bodyFill} />
+      <rect x={armRightCx - armW / 2} y={armTop} width={armW} height={armBottom - armTop} rx={armW / 2} fill={bodyFill} />
+      {/* Mains */}
+      <circle cx={armLeftCx} cy={armBottom} r={armW / 2 - 0.5} fill={skin} />
+      <circle cx={armRightCx} cy={armBottom} r={armW / 2 - 0.5} fill={skin} />
+      {/* Torse */}
+      <path d={torsoPath} fill={bodyFill} />
       {/* Cou */}
-      <rect x="44" y="60" width="12" height="16" fill={skin} />
+      <rect x="44" y="60" width="12" height="18" fill={skin} />
       {/* Oreilles */}
       <circle cx="25" cy="42" r="5" fill={skin} />
       <circle cx="75" cy="42" r="5" fill={skin} />
@@ -193,9 +248,13 @@ function AvatarSVG({ skin = AVATAR_SKIN_TONES[1], hairStyle = "court", hairColor
           fill={isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor}
         />
       )}
-      {/* Ombre/relief global (peau + corps) */}
+      {/* Ombre/relief global (tête + torse + bras + jambes) */}
       <circle cx="50" cy="42" r="24" fill={`url(#${gradId})`} />
-      <rect x="28" y="74" width="44" height="52" rx="18" fill={`url(#${gradId})`} />
+      <path d={torsoPath} fill={`url(#${gradId})`} />
+      <rect x={legLeftX} y={legTop} width={legW} height={legBottom - legTop} rx={legW / 2.4} fill={`url(#${gradId})`} />
+      <rect x={legRightX} y={legTop} width={legW} height={legBottom - legTop} rx={legW / 2.4} fill={`url(#${gradId})`} />
+      <rect x={armLeftCx - armW / 2} y={armTop} width={armW} height={armBottom - armTop} rx={armW / 2} fill={`url(#${gradId})`} />
+      <rect x={armRightCx - armW / 2} y={armTop} width={armW} height={armBottom - armTop} rx={armW / 2} fill={`url(#${gradId})`} />
       {/* Accessoire — toujours par-dessus tout le reste */}
       {accessory === "bandeau" && <rect x="26" y="33" width="48" height="6" rx="3" fill="#B22B3A" />}
       {accessory === "casquette" && (
@@ -1236,7 +1295,7 @@ export default function App() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_skin, avatar_hair_style, avatar_hair_color, avatar_top_color, avatar_accessory"
+        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_skin, avatar_hair_style, avatar_hair_color, avatar_top_color, avatar_accessory, avatar_gender"
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1766,6 +1825,9 @@ export default function App() {
   // de l'avatar (peau/coiffure/couleurs/accessoire) est déclaré plus bas,
   // juste après AVATAR_WARDROBE dont il dépend.
   const [showAvatarPanel, setShowAvatarPanel] = useState(false);
+  // Panneau "Profil" — connexion/compte + accès à l'avatar, ouvert depuis
+  // l'icône en haut à droite du header (plus dans le menu hamburger).
+  const [showProfilePanel, setShowProfilePanel] = useState(false);
   // Vérifie si l'utilisateur figure ACTUELLEMENT dans le top 100 du
   // classement total des estimations — sert au déblocage de l'accessoire
   // "médaille" le plus rare de l'avatar (voir WARDROBE plus bas). Version
@@ -1935,10 +1997,10 @@ export default function App() {
     hairStyle: [
       { id: "chauve", label: "Chauve", free: true },
       { id: "court", label: "Court", free: true },
-      { id: "longs", label: "Longs", test: () => lifetimeEstimations >= 15 },
-      { id: "boucles", label: "Bouclés", test: () => portfolioStreak >= 5 },
-      { id: "mohawk", label: "Mohawk", test: () => lifetimeEstimations >= 75 },
-      { id: "afro", label: "Afro", test: () => lifetimeAdGenerations >= 30 },
+      { id: "longs", label: "Longs", test: () => lifetimeEstimations >= 15, hint: "dès 15 estimations" },
+      { id: "boucles", label: "Bouclés", test: () => portfolioStreak >= 5, hint: "5 jours de suite" },
+      { id: "mohawk", label: "Mohawk", test: () => lifetimeEstimations >= 75, hint: "dès 75 estimations" },
+      { id: "afro", label: "Afro", test: () => lifetimeAdGenerations >= 30, hint: "30 annonces générées" },
     ],
     hairColor: [
       { id: "noir", hex: "#1A1A1A", label: "Noir", free: true },
@@ -1946,34 +2008,34 @@ export default function App() {
       { id: "blond", hex: "#D9B26F", label: "Blond", free: true },
       { id: "roux", hex: "#B5502A", label: "Roux", free: true },
       { id: "gris", hex: "#9CA3AF", label: "Gris", free: true },
-      { id: "bleu", hex: "#3B82C4", label: "Bleu", test: () => portfolioStreak >= 7 },
-      { id: "rose", hex: "#E85D9E", label: "Rose", test: () => lifetimeAdGenerations >= 40 },
-      { id: "arcenciel", hex: "rainbow", label: "Arc-en-ciel", test: () => lifetimeEstimations >= 5000 },
+      { id: "bleu", hex: "#3B82C4", label: "Bleu", test: () => portfolioStreak >= 7, hint: "7 jours de suite" },
+      { id: "rose", hex: "#E85D9E", label: "Rose", test: () => lifetimeAdGenerations >= 40, hint: "40 annonces générées" },
+      { id: "arcenciel", hex: "rainbow", label: "Arc-en-ciel", test: () => lifetimeEstimations >= 5000, hint: "dès 5000 estimations" },
     ],
     topColor: [
       { id: "gris", hex: "#5C6773", label: "Gris", free: true },
       { id: "blanc", hex: "#E9EDF2", label: "Blanc", free: true },
       { id: "marine", hex: "#29394F", label: "Marine", free: true },
       { id: "beige", hex: "#C9AD8F", label: "Beige", free: true },
-      { id: "rouge", hex: "#B22B3A", label: "Rouge", test: () => lifetimeEstimations >= 10 },
-      { id: "vert", hex: "#17824C", label: "Vert", test: () => lifetimeEstimations >= 25 },
-      { id: "violet", hex: "#6D2FB0", label: "Violet", test: () => lifetimeAdGenerations >= 20 },
-      { id: "jaune", hex: "#D4A017", label: "Jaune", test: () => portfolioBestFind >= 200 },
-      { id: "or", hex: "gold", label: "Doré", test: () => lifetimeEstimations >= 1000 },
+      { id: "rouge", hex: "#B22B3A", label: "Rouge", test: () => lifetimeEstimations >= 10, hint: "dès 10 estimations" },
+      { id: "vert", hex: "#17824C", label: "Vert", test: () => lifetimeEstimations >= 25, hint: "dès 25 estimations" },
+      { id: "violet", hex: "#6D2FB0", label: "Violet", test: () => lifetimeAdGenerations >= 20, hint: "20 annonces générées" },
+      { id: "jaune", hex: "#D4A017", label: "Jaune", test: () => portfolioBestFind >= 200, hint: "trouvaille à +200 €" },
+      { id: "or", hex: "gold", label: "Doré", test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
     ],
     accessory: [
       { id: "aucun", label: "Aucun", free: true },
-      { id: "bandeau", label: "Bandeau", test: () => portfolioStreak >= 3 },
-      { id: "casquette", label: "Casquette", test: () => lifetimeEstimations >= 20 },
-      { id: "lunettes", label: "Lunettes", test: () => lifetimeAdGenerations >= 10 },
-      { id: "loupe", label: "Loupe d'enquêteur", test: () => lifetimeEstimations >= 50 },
-      { id: "couronne", label: "Couronne", test: () => lifetimeEstimations >= 1000 },
+      { id: "bandeau", label: "Bandeau", test: () => portfolioStreak >= 3, hint: "3 jours de suite" },
+      { id: "casquette", label: "Casquette", test: () => lifetimeEstimations >= 20, hint: "dès 20 estimations" },
+      { id: "lunettes", label: "Lunettes", test: () => lifetimeAdGenerations >= 10, hint: "10 annonces générées" },
+      { id: "loupe", label: "Loupe d'enquêteur", test: () => lifetimeEstimations >= 50, hint: "dès 50 estimations" },
+      { id: "couronne", label: "Couronne", test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
       // Version simplifiée du défi "top 100 du mois, 3 mois d'affilée"
       // demandé : ici, être ACTUELLEMENT dans le top 100 du classement total
       // des estimations (voir isTop100Total plus haut) — un vrai suivi
       // "3 mois d'affilée" demanderait une tâche planifiée côté serveur pour
       // enregistrer un historique mensuel, pas encore en place.
-      { id: "medaille", label: "Médaille top 100", test: () => isTop100Total },
+      { id: "medaille", label: "Médaille top 100", test: () => isTop100Total, hint: "top 100 du classement" },
     ],
   };
   const AVATAR_DEFAULTS = {
@@ -1982,6 +2044,7 @@ export default function App() {
     hairColor: "noir",
     topColor: "gris",
     accessory: "aucun",
+    gender: "homme",
   };
   function avatarWardrobeUnlocked(category, id) {
     const item = AVATAR_WARDROBE[category].find((it) => it.id === id);
@@ -1992,9 +2055,34 @@ export default function App() {
   const [avatarHairColorInput, setAvatarHairColorInput] = useState(AVATAR_DEFAULTS.hairColor);
   const [avatarTopColorInput, setAvatarTopColorInput] = useState(AVATAR_DEFAULTS.topColor);
   const [avatarAccessoryInput, setAvatarAccessoryInput] = useState(AVATAR_DEFAULTS.accessory);
+  const [avatarGenderInput, setAvatarGenderInput] = useState(AVATAR_DEFAULTS.gender);
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
   const [avatarSavedFlash, setAvatarSavedFlash] = useState(false);
+  // Rotation 360° (glisser au doigt ou à la souris) du grand aperçu du
+  // panneau Avatar — une rotation CSS du dessin 2D pour donner une
+  // sensation de figurine qu'on tourne dans la main, pas un vrai moteur 3D.
+  const [avatarRotation, setAvatarRotation] = useState(0);
+  const [avatarDragging, setAvatarDragging] = useState(false);
+  const avatarDragRef = useRef(null);
+  function avatarRotateStart(e) {
+    avatarDragRef.current = { startX: e.clientX, startRotation: avatarRotation };
+    setAvatarDragging(true);
+    if (e.currentTarget.setPointerCapture) {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    }
+  }
+  function avatarRotateMove(e) {
+    if (!avatarDragRef.current) return;
+    const dx = e.clientX - avatarDragRef.current.startX;
+    setAvatarRotation(avatarDragRef.current.startRotation + dx * 0.7);
+  }
+  function avatarRotateEnd() {
+    avatarDragRef.current = null;
+    setAvatarDragging(false);
+  }
   useEffect(() => {
     if (showAvatarPanel) {
       setAvatarSkinInput((profile && profile.avatar_skin) || AVATAR_DEFAULTS.skin);
@@ -2002,12 +2090,18 @@ export default function App() {
       setAvatarHairColorInput((profile && profile.avatar_hair_color) || AVATAR_DEFAULTS.hairColor);
       setAvatarTopColorInput((profile && profile.avatar_top_color) || AVATAR_DEFAULTS.topColor);
       setAvatarAccessoryInput((profile && profile.avatar_accessory) || AVATAR_DEFAULTS.accessory);
+      setAvatarGenderInput((profile && profile.avatar_gender) || AVATAR_DEFAULTS.gender);
+      setAvatarRotation(0);
       setAvatarError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAvatarPanel, profile]);
+  // isOwnerPreview (défini plus haut, pour l'habillage/les fonds) permet
+  // aussi à ce compte d'essayer — sans réellement les débloquer pour de
+  // vrai — toutes les coiffures/couleurs/accessoires de l'avatar, à titre
+  // exceptionnel, exactement comme pour l'habillage et les fonds.
   function pickAvatarItem(category, id) {
-    if (!avatarWardrobeUnlocked(category, id)) return;
+    if (!avatarWardrobeUnlocked(category, id) && !isOwnerPreview) return;
     if (category === "hairStyle") setAvatarHairStyleInput(id);
     else if (category === "hairColor") setAvatarHairColorInput(id);
     else if (category === "topColor") setAvatarTopColorInput(id);
@@ -2026,7 +2120,8 @@ export default function App() {
       avatarHairStyleInput !== (profile.avatar_hair_style || AVATAR_DEFAULTS.hairStyle) ||
       avatarHairColorInput !== (profile.avatar_hair_color || AVATAR_DEFAULTS.hairColor) ||
       avatarTopColorInput !== (profile.avatar_top_color || AVATAR_DEFAULTS.topColor) ||
-      avatarAccessoryInput !== (profile.avatar_accessory || AVATAR_DEFAULTS.accessory));
+      avatarAccessoryInput !== (profile.avatar_accessory || AVATAR_DEFAULTS.accessory) ||
+      avatarGenderInput !== (profile.avatar_gender || AVATAR_DEFAULTS.gender));
   async function saveAvatar() {
     if (!user || avatarSaving) return;
     setAvatarSaving(true);
@@ -2038,6 +2133,7 @@ export default function App() {
         p_hair_color: avatarHairColorInput,
         p_top_color: avatarTopColorInput,
         p_accessory: avatarAccessoryInput,
+        p_gender: avatarGenderInput,
       });
       if (error) throw new Error(error.message);
       if (data && data.ok) {
@@ -2050,6 +2146,7 @@ export default function App() {
                 avatar_hair_color: data.avatar_hair_color,
                 avatar_top_color: data.avatar_top_color,
                 avatar_accessory: data.avatar_accessory,
+                avatar_gender: data.avatar_gender,
               }
             : prev
         );
@@ -2067,6 +2164,319 @@ export default function App() {
     } finally {
       setAvatarSaving(false);
     }
+  }
+
+  // Bloc connexion / compte (email+mot de passe, lien magique, plan,
+  // parrainage, mot de passe) — affiché dans le panneau "Profil" (icône en
+  // haut à droite du header). Simple fonction plutôt qu'un composant séparé :
+  // elle lit l'état du composant App() par fermeture, pas de props/hooks.
+  function renderAccountBlock() {
+    return (
+      <div
+        style={{
+          background: pt.rowBg,
+          border: pt.rowBorder,
+          borderRadius: 3,
+          padding: 12,
+        }}
+      >
+        {user ? (
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ fontSize: 12, color: pt.rowText }}>
+                Connecté : <strong>{user.email}</strong>
+                <div className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 2 }}>
+                  historique illimité, synchronisé
+                </div>
+              </div>
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  signOut();
+                  setShowProfilePanel(false);
+                }}
+                style={{ flexShrink: 0 }}
+              >
+                <LogOut size={14} /> déconnexion
+              </button>
+            </div>
+
+            {profile && (
+              <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontSize: 12, color: pt.rowText }}>
+                    Plan :{" "}
+                    <strong>
+                      {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                        ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
+                        : "Gratuit"}
+                    </strong>
+                    <div className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 2 }}>
+                      {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                        ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} estimations restantes ce mois`
+                        : `${Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) gratuite(s) restante(s) ce mois`}
+                    </div>
+                  </div>
+                  {profile.stripe_customer_id ? (
+                    <button
+                      className="btn-ghost"
+                      onClick={openBillingPortal}
+                      disabled={portalLoading}
+                      style={{ flexShrink: 0 }}
+                    >
+                      <CreditCard size={14} /> {portalLoading ? "…" : "gérer"}
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-ghost"
+                      onClick={() => {
+                        setPaywallInfo(null);
+                        setShowPaywall(true);
+                      }}
+                      style={{ flexShrink: 0 }}
+                    >
+                      <Sparkles size={14} /> s'abonner
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Créer/personnaliser l'avatar : juste en dessous des infos de
+                compte, comme demandé, accessible d'un tap depuis ce même
+                panneau "Profil". */}
+            <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
+              <button
+                onClick={() => {
+                  setShowProfilePanel(false);
+                  setShowAvatarPanel(true);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  textAlign: "left",
+                  background: `rgba(${accentRgb}, 0.1)`,
+                  border: `1px solid rgba(${accentRgb}, 0.3)`,
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                }}
+              >
+                <AvatarSVG
+                  skin={(profile && profile.avatar_skin) || AVATAR_DEFAULTS.skin}
+                  hairStyle={(profile && profile.avatar_hair_style) || AVATAR_DEFAULTS.hairStyle}
+                  hairColor={
+                    (AVATAR_WARDROBE.hairColor.find((h) => h.id === ((profile && profile.avatar_hair_color) || AVATAR_DEFAULTS.hairColor)) || {}).hex ||
+                    "#1A1A1A"
+                  }
+                  topColor={
+                    (AVATAR_WARDROBE.topColor.find((h) => h.id === ((profile && profile.avatar_top_color) || AVATAR_DEFAULTS.topColor)) || {}).hex ||
+                    "#5C6773"
+                  }
+                  accessory={(profile && profile.avatar_accessory) || AVATAR_DEFAULTS.accessory}
+                  gender={(profile && profile.avatar_gender) || AVATAR_DEFAULTS.gender}
+                  size={34}
+                />
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: pt.rowText }}>
+                    {profile && profile.avatar_hair_style ? "Personnaliser mon avatar" : "Créer mon avatar"}
+                  </span>
+                  <span className="mono" style={{ fontSize: 10, color: pt.subText }}>
+                    corps, coiffure, couleurs, accessoires à débloquer
+                  </span>
+                </span>
+                <ChevronRight size={14} color={pt.chevronColor} />
+              </button>
+            </div>
+
+            <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <Gift size={14} color={accent} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: pt.rowText }}>Parraine un ami</span>
+              </div>
+              <p style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 8 }}>
+                Partage ton lien avec un proche pour lui faire découvrir estim'.
+              </p>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button className="btn-ghost" onClick={shareReferralLink} style={{ flex: 1, justifyContent: "center" }}>
+                  <Share2 size={14} /> partager mon lien
+                </button>
+                <button className="btn-ghost" onClick={copyReferralLink} style={{ flexShrink: 0 }} aria-label="copier le lien">
+                  {referralCopied ? "copié !" : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
+              {passwordStatus === "done" ? (
+                <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
+                  Mot de passe défini ! Tu peux maintenant l'utiliser pour te connecter.
+                </p>
+              ) : (
+                <div>
+                  <p style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 6 }}>
+                    Définir un mot de passe (pour te reconnecter sans lien par email) :
+                  </p>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <div className="password-field">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="nouveau mot de passe"
+                        style={{
+                          width: "100%",
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 12,
+                          padding: "8px 34px 8px 10px",
+                          borderRadius: 3,
+                          border: pt.inputBorder,
+                          background: pt.inputBg,
+                          color: pt.inputText,
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle"
+                        onClick={() => setShowNewPassword((v) => !v)}
+                        aria-label={showNewPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
+                      >
+                        {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                    <button
+                      className="btn-ghost"
+                      onClick={setAccountPassword}
+                      disabled={passwordStatus === "saving"}
+                      style={{ flexShrink: 0 }}
+                    >
+                      définir
+                    </button>
+                  </div>
+                  {passwordError && (
+                    <p style={{ fontSize: 11, color: accent, marginTop: 6, marginBottom: 0 }}>
+                      {passwordError}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : authStatus === "sent" ? (
+          <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
+            Lien envoyé ! Vérifie ta boîte mail ({authEmail}) et clique dessus pour te connecter.
+          </p>
+        ) : authStatus === "signup_sent" ? (
+          <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
+            Compte créé ! Vérifie ta boîte mail ({authEmail}) et clique sur le lien de confirmation pour
+            activer ton compte, puis reviens te connecter avec ton mot de passe.
+          </p>
+        ) : (
+          <div>
+            <p style={{ fontSize: 12, color: pt.rowText, marginTop: 0, marginBottom: 8 }}>
+              Connecte-toi pour sauvegarder ton historique, débloquer ton avatar personnalisable et apparaître au classement (optionnel).
+            </p>
+            <input
+              type="email"
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
+              placeholder="ton@email.com"
+              style={{
+                width: "100%",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 12,
+                padding: "8px 10px",
+                borderRadius: 3,
+                border: pt.inputBorder,
+                background: pt.inputBg,
+                color: pt.inputText,
+                marginBottom: 6,
+                boxSizing: "border-box",
+              }}
+            />
+            <div className="password-field" style={{ marginBottom: 8 }}>
+              <input
+                type={showAuthPassword ? "text" : "password"}
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="mot de passe"
+                style={{
+                  width: "100%",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 12,
+                  padding: "8px 34px 8px 10px",
+                  borderRadius: 3,
+                  border: pt.inputBorder,
+                  background: pt.inputBg,
+                  color: pt.inputText,
+                  boxSizing: "border-box",
+                }}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowAuthPassword((v) => !v)}
+                aria-label={showAuthPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
+              >
+                {showAuthPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                className="btn-ghost"
+                onClick={signInWithPassword}
+                disabled={authStatus === "sending"}
+                style={{ flex: 1, justifyContent: "center" }}
+              >
+                se connecter
+              </button>
+              <button
+                className="btn-ghost"
+                onClick={signUpWithPassword}
+                disabled={authStatus === "sending"}
+                style={{ flex: 1, justifyContent: "center" }}
+              >
+                créer un compte
+              </button>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                margin: "10px 0",
+                color: pt.subText,
+                fontSize: 11,
+              }}
+            >
+              <div style={{ flex: 1, height: 1, background: pt.rowBorder.replace("1px solid ", "") }} />
+              ou
+              <div style={{ flex: 1, height: 1, background: pt.rowBorder.replace("1px solid ", "") }} />
+            </div>
+            <button
+              className="btn-ghost"
+              onClick={sendMagicLink}
+              disabled={authStatus === "sending" || !authEmail.trim()}
+              style={{ width: "100%", justifyContent: "center" }}
+            >
+              <Mail size={14} /> recevoir un lien de connexion (sans mot de passe)
+            </button>
+            {authError && (
+              <p style={{ fontSize: 11, color: accent, marginTop: 6, marginBottom: 0 }}>{authError}</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
   }
 
   // Une fois connecté, on charge l'historique complet depuis Supabase
@@ -3658,6 +4068,49 @@ export default function App() {
             >
               bêta
             </span>
+            {/* Profil : connexion / déconnexion / avatar — icône unique en
+                haut à droite du header (plus dans le menu hamburger).
+                Personnage miniature si un avatar a déjà été personnalisé,
+                icône neutre sinon (ou si pas connecté). */}
+            <button
+              onClick={() => setShowProfilePanel(true)}
+              aria-label="Mon profil"
+              style={{
+                marginLeft: "auto",
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                padding: 0,
+                border: `1px solid ${pt.menuBtnBorder}`,
+                background: pt.menuBtnBg,
+                cursor: "pointer",
+                overflow: "hidden",
+              }}
+            >
+              {user && profile && profile.avatar_hair_style ? (
+                <span style={{ display: "flex", alignItems: "flex-start", marginTop: 6 }}>
+                  <AvatarSVG
+                    skin={profile.avatar_skin || AVATAR_DEFAULTS.skin}
+                    hairStyle={profile.avatar_hair_style || AVATAR_DEFAULTS.hairStyle}
+                    hairColor={
+                      (AVATAR_WARDROBE.hairColor.find((h) => h.id === (profile.avatar_hair_color || AVATAR_DEFAULTS.hairColor)) || {}).hex || "#1A1A1A"
+                    }
+                    topColor={
+                      (AVATAR_WARDROBE.topColor.find((h) => h.id === (profile.avatar_top_color || AVATAR_DEFAULTS.topColor)) || {}).hex || "#5C6773"
+                    }
+                    accessory={profile.avatar_accessory || AVATAR_DEFAULTS.accessory}
+                    gender={profile.avatar_gender || AVATAR_DEFAULTS.gender}
+                    size={30}
+                  />
+                </span>
+              ) : (
+                <User size={16} color={pt.menuBtnColor} />
+              )}
+            </button>
           </div>
           <h1
             className="brand"
@@ -4856,255 +5309,11 @@ export default function App() {
               </div>
             </div>
 
-            <div
-              style={{
-                background: pt.rowBg,
-                border: pt.rowBorder,
-                borderRadius: 3,
-                padding: 12,
-                marginBottom: 16,
-              }}
-            >
-              {user ? (
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div style={{ fontSize: 12, color: pt.rowText }}>
-                      Connecté : <strong>{user.email}</strong>
-                      <div className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 2 }}>
-                        historique illimité, synchronisé
-                      </div>
-                    </div>
-                    <button className="btn-ghost" onClick={signOut} style={{ flexShrink: 0 }}>
-                      <LogOut size={14} /> déconnexion
-                    </button>
-                  </div>
-
-                  {profile && (
-                    <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                        <div style={{ fontSize: 12, color: pt.rowText }}>
-                          Plan :{" "}
-                          <strong>
-                            {profile.plan !== "gratuit" && profile.subscription_status === "active"
-                              ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
-                              : "Gratuit"}
-                          </strong>
-                          <div className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 2 }}>
-                            {profile.plan !== "gratuit" && profile.subscription_status === "active"
-                              ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} estimations restantes ce mois`
-                              : `${Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) gratuite(s) restante(s) ce mois`}
-                          </div>
-                        </div>
-                        {profile.stripe_customer_id ? (
-                          <button
-                            className="btn-ghost"
-                            onClick={openBillingPortal}
-                            disabled={portalLoading}
-                            style={{ flexShrink: 0 }}
-                          >
-                            <CreditCard size={14} /> {portalLoading ? "…" : "gérer"}
-                          </button>
-                        ) : (
-                          <button
-                            className="btn-ghost"
-                            onClick={() => {
-                              setPaywallInfo(null);
-                              setShowPaywall(true);
-                            }}
-                            style={{ flexShrink: 0 }}
-                          >
-                            <Sparkles size={14} /> s'abonner
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <Gift size={14} color={accent} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: pt.rowText }}>Parraine un ami</span>
-                    </div>
-                    <p style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 8 }}>
-                      Partage ton lien avec un proche pour lui faire découvrir estim'.
-                    </p>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button className="btn-ghost" onClick={shareReferralLink} style={{ flex: 1, justifyContent: "center" }}>
-                        <Share2 size={14} /> partager mon lien
-                      </button>
-                      <button className="btn-ghost" onClick={copyReferralLink} style={{ flexShrink: 0 }} aria-label="copier le lien">
-                        {referralCopied ? "copié !" : <Copy size={14} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
-                    {passwordStatus === "done" ? (
-                      <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
-                        Mot de passe défini ! Tu peux maintenant l'utiliser pour te connecter.
-                      </p>
-                    ) : (
-                      <div>
-                        <p style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 6 }}>
-                          Définir un mot de passe (pour te reconnecter sans lien par email) :
-                        </p>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <div className="password-field">
-                            <input
-                              type={showNewPassword ? "text" : "password"}
-                              value={newPassword}
-                              onChange={(e) => setNewPassword(e.target.value)}
-                              placeholder="nouveau mot de passe"
-                              style={{
-                                width: "100%",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: 12,
-                                padding: "8px 34px 8px 10px",
-                                borderRadius: 3,
-                                border: pt.inputBorder,
-                                background: pt.inputBg,
-                                color: pt.inputText,
-                                boxSizing: "border-box",
-                              }}
-                            />
-                            <button
-                              type="button"
-                              className="password-toggle"
-                              onClick={() => setShowNewPassword((v) => !v)}
-                              aria-label={showNewPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
-                            >
-                              {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                          </div>
-                          <button
-                            className="btn-ghost"
-                            onClick={setAccountPassword}
-                            disabled={passwordStatus === "saving"}
-                            style={{ flexShrink: 0 }}
-                          >
-                            définir
-                          </button>
-                        </div>
-                        {passwordError && (
-                          <p style={{ fontSize: 11, color: accent, marginTop: 6, marginBottom: 0 }}>
-                            {passwordError}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : authStatus === "sent" ? (
-                <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
-                  Lien envoyé ! Vérifie ta boîte mail ({authEmail}) et clique dessus pour te connecter.
-                </p>
-              ) : authStatus === "signup_sent" ? (
-                <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
-                  Compte créé ! Vérifie ta boîte mail ({authEmail}) et clique sur le lien de confirmation pour
-                  activer ton compte, puis reviens te connecter avec ton mot de passe.
-                </p>
-              ) : (
-                <div>
-                  <p style={{ fontSize: 12, color: pt.rowText, marginTop: 0, marginBottom: 8 }}>
-                    Connecte-toi pour un historique illimité, synchronisé entre appareils (optionnel).
-                  </p>
-                  <input
-                    type="email"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="ton@email.com"
-                    style={{
-                      width: "100%",
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: 12,
-                      padding: "8px 10px",
-                      borderRadius: 3,
-                      border: pt.inputBorder,
-                      background: pt.inputBg,
-                      color: pt.inputText,
-                      marginBottom: 6,
-                      boxSizing: "border-box",
-                    }}
-                  />
-                  <div className="password-field" style={{ marginBottom: 8 }}>
-                    <input
-                      type={showAuthPassword ? "text" : "password"}
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      placeholder="mot de passe"
-                      style={{
-                        width: "100%",
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: 12,
-                        padding: "8px 34px 8px 10px",
-                        borderRadius: 3,
-                        border: pt.inputBorder,
-                        background: pt.inputBg,
-                        color: pt.inputText,
-                        boxSizing: "border-box",
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={() => setShowAuthPassword((v) => !v)}
-                      aria-label={showAuthPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
-                    >
-                      {showAuthPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      className="btn-ghost"
-                      onClick={signInWithPassword}
-                      disabled={authStatus === "sending"}
-                      style={{ flex: 1, justifyContent: "center" }}
-                    >
-                      se connecter
-                    </button>
-                    <button
-                      className="btn-ghost"
-                      onClick={signUpWithPassword}
-                      disabled={authStatus === "sending"}
-                      style={{ flex: 1, justifyContent: "center" }}
-                    >
-                      créer un compte
-                    </button>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      margin: "10px 0",
-                      color: pt.subText,
-                      fontSize: 11,
-                    }}
-                  >
-                    <div style={{ flex: 1, height: 1, background: pt.rowBorder.replace("1px solid ", "") }} />
-                    ou
-                    <div style={{ flex: 1, height: 1, background: pt.rowBorder.replace("1px solid ", "") }} />
-                  </div>
-                  <button
-                    className="btn-ghost"
-                    onClick={sendMagicLink}
-                    disabled={authStatus === "sending" || !authEmail.trim()}
-                    style={{ width: "100%", justifyContent: "center" }}
-                  >
-                    <Mail size={14} /> recevoir un lien de connexion (sans mot de passe)
-                  </button>
-                  {authError && (
-                    <p style={{ fontSize: 11, color: accent, marginTop: 6, marginBottom: 0 }}>{authError}</p>
-                  )}
-                </div>
-              )}
-            </div>
+            {!user && (
+              <p className="mono" style={{ fontSize: 11, color: pt.subText, marginBottom: 14 }}>
+                Connecte-toi depuis ton profil (icône en haut à droite) pour un historique illimité, synchronisé entre appareils. Sans compte, l'historique reste local à cet appareil.
+              </p>
+            )}
 
             {history.length === 0 && (
               <p className="mono" style={{ fontSize: 13, color: pt.subText }}>
@@ -5570,14 +5779,6 @@ export default function App() {
                   },
                 },
                 {
-                  icon: <Smile size={16} color={accent} />,
-                  label: t("menu_avatar"),
-                  onClick: () => {
-                    setShowMenu(false);
-                    setShowAvatarPanel(true);
-                  },
-                },
-                {
                   icon: <BarChart3 size={16} color={accent} />,
                   label: t("menu_collection"),
                   onClick: () => {
@@ -5667,34 +5868,6 @@ export default function App() {
                   ))}
                 </div>
               </div>
-
-              {user && (
-                <button
-                  onClick={() => {
-                    signOut();
-                    setShowMenu(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    width: "100%",
-                    textAlign: "left",
-                    background: `rgba(${accentRgb}, 0.1)`,
-                    border: `1px solid rgba(${accentRgb}, 0.35)`,
-                    borderRadius: 10,
-                    padding: "13px 14px",
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: "#FF9466",
-                    cursor: "pointer",
-                    marginTop: 4,
-                  }}
-                >
-                  <LogOut size={16} color="#FF9466" />
-                  <span style={{ flex: 1 }}>{t("menu_logout")}</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -5903,7 +6076,59 @@ export default function App() {
         </div>
       )}
 
-      {/* ============ Avatar (émoji + badges exposés au classement) ============ */}
+      {/* ============ Profil (connexion / déconnexion / avatar) ============ */}
+      {showProfilePanel && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 30,
+          }}
+          onClick={() => setShowProfilePanel(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: pt.sheetBg,
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "85vh",
+              overflowY: "auto",
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 32px",
+              boxShadow: "0 -10px 30px rgba(4, 6, 12, 0.45)",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2
+                className="brand"
+                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+              >
+                <User size={17} color={accent} />
+                Mon profil
+              </h2>
+              <button
+                onClick={() => setShowProfilePanel(false)}
+                style={{ background: "none", border: "none", padding: 4 }}
+                aria-label="fermer"
+              >
+                <X size={20} color={pt.closeColor} />
+              </button>
+            </div>
+            {renderAccountBlock()}
+          </div>
+        </div>
+      )}
+
+      {/* ============ Avatar (personnage à personnaliser) ============ */}
       {showAvatarPanel && (
         <div
           style={{
@@ -5961,24 +6186,105 @@ export default function App() {
                   Personnalise ton personnage : il s'affiche à côté de ton pseudo dans le classement. Chaque coiffure, couleur ou accessoire se débloque en remplissant un défi — plus tu utilises l'appli, plus tu peux le personnaliser.
                 </p>
 
+                {isOwnerPreview && (
+                  <div
+                    className="mono"
+                    style={{
+                      fontSize: 10,
+                      color: accent,
+                      background: `rgba(${accentRgb}, 0.12)`,
+                      border: `1px solid rgba(${accentRgb}, 0.35)`,
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      marginBottom: 14,
+                    }}
+                  >
+                    Mode propriétaire : tu peux essayer tous les objets ci-dessous, même verrouillés (aperçu uniquement — les autres comptes doivent toujours remplir le défi).
+                  </div>
+                )}
+
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "center",
-                    marginBottom: 20,
+                    flexDirection: "column",
+                    alignItems: "center",
+                    marginBottom: 8,
                     background: `radial-gradient(circle at 50% 30%, rgba(${accentRgb}, 0.16) 0%, transparent 70%)`,
                     borderRadius: 16,
-                    padding: "12px 0",
+                    padding: "16px 0 10px",
                   }}
                 >
-                  <AvatarSVG
-                    skin={avatarSkinInput}
-                    hairStyle={avatarHairStyleInput}
-                    hairColor={avatarHairColorHex}
-                    topColor={avatarTopColorHex}
-                    accessory={avatarAccessoryInput}
-                    size={104}
-                  />
+                  <div
+                    onPointerDown={avatarRotateStart}
+                    onPointerMove={avatarRotateMove}
+                    onPointerUp={avatarRotateEnd}
+                    onPointerCancel={avatarRotateEnd}
+                    style={{
+                      perspective: 500,
+                      touchAction: "none",
+                      cursor: avatarDragging ? "grabbing" : "grab",
+                    }}
+                  >
+                    <div
+                      style={{
+                        transform: `rotateY(${avatarRotation}deg)`,
+                        transition: avatarDragging ? "none" : "transform 0.5s ease",
+                      }}
+                    >
+                      <AvatarSVG
+                        skin={avatarSkinInput}
+                        hairStyle={avatarHairStyleInput}
+                        hairColor={avatarHairColorHex}
+                        topColor={avatarTopColorHex}
+                        accessory={avatarAccessoryInput}
+                        gender={avatarGenderInput}
+                        size={104}
+                      />
+                    </div>
+                  </div>
+                  <span
+                    className="mono"
+                    style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: pt.subText, marginTop: 4 }}
+                  >
+                    <RotateCw size={11} /> glisse au doigt (ou à la souris) pour le faire tourner
+                  </span>
+                </div>
+
+                <div style={{ marginBottom: 18 }}>
+                  <div
+                    className="mono"
+                    style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}
+                  >
+                    Silhouette
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {[
+                      { id: "homme", label: "Homme" },
+                      { id: "femme", label: "Femme" },
+                    ].map((g) => {
+                      const selected = avatarGenderInput === g.id;
+                      return (
+                        <button
+                          key={g.id}
+                          onClick={() => setAvatarGenderInput(g.id)}
+                          className="mono"
+                          style={{
+                            flex: 1,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: "8px 10px",
+                            borderRadius: 8,
+                            border: selected ? `2px solid ${accent}` : pt.rowBorder,
+                            background: selected ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
+                            color: pt.rowText,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {g.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: 18 }}>
@@ -6038,24 +6344,30 @@ export default function App() {
                         {AVATAR_WARDROBE[category].map((item) => {
                           const unlocked = item.free || item.test();
                           const selected = currentInput === item.id;
-                          const clickable = unlocked;
+                          const clickable = unlocked || isOwnerPreview;
                           return (
                             <button
                               key={item.id}
                               onClick={() => pickAvatarItem(category, item.id)}
                               disabled={!clickable}
-                              title={unlocked ? item.label : `${item.label} — verrouillé`}
+                              title={
+                                unlocked
+                                  ? item.label
+                                  : isOwnerPreview
+                                  ? `${item.label} — aperçu (verrouillé pour les autres comptes, ${item.hint})`
+                                  : `${item.label} — ${item.hint}`
+                              }
                               style={{
                                 display: "flex",
                                 flexDirection: "column",
                                 alignItems: "center",
                                 gap: 4,
-                                width: 66,
+                                width: 72,
                                 background: selected ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
                                 border: selected ? `2px solid ${accent}` : pt.rowBorder,
                                 borderRadius: 10,
                                 padding: "8px 4px",
-                                opacity: unlocked ? 1 : 0.4,
+                                opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
                                 cursor: clickable ? "pointer" : "default",
                               }}
                             >
@@ -6066,6 +6378,7 @@ export default function App() {
                                   hairColor={avatarHairColorHex}
                                   topColor={avatarTopColorHex}
                                   accessory={category === "accessory" ? item.id : "aucun"}
+                                  gender={avatarGenderInput}
                                   size={38}
                                 />
                               ) : (
@@ -6083,7 +6396,14 @@ export default function App() {
                               <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center", lineHeight: 1.2 }}>
                                 {item.label}
                               </span>
-                              {!unlocked && <Lock size={9} color={pt.chevronColor} />}
+                              {!unlocked && (
+                                <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                  <Lock size={8} color={pt.chevronColor} />
+                                  <span className="mono" style={{ fontSize: 7, color: pt.chevronColor, textAlign: "center", lineHeight: 1.1 }}>
+                                    {item.hint}
+                                  </span>
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -6632,6 +6952,7 @@ export default function App() {
                           "#5C6773"
                         }
                         accessory={(profile && profile.avatar_accessory) || AVATAR_DEFAULTS.accessory}
+                        gender={(profile && profile.avatar_gender) || AVATAR_DEFAULTS.gender}
                         size={17}
                       />
                     </span>
@@ -6755,6 +7076,7 @@ export default function App() {
                             hairColor={rowHairColor}
                             topColor={rowTopColor}
                             accessory={row.avatar_accessory || AVATAR_DEFAULTS.accessory}
+                            gender={row.avatar_gender || AVATAR_DEFAULTS.gender}
                             size={22}
                           />
                         </span>
