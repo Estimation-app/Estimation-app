@@ -109,55 +109,305 @@ const BG_SKINS = [
 // fond "le plus haut débloqué" par défaut puisque les deux ont le seuil 0).
 const BG_PROGRESSION = BG_SKINS.filter((sk) => sk.key !== "blanc");
 
-// Teintes de peau au choix pour l'avatar public — identitaires, pas des
-// récompenses : toujours toutes disponibles, jamais à débloquer (contrairement
-// aux coiffures/couleurs/vêtements/accessoires, voir AVATAR_WARDROBE plus bas
-// dans le composant App(), qui dépend des stats de l'utilisateur).
-const AVATAR_SKIN_TONES = ["#F6D8C0", "#E8B99A", "#C98F6B", "#9C6644", "#6B4226", "#4A2C17"];
+// ---------------------------------------------------------------------
+// AVATAR — système de "personnages" prêts à l'emploi (remplace l'ancien
+// buste personnalisable coiffure/couleur/accessoire) : une trentaine de
+// personnages entièrement dessinés à l'avance ("personnalités toutes
+// faites"), inspirés d'un modèle de vignettes façon "capsules d'arcade"
+// (mélange d'humains, d'animaux, de robots et de créatures). 5 sont
+// débloqués dès le départ (version gratuite), les ~25 autres se
+// débloquent progressivement selon l'usage (connexions, estimations
+// générées, séries de jours, etc. — voir CHARACTERS_META plus loin dans
+// App(), qui dépend des stats de l'utilisateur, donc doit vivre dans le
+// composant). CHARACTER_VISUALS ci-dessous ne contient que la recette
+// VISUELLE de chaque personnage (aucune logique de déblocage) : un objet
+// par personnage, dessiné par un unique moteur de rendu CharacterSVG qui
+// réutilise au maximum les briques du buste humain (tête/buste/oreilles/
+// yeux/sourcils/bouche, coiffures) tout en ajoutant les briques propres
+// aux animaux/robots/créatures (oreilles et museau d'animal, motifs de
+// pelage/masque, coiffes spéciales, styles d'yeux, ailes/cornes/aura).
+const CHARACTER_VISUALS = {
+  // ============ Palier 0 — Gratuits dès le départ (5) ============
+  chineur: {
+    skin: "#E8B99A", body: "#29394F",
+    gear: ["casquette", "loupe"],
+  },
+  renard: {
+    skin: "#F2662E", body: "#5A2591",
+    earStyle: "pointy", earColor: "#F2662E",
+    muzzle: "fox", muzzleColor: "#FBEFE3",
+    eyeStyle: "sly", eyeColor: "#152238",
+    gear: ["bandana"],
+    humanFace: false,
+  },
+  robotFerraille: {
+    skin: "#B9C3D1", body: "#5E7092",
+    bodyVariant: "robot", earStyle: "none",
+    eyeStyle: "visor", glowColor: "#7CF7C8",
+    humanFace: false,
+    gear: ["antenneBoule"],
+  },
+  chatCurieux: {
+    skin: "#EDEFF2", body: "#B22B3A",
+    earStyle: "catTall", earColor: "#EDEFF2",
+    eyeStyle: "big", eyeColor: "#3B82C4",
+    pattern: "spots", patternColor: "#C9D3E0",
+    humanFace: false,
+    gear: [],
+  },
+  pandi: {
+    skin: "#F4F6F9", body: "#17824C",
+    earStyle: "round", earColor: "#1A1A1A",
+    pattern: "maskRaccoon", patternColor: "#1A1A1A",
+    eyeStyle: "big", eyeColor: "#1A1A1A",
+    humanFace: false,
+    gear: [],
+  },
 
-// Avatar "vignette" : un buste (tête + épaules, sans bras/jambes) en 2D —
-// c'est LA représentation de l'avatar utilisée partout (icône du header,
-// classement, garde-robe, aperçu du panneau) : on a abandonné à la fois le
-// personnage entier (bras/jambes) et la piste "vraie 3D" (three.js n'est
-// pas installable ici, et le rendu obtenu ne convainquait pas) pour se
-// concentrer sur UNE vignette 2D mais bien plus détaillée : visage avec
-// iris/pupille/reflet/sourcils/nez/lèvres pleines (pas juste deux points et
-// un trait), et un catalogue beaucoup plus large de coiffures/accessoires.
-// Un léger dégradé radial sur la tête/le buste garde le rendu "figurine"
-// avec un peu de relief. "gender" ne change que la largeur des épaules —
-// jamais le catalogue d'habillage disponible.
-function AvatarSVG({
-  skin = AVATAR_SKIN_TONES[1],
-  hairStyle = "court",
-  hairColor = "#2B2B2B",
-  topColor = "#5C6773",
-  accessory = "aucun",
-  gender = "homme",
-  size = 96,
-}) {
-  const gradId = "avshade-" + Math.abs(
-    (skin + hairStyle + hairColor + topColor + accessory + gender).split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)
-  );
-  const isRainbowHair = hairColor === "rainbow";
-  const isGoldTop = topColor === "gold";
-  const hairFill = isRainbowHair ? `url(#${gradId}-rainbow)` : hairColor;
-  const bodyFill = isGoldTop ? `url(#${gradId}-gold)` : topColor;
+  // ============ Palier 1 — faciles (5) ============
+  lapin: {
+    skin: "#FBEFE3", body: "#E85D9E",
+    earStyle: "floppy", earColor: "#FBEFE3",
+    eyeStyle: "big", eyeColor: "#B22B3A",
+    humanFace: false,
+    gear: ["bijoux"],
+  },
+  singeFarceur: {
+    skin: "#C98F6B", body: "#D4A017",
+    earStyle: "round", earColor: "#E8B99A",
+    muzzle: "round", muzzleColor: "#E8B99A",
+    eyeStyle: "normal", eyeColor: "#3A2A1E",
+    humanFace: false,
+    gear: ["bonnet"],
+  },
+  hiboo: {
+    skin: "#96700D", body: "#5A2591",
+    earStyle: "pointy", earColor: "#96700D",
+    muzzle: "beak",
+    pattern: "spots", patternColor: "#4A3500",
+    eyeStyle: "big", eyeColor: "#D4A017",
+    humanFace: false,
+    gear: ["lunettes"],
+  },
+  capitainePirate: {
+    skin: "#E8B99A", body: "#152238",
+    topGear: "pirate", topGearColor: "#1A1A1A",
+    gear: ["bandeau"],
+  },
+  astroDebutant: {
+    skin: "#F6D8C0", body: "#EDEFF2",
+    topGear: "astro", topGearColor: "#B9C3D1",
+    gear: ["antenneBoule"],
+  },
+
+  // ============ Palier 2 — moyens (5) ============
+  loupDetective: {
+    skin: "#7C8BA3", body: "#29394F",
+    earStyle: "pointy", earColor: "#5E7092",
+    muzzle: "fox", muzzleColor: "#C9D3E0",
+    eyeStyle: "sly", eyeColor: "#F2662E",
+    pattern: "stripes", patternColor: "#4A5568",
+    humanFace: false,
+    gear: ["loupe"],
+  },
+  tigreStyle: {
+    skin: "#F2662E", body: "#152238",
+    earStyle: "round", earColor: "#F2662E",
+    muzzle: "round", muzzleColor: "#FBEFE3",
+    pattern: "stripes", patternColor: "#1A1A1A",
+    eyeStyle: "sly", eyeColor: "#D4A017",
+    humanFace: false,
+    gear: ["bonnet"],
+  },
+  sorciereFutee: {
+    skin: "#E8B99A", body: "#152238",
+    topGear: "sorciere", topGearColor: "#3D1F5C",
+    gear: ["medaille"],
+  },
+  alienCurieux: {
+    skin: "#7CE8A0", body: "#3D1F5C",
+    humanFace: false,
+    eyeStyle: "alienBig",
+    headShape: "alien",
+    gear: ["antenneBoule"],
+  },
+  ninjaSilencieux: {
+    skin: "#E8B99A", body: "#1A1A1A",
+    topGear: "ninjaband", topGearColor: "#1A1A1A",
+    gear: ["masqueNinja"],
+  },
+
+  // ============ Palier 3 — difficiles (5) ============
+  panthereNuit: {
+    skin: "#2B2B2B", body: "#0B0B0B",
+    earStyle: "pointy", earColor: "#2B2B2B",
+    muzzle: "fox", muzzleColor: "#3A3A3A",
+    eyeStyle: "glow", eyeColor: "#5CE87A", glowColor: "#5CE87A",
+    blush: false,
+    humanFace: false,
+    gear: ["bandana"],
+  },
+  robotChrome: {
+    skin: "#EDEFF2", body: "#8C97A8",
+    bodyVariant: "robot", earStyle: "none",
+    eyeStyle: "visor", glowColor: "#5CB8FF",
+    humanFace: false,
+    gear: ["antenneBoule", "medaille"],
+  },
+  bebeDragon: {
+    skin: "#17824C", body: "#12613A",
+    earStyle: "pointy", earColor: "#17824C",
+    eyeStyle: "sly", eyeColor: "#D4A017",
+    humanFace: false,
+    backGear: ["ailes"],
+    gear: ["cornesPetites"],
+  },
+  cowboyEncheres: {
+    skin: "#C98F6B", body: "#8C5225",
+    topGear: "cowboy", topGearColor: "#6D4522",
+    gear: ["foulard"],
+  },
+  ratonMasque: {
+    skin: "#B9C3D1", body: "#29394F",
+    earStyle: "round", earColor: "#5E7092",
+    pattern: "maskDomino", patternColor: "#1A1A1A",
+    eyeStyle: "sly", eyeColor: "#1A1A1A",
+    humanFace: false,
+    gear: ["loupe"],
+  },
+
+  // ============ Palier 4 — rares (4) ============
+  chouetteDoree: {
+    skin: "#D4A017", body: "#96700D",
+    earStyle: "pointy", earColor: "#D4A017",
+    muzzle: "beak",
+    eyeStyle: "big", eyeColor: "#152238",
+    humanFace: false,
+    backGear: ["auraOr"],
+    gear: ["couronne"],
+  },
+  pieuvreMystique: {
+    skin: "#6D2FB0", body: "#3D1F5C",
+    earStyle: "none",
+    eyeStyle: "big", eyeColor: "#E85D9E",
+    humanFace: false,
+    backGear: ["auraOmbre"],
+    gear: ["bijoux"],
+  },
+  phenixArdent: {
+    skin: "#FFB35C", body: "#F2662E",
+    earStyle: "none",
+    muzzle: "beak",
+    eyeStyle: "glow", glowColor: "#FFE9A8", eyeColor: "#FFE9A8",
+    humanFace: false,
+    backGear: ["auraFlamme", "ailes"],
+    gear: [],
+  },
+  loupArgenteAlpha: {
+    skin: "#C9D3E0", body: "#29394F",
+    earStyle: "pointy", earColor: "#B9C3D1",
+    muzzle: "fox", muzzleColor: "#EDEFF2",
+    eyeStyle: "sly", eyeColor: "#5CB8FF",
+    humanFace: false,
+    backGear: ["auraOr"],
+    gear: ["medaille"],
+  },
+
+  // ============ Palier 5 — épiques (3) ============
+  griffonCeleste: {
+    skin: "#F6D978", body: "#96700D",
+    earStyle: "pointy", earColor: "#F6D978",
+    muzzle: "beak",
+    eyeStyle: "glow", glowColor: "#5CB8FF", eyeColor: "#5CB8FF",
+    humanFace: false,
+    backGear: ["auraOr", "ailes"],
+    gear: ["cornesGrandes"],
+  },
+  chevalierDore: {
+    skin: "#E8B99A", body: "#D4A017",
+    topGear: "chevalier", topGearColor: "#F6D978",
+    backGear: ["cape"],
+    gear: ["medaille"],
+  },
+  spectreElegant: {
+    skin: "#C9D3E0", body: "#EDEFF2",
+    bodyVariant: "ghost", earStyle: "none",
+    eyeStyle: "glow", glowColor: "#7C5CFF", eyeColor: "#7C5CFF",
+    humanFace: false,
+    backGear: ["auraOmbre"],
+    gear: ["couronne"],
+  },
+
+  // ============ Palier 6 — les 3 ultimes (2 + 1 secret) ============
+  increvable: {
+    skin: "#F2662E", body: "#152238",
+    topGear: "chevalier", topGearColor: "#D4A017",
+    eyeStyle: "glow", glowColor: "#F2662E", eyeColor: "#F2662E",
+    humanFace: false,
+    backGear: ["auraFlamme", "ailes"],
+    gear: ["cornesGrandes", "medaille"],
+  },
+  millieme: {
+    skin: "#F6D978", body: "#4A3500",
+    topGear: "couronneHair",
+    eyeStyle: "glow", glowColor: "#F6D978", eyeColor: "#FFE9A8",
+    humanFace: false,
+    backGear: ["auraOr", "ailes"],
+    gear: ["couronne", "medaille"],
+  },
+  ombreLegendaire: {
+    skin: "#160B2E", body: "#0B0620",
+    earStyle: "pointy", earColor: "#160B2E",
+    eyeStyle: "glow", glowColor: "#7C5CFF", eyeColor: "#7C5CFF",
+    humanFace: false,
+    backGear: ["auraOmbre", "ailes"],
+    gear: ["cornesGrandes", "couronne"],
+  },
+};
+
+function CharacterSVG({ id, size = 96 }) {
+  const rec = CHARACTER_VISUALS[id] || CHARACTER_VISUALS.chineur;
+  const {
+    skin = "#E8B99A",
+    body = "#5C6773",
+    bodyVariant = "human", // "human" | "robot" | "ghost"
+    gender = "homme",
+    earStyle = "human", // "human" | "round" | "pointy" | "catTall" | "floppy" | "none"
+    earColor,
+    headShape = "round", // "round" | "alien"
+    muzzle = null, // null | "round" | "fox" | "beak"
+    muzzleColor,
+    pattern = null, // null | "stripes" | "spots" | "maskRaccoon" | "maskDomino"
+    patternColor = "#00000030",
+    topGear = null,
+    topGearColor = "#2B2B2B",
+    eyeStyle = "normal", // "normal" | "big" | "sly" | "closed" | "visor" | "alienBig" | "glow"
+    eyeColor = "#3A2A1E",
+    glowColor = "#7CF7C8",
+    blush = true,
+    humanFace = true,
+    backGear = [],
+    gear = [],
+  } = rec;
+
+  const gradId = "cshade-" + id;
   const isFemme = gender === "femme";
+  const earFill = earColor || skin;
+  const muzzleFill = muzzleColor || skin;
 
-  // Buste (épaules + haut du buste, coupé au cadre) : plus étroit pour
-  // "femme", plus carré pour "homme" — même principe que l'ancienne
-  // silhouette du torse, mais on s'arrête aux épaules.
   const shoulderHalf = isFemme ? 29 : 33;
   const neckHalf = 9;
   const bustTopY = 80;
   const bustBottomY = 120;
   const bustPath = `M${50 - neckHalf},${bustTopY} Q${50 - shoulderHalf},${bustTopY} ${50 - shoulderHalf},${bustTopY + 15} L${50 - shoulderHalf},${bustBottomY} L${50 + shoulderHalf},${bustBottomY} L${50 + shoulderHalf},${bustTopY + 15} Q${50 + shoulderHalf},${bustTopY} ${50 + neckHalf},${bustTopY} Z`;
+  // Buste "fantôme" : base ondulée façon drap, à la place des épaules droites.
+  const ghostPath = `M${50 - neckHalf - 6},80 Q${50 - shoulderHalf - 4},95 ${50 - shoulderHalf - 4},112 Q${50 - 14},120 ${50 - 7},110 Q50,122 ${50 + 7},110 Q${50 + 14},120 ${50 + shoulderHalf + 4},112 Q${50 + shoulderHalf + 4},95 ${50 + neckHalf + 6},80 Z`;
 
-  // Casque de cheveux par défaut (dessus/devant) : sert de base à toutes
-  // les coiffures sauf "chauve" (rien), "afro" (son propre halo, dessiné
-  // derrière la tête) et "mohawk" (bande centrale seule, côtés rasés).
-  // Chaque style ajoute ensuite ses propres formes par-dessus cette base.
-  const showDefaultCap = hairStyle !== "chauve" && hairStyle !== "afro" && hairStyle !== "mohawk";
+  const showDefaultCap = ["court", "carre", "boucles", "frange", "queue", "chignon", "longs", "ondules"].includes(topGear);
+
+  const mouthKind = muzzle ? "muzzle" : bodyVariant === "robot" ? "robot" : bodyVariant === "ghost" ? "ghost" : humanFace ? "human" : "simple";
+  const noseKind = muzzle ? "muzzle" : humanFace ? "human" : "none";
+  const showBrows = humanFace && !muzzle;
 
   return (
     <svg viewBox="0 0 100 120" width={size} height={size * 1.2} aria-hidden="true">
@@ -167,126 +417,309 @@ function AvatarSVG({
           <stop offset="55%" stopColor="#FFFFFF" stopOpacity="0" />
           <stop offset="100%" stopColor="#000000" stopOpacity="0.18" />
         </radialGradient>
-        {isRainbowHair && (
-          <linearGradient id={gradId + "-rainbow"} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#FF5C7A" />
-            <stop offset="25%" stopColor="#FFC85C" />
-            <stop offset="50%" stopColor="#5CE87A" />
-            <stop offset="75%" stopColor="#5CB8FF" />
-            <stop offset="100%" stopColor="#C05CFF" />
-          </linearGradient>
+        {backGear.includes("auraOr") && (
+          <radialGradient id={gradId + "-auraor"} cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stopColor="#FFE9A8" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#D4A017" stopOpacity="0" />
+          </radialGradient>
         )}
-        {isGoldTop && (
-          <linearGradient id={gradId + "-gold"} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#F6D978" />
-            <stop offset="50%" stopColor="#D4A017" />
-            <stop offset="100%" stopColor="#96700D" />
-          </linearGradient>
+        {backGear.includes("auraFlamme") && (
+          <radialGradient id={gradId + "-auraflamme"} cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stopColor="#FFB35C" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="#F2662E" stopOpacity="0" />
+          </radialGradient>
+        )}
+        {backGear.includes("auraOmbre") && (
+          <radialGradient id={gradId + "-auraombre"} cx="50%" cy="45%" r="65%">
+            <stop offset="0%" stopColor="#7C5CFF" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#160B2E" stopOpacity="0" />
+          </radialGradient>
         )}
       </defs>
 
-      {/* Cheveux (partie arrière) — seul "afro" a besoin d'un halo qui
-          dépasse le contour de la tête, dessiné avant elle. */}
-      {hairStyle === "afro" && <circle cx="50" cy="32" r="32" fill={hairFill} />}
+      {/* --- Couche arrière : aura, ailes, cape --- */}
+      {backGear.includes("auraOr") && <circle cx="50" cy="55" r="58" fill={`url(#${gradId}-auraor)`} />}
+      {backGear.includes("auraFlamme") && <circle cx="50" cy="55" r="55" fill={`url(#${gradId}-auraflamme)`} />}
+      {backGear.includes("auraOmbre") && <circle cx="50" cy="55" r="60" fill={`url(#${gradId}-auraombre)`} />}
+      {backGear.includes("ailes") && (
+        <>
+          <path d="M18,70 Q-8,55 2,88 Q10,108 26,100 Q16,86 18,70 Z" fill="#EDEFF2" opacity="0.92" />
+          <path d="M82,70 Q108,55 98,88 Q90,108 74,100 Q84,86 82,70 Z" fill="#EDEFF2" opacity="0.92" />
+        </>
+      )}
+      {backGear.includes("cape") && <path d="M28,78 Q50,72 72,78 L86,120 L14,120 Z" fill={body} opacity="0.85" />}
 
-      {/* Buste */}
-      <path d={bustPath} fill={bodyFill} />
-      {/* Cou */}
-      <rect x={50 - neckHalf} y="62" width={neckHalf * 2} height="22" fill={skin} />
+      {/* Halo derrière la tête (afro) */}
+      {topGear === "afro" && <circle cx="50" cy="32" r="32" fill={topGearColor} />}
+
+      {/* Buste / corps */}
+      {bodyVariant === "ghost" ? <path d={ghostPath} fill={body} opacity="0.92" /> : <path d={bustPath} fill={body} />}
+      {bodyVariant === "robot" && (
+        <>
+          <rect x="42" y="86" width="16" height="8" rx="2" fill="#8C97A8" />
+          <circle cx="50" cy="90" r="2.2" fill={glowColor} />
+        </>
+      )}
+
+      {/* Cou (sauf fantôme, qui n'en a pas) */}
+      {bodyVariant !== "ghost" && <rect x={50 - neckHalf} y="62" width={neckHalf * 2} height="22" fill={skin} />}
+
       {/* Oreilles */}
-      <circle cx="24" cy="46" r="5.5" fill={skin} />
-      <circle cx="76" cy="46" r="5.5" fill={skin} />
-      {/* Tête */}
-      <circle cx="50" cy="44" r="25" fill={skin} />
+      {earStyle === "human" && (
+        <>
+          <circle cx="24" cy="46" r="5.5" fill={earFill} />
+          <circle cx="76" cy="46" r="5.5" fill={earFill} />
+        </>
+      )}
+      {earStyle === "round" && (
+        <>
+          <circle cx="23" cy="23" r="9" fill={earFill} />
+          <circle cx="77" cy="23" r="9" fill={earFill} />
+          <circle cx="23" cy="24" r="4.5" fill="#00000018" />
+          <circle cx="77" cy="24" r="4.5" fill="#00000018" />
+        </>
+      )}
+      {earStyle === "pointy" && (
+        <>
+          <path d="M17,28 L26,4 L34,26 Z" fill={earFill} />
+          <path d="M83,28 L74,4 L66,26 Z" fill={earFill} />
+        </>
+      )}
+      {earStyle === "catTall" && (
+        <>
+          <path d="M15,26 L21,-2 L32,24 Z" fill={earFill} />
+          <path d="M85,26 L79,-2 L68,24 Z" fill={earFill} />
+          <path d="M19,22 L22,6 L28,21 Z" fill="#FF8A9A" opacity="0.6" />
+          <path d="M81,22 L78,6 L72,21 Z" fill="#FF8A9A" opacity="0.6" />
+        </>
+      )}
+      {earStyle === "floppy" && (
+        <>
+          <ellipse cx="18" cy="46" rx="7" ry="19" fill={earFill} />
+          <ellipse cx="82" cy="46" rx="7" ry="19" fill={earFill} />
+        </>
+      )}
 
-      {/* --- Cheveux (dessus/devant) — AVANT le visage, pour que les yeux
-          restent toujours visibles par-dessus (une coiffure ne doit jamais
-          recouvrir le regard). --- */}
-      {showDefaultCap && <ellipse cx="50" cy="31" rx="27" ry="19" fill={hairFill} />}
-      {hairStyle === "longs" && (
+      {/* Tête */}
+      {headShape === "alien" ? <ellipse cx="50" cy="42" rx="21" ry="29" fill={skin} /> : <circle cx="50" cy="44" r="25" fill={skin} />}
+
+      {/* Motif pelage / masque (sur la tête, sous la coiffe) */}
+      {pattern === "stripes" &&
+        [[30, 24, 38, 30], [38, 20, 46, 27], [55, 20, 63, 27], [62, 24, 70, 30]].map(([x1, y1, x2, y2], i) => (
+          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={patternColor} strokeWidth="3" strokeLinecap="round" />
+        ))}
+      {pattern === "spots" &&
+        [[33, 30], [67, 30], [40, 20], [60, 20], [50, 60]].map(([cx, cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r="3" fill={patternColor} />
+        ))}
+      {pattern === "maskRaccoon" && (
         <>
-          <rect x="17" y="28" width="11" height="66" rx="5.5" fill={hairFill} />
-          <rect x="72" y="28" width="11" height="66" rx="5.5" fill={hairFill} />
+          <ellipse cx="41" cy="43" rx="8" ry="6" fill={patternColor} />
+          <ellipse cx="59" cy="43" rx="8" ry="6" fill={patternColor} />
         </>
       )}
-      {hairStyle === "ondules" && (
+      {pattern === "maskDomino" && <path d="M31,39 Q50,33 69,39 L69,47 Q50,41 31,47 Z" fill={patternColor} />}
+
+      {/* --- Coiffe (dessus/devant), toujours AVANT le visage --- */}
+      {showDefaultCap && <ellipse cx="50" cy="31" rx="27" ry="19" fill={topGearColor} />}
+      {topGear === "longs" && (
         <>
-          <path d="M20,28 Q30,40 20,50 Q30,62 20,74 Q30,86 22,98 L32,98 Q26,86 34,74 Q26,62 34,50 Q26,40 34,28 Z" fill={hairFill} />
-          <path d="M80,28 Q70,40 80,50 Q70,62 80,74 Q70,86 78,98 L68,98 Q74,86 66,74 Q74,62 66,50 Q74,40 66,28 Z" fill={hairFill} />
+          <rect x="17" y="28" width="11" height="66" rx="5.5" fill={topGearColor} />
+          <rect x="72" y="28" width="11" height="66" rx="5.5" fill={topGearColor} />
         </>
       )}
-      {hairStyle === "carre" && (
+      {topGear === "ondules" && (
         <>
-          <rect x="22" y="28" width="10" height="32" rx="5" fill={hairFill} />
-          <rect x="68" y="28" width="10" height="32" rx="5" fill={hairFill} />
+          <path d="M20,28 Q30,40 20,50 Q30,62 20,74 Q30,86 22,98 L32,98 Q26,86 34,74 Q26,62 34,50 Q26,40 34,28 Z" fill={topGearColor} />
+          <path d="M80,28 Q70,40 80,50 Q70,62 80,74 Q70,86 78,98 L68,98 Q74,86 66,74 Q74,62 66,50 Q74,40 66,28 Z" fill={topGearColor} />
         </>
       )}
-      {hairStyle === "queue" && (
+      {topGear === "carre" && (
         <>
-          <path d="M67,18 Q80,28 74,55 Q70,72 63,60 Q70,40 61,22 Z" fill={hairFill} />
+          <rect x="22" y="28" width="10" height="32" rx="5" fill={topGearColor} />
+          <rect x="68" y="28" width="10" height="32" rx="5" fill={topGearColor} />
+        </>
+      )}
+      {topGear === "queue" && (
+        <>
+          <path d="M67,18 Q80,28 74,55 Q70,72 63,60 Q70,40 61,22 Z" fill={topGearColor} />
           <rect x="62" y="20" width="9" height="4.5" rx="2.2" fill="#2B2B2B" opacity="0.55" />
         </>
       )}
-      {hairStyle === "chignon" && <circle cx="50" cy="13" r="9.5" fill={hairFill} />}
-      {hairStyle === "frange" && <path d="M27,31 Q50,38 73,31 L73,36 Q50,31 27,36 Z" fill={hairFill} />}
-      {hairStyle === "boucles" &&
-        [
-          [21, 31], [29, 16], [42, 9], [58, 9], [71, 16], [79, 31],
-        ].map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r="7.6" fill={hairFill} />)}
-      {hairStyle === "mohawk" && <path d="M46,2 L54,2 L58,27 L50,19 L42,27 Z" fill={hairFill} />}
+      {(topGear === "chignon" || topGear === "couronneHair") && <circle cx="50" cy="13" r="9.5" fill={topGearColor || "#F6D978"} />}
+      {topGear === "frange" && <path d="M27,31 Q50,38 73,31 L73,36 Q50,31 27,36 Z" fill={topGearColor} />}
+      {topGear === "boucles" &&
+        [[21, 31], [29, 16], [42, 9], [58, 9], [71, 16], [79, 31]].map(([cx, cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r="7.6" fill={topGearColor} />
+        ))}
+      {topGear === "mohawk" && <path d="M46,2 L54,2 L58,27 L50,19 L42,27 Z" fill={topGearColor} />}
+      {topGear === "sorciere" && (
+        <>
+          <path d="M50,-8 L64,30 L36,30 Z" fill={topGearColor} />
+          <ellipse cx="50" cy="31" rx="30" ry="6" fill={topGearColor} />
+          <circle cx="50" cy="4" r="3" fill="#D4A017" />
+        </>
+      )}
+      {topGear === "pirate" && (
+        <>
+          <path d="M21,32 Q50,10 79,32 Q50,20 21,32 Z" fill={topGearColor} />
+          <path d="M50,13 L44,22 L56,22 Z" fill="#EEF1F5" />
+          <circle cx="50" cy="15" r="2" fill="#0B0B0B" />
+        </>
+      )}
+      {topGear === "cowboy" && (
+        <>
+          <ellipse cx="50" cy="32" rx="33" ry="6" fill={topGearColor} />
+          <path d="M27,32 Q30,8 50,9 Q70,8 73,32 Q50,24 27,32 Z" fill={topGearColor} />
+        </>
+      )}
+      {topGear === "astro" && (
+        <>
+          <circle cx="50" cy="38" r="30" fill="none" stroke="#B9C3D1" strokeWidth="5" opacity="0.85" />
+          <path d="M22,40 Q22,50 30,52 L28,44 Z" fill="#B9C3D1" />
+          <path d="M78,40 Q78,50 70,52 L72,44 Z" fill="#B9C3D1" />
+        </>
+      )}
+      {topGear === "ninjaband" && (
+        <>
+          <path d="M22,33 Q50,26 78,33 L78,40 Q50,33 22,40 Z" fill={topGearColor} />
+          <path d="M76,35 L92,29 L91,37 Z" fill={topGearColor} />
+        </>
+      )}
+      {topGear === "chevalier" && (
+        <>
+          <path d="M21,40 Q21,6 50,6 Q79,6 79,40 L79,45 Q50,35 21,45 Z" fill={topGearColor} />
+          <rect x="40" y="40" width="20" height="6" rx="2" fill="#1A1A1A" opacity="0.7" />
+          <path d="M46,2 L54,2 L52,-6 L48,-6 Z" fill="#D4A017" />
+        </>
+      )}
 
-      {/* --- Visage détaillé (toujours par-dessus les cheveux) : sourcils,
-          yeux (blanc + iris + pupille + reflet), nez (ombre subtile),
-          joues, bouche pleine --- */}
-      <path d="M35,37 Q41,33 47,36.5" stroke={hairFill} strokeWidth="1.7" fill="none" strokeLinecap="round" />
-      <path d="M53,36.5 Q59,33 65,37" stroke={hairFill} strokeWidth="1.7" fill="none" strokeLinecap="round" />
-      {[41, 59].map((ex) => (
-        <g key={ex}>
-          <ellipse cx={ex} cy="44" rx="5.2" ry="3.6" fill="#FFFFFF" />
-          <circle cx={ex} cy="44.3" r="2.7" fill="#3A2A1E" />
-          <circle cx={ex} cy="44.3" r="1.3" fill="#0B0B0B" />
-          <circle cx={ex - 1} cy="43.3" r="0.6" fill="#FFFFFF" />
-        </g>
-      ))}
-      <path d="M49,45 Q46.5,51 49,53" stroke="#00000030" strokeWidth="1.3" fill="none" strokeLinecap="round" />
-      <ellipse cx="47.3" cy="53.3" rx="1" ry="0.7" fill="#00000025" />
-      <ellipse cx="51.5" cy="53.3" rx="1" ry="0.7" fill="#00000025" />
-      <ellipse cx="33" cy="53" rx="5" ry="3.4" fill="#FF8A7A" opacity="0.14" />
-      <ellipse cx="67" cy="53" rx="5" ry="3.4" fill="#FF8A7A" opacity="0.14" />
-      <path d="M43,58.5 Q50,57.5 57,58.5 Q50,66 43,58.5 Z" fill="#C97A6E" stroke="#A65C52" strokeWidth="0.6" />
+      {/* --- Visage --- */}
+      {showBrows && (
+        <>
+          <path d="M35,37 Q41,33 47,36.5" stroke={topGear ? topGearColor : "#2B2B2B"} strokeWidth="1.7" fill="none" strokeLinecap="round" />
+          <path d="M53,36.5 Q59,33 65,37" stroke={topGear ? topGearColor : "#2B2B2B"} strokeWidth="1.7" fill="none" strokeLinecap="round" />
+        </>
+      )}
 
-      {/* Ombre/relief global (tête + buste) */}
-      <circle cx="50" cy="44" r="25" fill={`url(#${gradId})`} />
-      <path d={bustPath} fill={`url(#${gradId})`} />
+      {eyeStyle === "normal" &&
+        [41, 59].map((ex) => (
+          <g key={ex}>
+            <ellipse cx={ex} cy="44" rx="5.2" ry="3.6" fill="#FFFFFF" />
+            <circle cx={ex} cy="44.3" r="2.7" fill={eyeColor} />
+            <circle cx={ex} cy="44.3" r="1.3" fill="#0B0B0B" />
+            <circle cx={ex - 1} cy="43.3" r="0.6" fill="#FFFFFF" />
+          </g>
+        ))}
+      {eyeStyle === "big" &&
+        [40, 60].map((ex) => (
+          <g key={ex}>
+            <ellipse cx={ex} cy="44" rx="6.8" ry="5.4" fill="#FFFFFF" />
+            <circle cx={ex} cy="45" r="3.8" fill={eyeColor} />
+            <circle cx={ex} cy="45" r="1.8" fill="#0B0B0B" />
+            <circle cx={ex - 1.3} cy="43.3" r="0.9" fill="#FFFFFF" />
+          </g>
+        ))}
+      {eyeStyle === "sly" &&
+        [41, 59].map((ex, i) => (
+          <path key={ex} d={i === 0 ? "M35,44 Q41,40 47,44 Q41,46.5 35,44 Z" : "M53,44 Q59,40 65,44 Q59,46.5 53,44 Z"} fill={eyeColor} />
+        ))}
+      {eyeStyle === "closed" &&
+        [41, 59].map((ex) => (
+          <path key={ex} d={`M${ex - 5},44 Q${ex},40 ${ex + 5},44`} stroke="#2B2B2B" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+        ))}
+      {eyeStyle === "visor" && (
+        <>
+          <rect x="33" y="40" width="34" height="8" rx="4" fill="#0B0B0B" />
+          <rect x="35" y="42" width="30" height="4" rx="2" fill={glowColor} opacity="0.9" />
+        </>
+      )}
+      {eyeStyle === "alienBig" &&
+        [39, 61].map((ex, i) => (
+          <g key={ex}>
+            <ellipse cx={ex} cy="43" rx="7" ry="9.5" fill="#0B0B0B" transform={i === 0 ? `rotate(-12 ${ex} 43)` : `rotate(12 ${ex} 43)`} />
+            <circle cx={ex - 1.5} cy="39" r="1.4" fill="#FFFFFF" opacity="0.7" />
+          </g>
+        ))}
+      {eyeStyle === "glow" &&
+        [41, 59].map((ex) => (
+          <g key={ex}>
+            <circle cx={ex} cy="44" r="4.5" fill={glowColor} opacity="0.35" />
+            <circle cx={ex} cy="44" r="2.3" fill={glowColor} />
+          </g>
+        ))}
 
-      {/* --- Accessoires — toujours par-dessus tout le reste --- */}
-      {accessory === "bandeau" && <rect x="24" y="35" width="52" height="6" rx="3" fill="#B22B3A" />}
-      {accessory === "bandana" && (
+      {/* Museau (animaux) */}
+      {muzzle === "round" && (
+        <>
+          <ellipse cx="50" cy="52" rx="13" ry="9" fill={muzzleFill} />
+          <ellipse cx="50" cy="49.5" rx="2.4" ry="2.4" fill="#3A2A1E" />
+          <path d="M50,52 Q50,56 46,57" stroke="#3A2A1E" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+        </>
+      )}
+      {muzzle === "fox" && (
+        <>
+          <path d="M50,45 L61,55 Q50,62 39,55 Z" fill={muzzleFill} />
+          <ellipse cx="50" cy="54" rx="2.2" ry="1.8" fill="#2B2B2B" />
+        </>
+      )}
+      {muzzle === "beak" && <path d="M50,46 L58,53 L50,57 L42,53 Z" fill="#D4A017" stroke="#96700D" strokeWidth="0.7" />}
+
+      {/* Nez humain (si pas de museau) */}
+      {noseKind === "human" && (
+        <>
+          <path d="M49,45 Q46.5,51 49,53" stroke="#00000030" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+          <ellipse cx="47.3" cy="53.3" rx="1" ry="0.7" fill="#00000025" />
+          <ellipse cx="51.5" cy="53.3" rx="1" ry="0.7" fill="#00000025" />
+        </>
+      )}
+
+      {/* Joues */}
+      {blush && (
+        <>
+          <ellipse cx="33" cy="53" rx="5" ry="3.4" fill="#FF8A7A" opacity="0.14" />
+          <ellipse cx="67" cy="53" rx="5" ry="3.4" fill="#FF8A7A" opacity="0.14" />
+        </>
+      )}
+
+      {/* Bouche */}
+      {mouthKind === "human" && <path d="M43,58.5 Q50,57.5 57,58.5 Q50,66 43,58.5 Z" fill="#C97A6E" stroke="#A65C52" strokeWidth="0.6" />}
+      {mouthKind === "robot" && <rect x="44" y="57" width="12" height="3" rx="1.5" fill="#0B0B0B" opacity="0.6" />}
+      {mouthKind === "ghost" && <ellipse cx="50" cy="58" rx="3.5" ry="4.5" fill="#0B0B0B" opacity="0.55" />}
+      {mouthKind === "simple" && <path d="M45,58 Q50,61 55,58" stroke="#00000045" strokeWidth="1.4" fill="none" strokeLinecap="round" />}
+
+      {/* Ombre/relief global */}
+      {headShape === "alien" ? <ellipse cx="50" cy="42" rx="21" ry="29" fill={`url(#${gradId})`} /> : <circle cx="50" cy="44" r="25" fill={`url(#${gradId})`} />}
+      {bodyVariant === "ghost" ? <path d={ghostPath} fill={`url(#${gradId})`} /> : <path d={bustPath} fill={`url(#${gradId})`} />}
+
+      {/* --- Accessoires / extras avant, toujours par-dessus tout --- */}
+      {gear.includes("bandeau") && <rect x="24" y="35" width="52" height="6" rx="3" fill="#B22B3A" />}
+      {gear.includes("bandana") && (
         <>
           <path d="M24,35 Q24,15 50,13 Q76,15 76,35 Q50,27 24,35 Z" fill="#B22B3A" />
           <circle cx="76" cy="31" r="4" fill="#8C1F2B" />
         </>
       )}
-      {accessory === "bonnet" && (
+      {gear.includes("bonnet") && (
         <>
           <path d="M23,32 Q23,7 50,7 Q77,7 77,32 L77,33 L23,33 Z" fill="#6D2FB0" />
           <rect x="21" y="30" width="58" height="8" rx="4" fill="#5A2591" />
         </>
       )}
-      {accessory === "casquette" && (
+      {gear.includes("casquette") && (
         <>
           <path d="M23,34 Q23,9 50,8 Q77,9 77,34 Q50,24 23,34 Z" fill="#29394F" />
           <ellipse cx="32" cy="34" rx="16" ry="5" fill="#1E2C3D" />
         </>
       )}
-      {accessory === "lunettes" && (
+      {gear.includes("lunettes") && (
         <>
           <circle cx="41" cy="44" r="7" fill="none" stroke="#152238" strokeWidth="2" />
           <circle cx="59" cy="44" r="7" fill="none" stroke="#152238" strokeWidth="2" />
           <line x1="48" y1="44" x2="52" y2="44" stroke="#152238" strokeWidth="2" />
         </>
       )}
-      {accessory === "soleil" && (
+      {gear.includes("soleil") && (
         <>
           <circle cx="41" cy="44" r="7.5" fill="#1A1A1A" stroke="#0B0B0B" strokeWidth="1.5" />
           <circle cx="59" cy="44" r="7.5" fill="#1A1A1A" stroke="#0B0B0B" strokeWidth="1.5" />
@@ -295,31 +728,50 @@ function AvatarSVG({
           <circle cx="56.5" cy="41.5" r="1.3" fill="#FFFFFF" opacity="0.5" />
         </>
       )}
-      {accessory === "bijoux" && (
+      {gear.includes("bijoux") && (
         <>
           <circle cx="24" cy="54" r="2.2" fill="#D4A017" />
           <circle cx="76" cy="54" r="2.2" fill="#D4A017" />
         </>
       )}
-      {accessory === "foulard" && (
+      {gear.includes("foulard") && (
         <>
           <path d="M38,78 Q50,89 62,78 L62,87 Q50,97 38,87 Z" fill="#17824C" />
           <path d="M58,85 L67,93 L60,95 Z" fill="#12613A" />
         </>
       )}
-      {accessory === "loupe" && (
+      {gear.includes("loupe") && (
         <>
           <circle cx="79" cy="101" r="8" fill="none" stroke="#D4A017" strokeWidth="3" />
           <line x1="85" y1="107" x2="93" y2="115" stroke="#8C5225" strokeWidth="4" strokeLinecap="round" />
         </>
       )}
-      {accessory === "couronne" && (
+      {gear.includes("couronne") && (
         <path d="M28,20 L35,4 L43,16 L50,2 L57,16 L65,4 L72,20 Z" fill="#D4A017" stroke="#96700D" strokeWidth="1" />
       )}
-      {accessory === "medaille" && (
+      {gear.includes("medaille") && (
         <>
           <circle cx="61" cy="99" r="8" fill="#D4A017" stroke="#96700D" strokeWidth="1.5" />
           <text x="61" y="103" textAnchor="middle" fontSize="9" fill="#4A3500">★</text>
+        </>
+      )}
+      {gear.includes("masqueNinja") && <path d="M22,40 Q50,32 78,40 L78,48 Q50,40 22,48 Z" fill="#1A1A1A" />}
+      {gear.includes("antenneBoule") && (
+        <>
+          <line x1="50" y1="6" x2="50" y2="-8" stroke="#8C97A8" strokeWidth="2.5" />
+          <circle cx="50" cy="-10" r="3.5" fill={glowColor} />
+        </>
+      )}
+      {gear.includes("cornesPetites") && (
+        <>
+          <path d="M32,15 Q30,4 38,8 Q36,14 34,19 Z" fill="#3A2A1E" />
+          <path d="M68,15 Q70,4 62,8 Q64,14 66,19 Z" fill="#3A2A1E" />
+        </>
+      )}
+      {gear.includes("cornesGrandes") && (
+        <>
+          <path d="M30,18 Q22,-2 42,6 Q38,14 33,22 Z" fill="#D4A017" />
+          <path d="M70,18 Q78,-2 58,6 Q62,14 67,22 Z" fill="#D4A017" />
         </>
       )}
     </svg>
@@ -1630,6 +2082,35 @@ export default function App() {
   const highestUnlockedBgSkin = bgSkinForCount(lifetimeAdGenerations);
   const nextBgSkin = BG_PROGRESSION.find((sk) => sk.threshold > lifetimeAdGenerations) || null;
 
+  // Nombre de jours DISTINCTS où l'appli a été ouverte ("nombre de
+  // connexions") — sert à débloquer certains personnages de l'avatar (voir
+  // CHARACTERS_META plus bas). Propre à l'appareil (local uniquement, comme
+  // lifetimeAdGenerations ci-dessus) : on garde la liste des dates
+  // (YYYY-MM-DD) déjà vues dans localStorage, et on ajoute la date du jour
+  // une seule fois au montage si elle n'y est pas encore.
+  const [lifetimeConnectionDays, setLifetimeConnectionDays] = useState(() => {
+    try {
+      const raw = localStorage.getItem("estim_lifetime_connection_days");
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.length : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("estim_lifetime_connection_days");
+      const arr = raw ? JSON.parse(raw) : [];
+      const today = new Date().toISOString().slice(0, 10);
+      if (!Array.isArray(arr) || !arr.includes(today)) {
+        const next = (Array.isArray(arr) ? arr : []).concat([today]);
+        localStorage.setItem("estim_lifetime_connection_days", JSON.stringify(next));
+        setLifetimeConnectionDays(next.length);
+      }
+    } catch (e) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [selectedBgSkinKey, setSelectedBgSkinKey] = useState(() => {
     try {
       const stored = localStorage.getItem("estim_bg_skin");
@@ -1854,8 +2335,8 @@ export default function App() {
   }, [showLeaderboard, profile]);
   // Panneau "Avatar" — état d'ouverture déclaré ici (tôt) car le prochain
   // effet en a besoin dans son tableau de dépendances ; le reste de l'état
-  // de l'avatar (peau/coiffure/couleurs/accessoire) est déclaré plus bas,
-  // juste après AVATAR_WARDROBE dont il dépend.
+  // de l'avatar (personnage choisi) est déclaré plus bas, juste après
+  // CHARACTERS_META dont il dépend.
   const [showAvatarPanel, setShowAvatarPanel] = useState(false);
   // Panneau "Profil" — connexion/compte + accès à l'avatar, ouvert depuis
   // l'icône en haut à droite du header (plus dans le menu hamburger).
@@ -1998,9 +2479,9 @@ export default function App() {
   // Catalogue des badges/"gadgets" affichés dans "Ma collection" — en
   // faisant des estimations, en générant des annonces, en se connectant
   // plusieurs jours de suite, ou en enchaînant plusieurs estimations le même
-  // jour. Distinct du catalogue d'habillage de l'avatar (AVATAR_WARDROBE plus
-  // bas), qui réutilise les mêmes stats mais pour un tout autre usage
-  // (coiffure/couleurs/accessoire du personnage, pas des icônes de badge).
+  // jour. Distinct du catalogue de personnages de l'avatar (CHARACTERS_META
+  // plus bas), qui réutilise les mêmes stats mais pour un tout autre usage
+  // (débloquer un personnage, pas des icônes de badge).
   const COLLECTION_BADGES = [
     { id: "first", emoji: "🎉", label: "Premier scan", test: () => history.length >= 1 },
     { id: "five", emoji: "📸", label: "5 estimations", test: () => history.length >= 5 },
@@ -2017,156 +2498,97 @@ export default function App() {
     { id: "adgen50", emoji: "📢", label: "50 annonces générées", test: () => lifetimeAdGenerations >= 50 },
   ];
 
-  // Panneau "Avatar" : un vrai petit personnage (tête + corps, façon Habbo)
-  // à personnaliser — peau (toujours libre), coiffure, couleur de cheveux,
-  // couleur de vêtement, et un accessoire (casquette/lunettes/loupe/
-  // couronne/médaille...). Chaque option (hors peau) se débloque en
-  // remplissant un défi (estimations, annonces générées, jours de suite,
-  // classement...) — les mêmes règles pour tout le monde, gratuit ou abonné
-  // (l'abonnement ne change que le quota d'estimations, pas l'avatar).
+  // Panneau "Avatar" : on choisit un PERSONNAGE tout fait (plus de
+  // personnalisation pièce par pièce) parmi ~30, inspirés d'un modèle de
+  // vignettes façon "capsules d'arcade" (voir CHARACTER_VISUALS plus haut,
+  // qui ne contient que le dessin). 5 sont débloqués dès le départ
+  // (gratuit) ; les ~25 autres se débloquent en remplissant un défi
+  // (connexions, estimations générées, annonces générées, jours de suite,
+  // classement...) — les mêmes règles pour tout le monde, gratuit ou
+  // abonné (l'abonnement ne change que le quota d'estimations, pas
+  // l'avatar). Plus le défi est dur, plus le perso est stylé — jusqu'aux 3
+  // ultimes tout en haut : deux "ultimes" (1000 estimations, ou une
+  // estimation par jour pendant 100 jours d'affilée) et un perso SECRET
+  // (10000 estimations, non affiché tant qu'il n'est pas débloqué).
   // Accessible depuis le menu ET depuis "Classement" (à côté du pseudo).
-  const AVATAR_WARDROBE = {
-    hairStyle: [
-      { id: "chauve", label: "Chauve", free: true },
-      { id: "court", label: "Court", free: true },
-      { id: "frange", label: "Frange", free: true },
-      { id: "longs", label: "Longs", test: () => lifetimeEstimations >= 15, hint: "dès 15 estimations" },
-      { id: "carre", label: "Carré", test: () => portfolioStreak >= 4, hint: "4 jours de suite" },
-      { id: "boucles", label: "Bouclés", test: () => portfolioStreak >= 5, hint: "5 jours de suite" },
-      { id: "queue", label: "Queue de cheval", test: () => lifetimeAdGenerations >= 15, hint: "15 annonces générées" },
-      { id: "chignon", label: "Chignon", test: () => lifetimeEstimations >= 45, hint: "dès 45 estimations" },
-      { id: "mohawk", label: "Mohawk", test: () => lifetimeEstimations >= 75, hint: "dès 75 estimations" },
-      { id: "ondules", label: "Longs ondulés", test: () => lifetimeEstimations >= 200, hint: "dès 200 estimations" },
-      { id: "afro", label: "Afro", test: () => lifetimeAdGenerations >= 30, hint: "30 annonces générées" },
-    ],
-    hairColor: [
-      { id: "noir", hex: "#1A1A1A", label: "Noir", free: true },
-      { id: "chatain", hex: "#5C3A21", label: "Châtain", free: true },
-      { id: "blond", hex: "#D9B26F", label: "Blond", free: true },
-      { id: "roux", hex: "#B5502A", label: "Roux", free: true },
-      { id: "gris", hex: "#9CA3AF", label: "Gris", free: true },
-      { id: "bleu", hex: "#3B82C4", label: "Bleu", test: () => portfolioStreak >= 7, hint: "7 jours de suite" },
-      { id: "rose", hex: "#E85D9E", label: "Rose", test: () => lifetimeAdGenerations >= 40, hint: "40 annonces générées" },
-      { id: "arcenciel", hex: "rainbow", label: "Arc-en-ciel", test: () => lifetimeEstimations >= 5000, hint: "dès 5000 estimations" },
-    ],
-    topColor: [
-      { id: "gris", hex: "#5C6773", label: "Gris", free: true },
-      { id: "blanc", hex: "#E9EDF2", label: "Blanc", free: true },
-      { id: "marine", hex: "#29394F", label: "Marine", free: true },
-      { id: "beige", hex: "#C9AD8F", label: "Beige", free: true },
-      { id: "rouge", hex: "#B22B3A", label: "Rouge", test: () => lifetimeEstimations >= 10, hint: "dès 10 estimations" },
-      { id: "vert", hex: "#17824C", label: "Vert", test: () => lifetimeEstimations >= 25, hint: "dès 25 estimations" },
-      { id: "violet", hex: "#6D2FB0", label: "Violet", test: () => lifetimeAdGenerations >= 20, hint: "20 annonces générées" },
-      { id: "jaune", hex: "#D4A017", label: "Jaune", test: () => portfolioBestFind >= 200, hint: "trouvaille à +200 €" },
-      { id: "or", hex: "gold", label: "Doré", test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
-    ],
-    accessory: [
-      { id: "aucun", label: "Aucun", free: true },
-      { id: "bonnet", label: "Bonnet", test: () => lifetimeEstimations >= 5, hint: "dès 5 estimations" },
-      { id: "bandeau", label: "Bandeau", test: () => portfolioStreak >= 3, hint: "3 jours de suite" },
-      { id: "bandana", label: "Bandana", test: () => portfolioStreak >= 4, hint: "4 jours de suite" },
-      { id: "casquette", label: "Casquette", test: () => lifetimeEstimations >= 20, hint: "dès 20 estimations" },
-      { id: "lunettes", label: "Lunettes", test: () => lifetimeAdGenerations >= 10, hint: "10 annonces générées" },
-      { id: "bijoux", label: "Boucles d'oreilles", test: () => lifetimeAdGenerations >= 15, hint: "15 annonces générées" },
-      { id: "soleil", label: "Lunettes de soleil", test: () => lifetimeEstimations >= 35, hint: "dès 35 estimations" },
-      { id: "foulard", label: "Foulard", test: () => lifetimeEstimations >= 60, hint: "dès 60 estimations" },
-      { id: "loupe", label: "Loupe d'enquêteur", test: () => lifetimeEstimations >= 50, hint: "dès 50 estimations" },
-      { id: "couronne", label: "Couronne", test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
-      // Version simplifiée du défi "top 100 du mois, 3 mois d'affilée"
-      // demandé : ici, être ACTUELLEMENT dans le top 100 du classement total
-      // des estimations (voir isTop100Total plus haut) — un vrai suivi
-      // "3 mois d'affilée" demanderait une tâche planifiée côté serveur pour
-      // enregistrer un historique mensuel, pas encore en place.
-      { id: "medaille", label: "Médaille top 100", test: () => isTop100Total, hint: "top 100 du classement" },
-    ],
-  };
-  const AVATAR_DEFAULTS = {
-    skin: AVATAR_SKIN_TONES[1],
-    hairStyle: "court",
-    hairColor: "noir",
-    topColor: "gris",
-    accessory: "aucun",
-    gender: "homme",
-  };
-  function avatarWardrobeUnlocked(category, id) {
-    const item = AVATAR_WARDROBE[category].find((it) => it.id === id);
-    return !!item && (item.free || item.test());
+  const DEFAULT_CHARACTER_ID = "chineur";
+  const CHARACTERS_META = [
+    // --- Palier 0 : gratuits dès le départ ---
+    { id: "chineur", name: "Le Chineur", tier: 0, free: true },
+    { id: "renard", name: "Renard Malin", tier: 0, free: true },
+    { id: "robotFerraille", name: "Robot Ferraille", tier: 0, free: true },
+    { id: "chatCurieux", name: "Chat Curieux", tier: 0, free: true },
+    { id: "pandi", name: "Pandi l'Ourson", tier: 0, free: true },
+    // --- Palier 1 : faciles ---
+    { id: "lapin", name: "Lapin Chanceux", tier: 1, test: () => lifetimeConnectionDays >= 3, hint: "3 jours de connexion" },
+    { id: "singeFarceur", name: "Singe Farceur", tier: 1, test: () => lifetimeEstimations >= 10, hint: "dès 10 estimations" },
+    { id: "hiboo", name: "Hibou Sage", tier: 1, test: () => lifetimeAdGenerations >= 10, hint: "10 annonces générées" },
+    { id: "capitainePirate", name: "Capitaine Pirate", tier: 1, test: () => portfolioStreak >= 3, hint: "3 jours de suite" },
+    { id: "astroDebutant", name: "Astro Débutant", tier: 1, test: () => lifetimeConnectionDays >= 7, hint: "7 jours de connexion" },
+    // --- Palier 2 : moyens ---
+    { id: "loupDetective", name: "Loup Détective", tier: 2, test: () => lifetimeEstimations >= 50, hint: "dès 50 estimations" },
+    { id: "tigreStyle", name: "Tigre Stylé", tier: 2, test: () => lifetimeAdGenerations >= 25, hint: "25 annonces générées" },
+    { id: "sorciereFutee", name: "Sorcière Futée", tier: 2, test: () => portfolioStreak >= 7, hint: "7 jours de suite" },
+    { id: "alienCurieux", name: "Alien Curieux", tier: 2, test: () => lifetimeEstimations >= 75, hint: "dès 75 estimations" },
+    { id: "ninjaSilencieux", name: "Ninja Silencieux", tier: 2, test: () => lifetimeConnectionDays >= 15, hint: "15 jours de connexion" },
+    // --- Palier 3 : difficiles ---
+    { id: "panthereNuit", name: "Panthère des Nuits", tier: 3, test: () => lifetimeEstimations >= 150, hint: "dès 150 estimations" },
+    { id: "robotChrome", name: "Robot Chrome", tier: 3, test: () => lifetimeAdGenerations >= 50, hint: "50 annonces générées" },
+    { id: "bebeDragon", name: "Bébé Dragon", tier: 3, test: () => portfolioStreak >= 14, hint: "14 jours de suite" },
+    { id: "cowboyEncheres", name: "Cowboy des Enchères", tier: 3, test: () => lifetimeEstimations >= 250, hint: "dès 250 estimations" },
+    { id: "ratonMasque", name: "Raton Masqué", tier: 3, test: () => isTop100Total, hint: "top 100 du classement" },
+    // --- Palier 4 : rares ---
+    { id: "chouetteDoree", name: "Chouette Dorée", tier: 4, test: () => lifetimeEstimations >= 400, hint: "dès 400 estimations" },
+    { id: "pieuvreMystique", name: "Pieuvre Mystique", tier: 4, test: () => lifetimeAdGenerations >= 80, hint: "80 annonces générées" },
+    { id: "phenixArdent", name: "Phénix Ardent", tier: 4, test: () => portfolioBestFind >= 300, hint: "trouvaille à +300 €" },
+    { id: "loupArgenteAlpha", name: "Loup Argenté Alpha", tier: 4, test: () => lifetimeConnectionDays >= 60, hint: "60 jours de connexion" },
+    // --- Palier 5 : épiques ---
+    { id: "griffonCeleste", name: "Griffon Céleste", tier: 5, test: () => lifetimeEstimations >= 800, hint: "dès 800 estimations" },
+    { id: "chevalierDore", name: "Chevalier Doré", tier: 5, test: () => lifetimeAdGenerations >= 150, hint: "150 annonces générées" },
+    { id: "spectreElegant", name: "Spectre Élégant", tier: 5, test: () => lifetimeEstimations >= 900, hint: "dès 900 estimations" },
+    // --- Palier 6 : les 3 ultimes (2 "ultimes" + 1 secret) ---
+    { id: "increvable", name: "L'Increvable", tier: 6, test: () => portfolioStreak >= 100, hint: "1 estimation/jour pendant 100 jours" },
+    { id: "millieme", name: "Le Millième", tier: 6, test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
+    { id: "ombreLegendaire", name: "L'Ombre Légendaire", tier: 6, secret: true, test: () => lifetimeEstimations >= 10000, hint: "??? (secret)" },
+  ];
+  function characterMeta(id) {
+    return CHARACTERS_META.find((c) => c.id === id) || CHARACTERS_META[0];
   }
-  const [avatarSkinInput, setAvatarSkinInput] = useState(AVATAR_DEFAULTS.skin);
-  const [avatarHairStyleInput, setAvatarHairStyleInput] = useState(AVATAR_DEFAULTS.hairStyle);
-  const [avatarHairColorInput, setAvatarHairColorInput] = useState(AVATAR_DEFAULTS.hairColor);
-  const [avatarTopColorInput, setAvatarTopColorInput] = useState(AVATAR_DEFAULTS.topColor);
-  const [avatarAccessoryInput, setAvatarAccessoryInput] = useState(AVATAR_DEFAULTS.accessory);
-  const [avatarGenderInput, setAvatarGenderInput] = useState(AVATAR_DEFAULTS.gender);
+  function isCharacterUnlocked(id) {
+    const meta = characterMeta(id);
+    return !!meta.free || meta.test();
+  }
+  const [avatarCharacterInput, setAvatarCharacterInput] = useState(DEFAULT_CHARACTER_ID);
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
   const [avatarSavedFlash, setAvatarSavedFlash] = useState(false);
   useEffect(() => {
     if (showAvatarPanel) {
-      setAvatarSkinInput((profile && profile.avatar_skin) || AVATAR_DEFAULTS.skin);
-      setAvatarHairStyleInput((profile && profile.avatar_hair_style) || AVATAR_DEFAULTS.hairStyle);
-      setAvatarHairColorInput((profile && profile.avatar_hair_color) || AVATAR_DEFAULTS.hairColor);
-      setAvatarTopColorInput((profile && profile.avatar_top_color) || AVATAR_DEFAULTS.topColor);
-      setAvatarAccessoryInput((profile && profile.avatar_accessory) || AVATAR_DEFAULTS.accessory);
-      setAvatarGenderInput((profile && profile.avatar_gender) || AVATAR_DEFAULTS.gender);
+      setAvatarCharacterInput((profile && profile.avatar_character) || DEFAULT_CHARACTER_ID);
       setAvatarError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAvatarPanel, profile]);
   // isOwnerPreview (défini plus haut, pour l'habillage/les fonds) permet
   // aussi à ce compte d'essayer — sans réellement les débloquer pour de
-  // vrai — toutes les coiffures/couleurs/accessoires de l'avatar, à titre
-  // exceptionnel, exactement comme pour l'habillage et les fonds.
-  function pickAvatarItem(category, id) {
-    if (!avatarWardrobeUnlocked(category, id) && !isOwnerPreview) return;
-    if (category === "hairStyle") setAvatarHairStyleInput(id);
-    else if (category === "hairColor") setAvatarHairColorInput(id);
-    else if (category === "topColor") setAvatarTopColorInput(id);
-    else if (category === "accessory") setAvatarAccessoryInput(id);
+  // vrai — tous les personnages de l'avatar, à titre exceptionnel,
+  // exactement comme pour l'habillage et les fonds.
+  function pickCharacter(id) {
+    if (!isCharacterUnlocked(id) && !isOwnerPreview) return;
+    setAvatarCharacterInput(id);
   }
-  function avatarSwatchBg(hex) {
-    if (hex === "rainbow") return "linear-gradient(135deg, #FF5C7A 0%, #FFC85C 25%, #5CE87A 50%, #5CB8FF 75%, #C05CFF 100%)";
-    if (hex === "gold") return "linear-gradient(135deg, #F6D978 0%, #D4A017 50%, #96700D 100%)";
-    return hex;
-  }
-  const avatarHairColorHex = (AVATAR_WARDROBE.hairColor.find((h) => h.id === avatarHairColorInput) || {}).hex || "#1A1A1A";
-  const avatarTopColorHex = (AVATAR_WARDROBE.topColor.find((h) => h.id === avatarTopColorInput) || {}).hex || "#5C6773";
-  const avatarDirty =
-    !!profile &&
-    (avatarSkinInput !== (profile.avatar_skin || AVATAR_DEFAULTS.skin) ||
-      avatarHairStyleInput !== (profile.avatar_hair_style || AVATAR_DEFAULTS.hairStyle) ||
-      avatarHairColorInput !== (profile.avatar_hair_color || AVATAR_DEFAULTS.hairColor) ||
-      avatarTopColorInput !== (profile.avatar_top_color || AVATAR_DEFAULTS.topColor) ||
-      avatarAccessoryInput !== (profile.avatar_accessory || AVATAR_DEFAULTS.accessory) ||
-      avatarGenderInput !== (profile.avatar_gender || AVATAR_DEFAULTS.gender));
+  const avatarDirty = !!profile && avatarCharacterInput !== (profile.avatar_character || DEFAULT_CHARACTER_ID);
   async function saveAvatar() {
     if (!user || avatarSaving) return;
     setAvatarSaving(true);
     setAvatarError(null);
     try {
       const { data, error } = await supabase.rpc("set_avatar", {
-        p_skin: avatarSkinInput,
-        p_hair_style: avatarHairStyleInput,
-        p_hair_color: avatarHairColorInput,
-        p_top_color: avatarTopColorInput,
-        p_accessory: avatarAccessoryInput,
-        p_gender: avatarGenderInput,
+        p_character_id: avatarCharacterInput,
       });
       if (error) throw new Error(error.message);
       if (data && data.ok) {
-        setProfile((prev) =>
-          prev
-            ? {
-                ...prev,
-                avatar_skin: data.avatar_skin,
-                avatar_hair_style: data.avatar_hair_style,
-                avatar_hair_color: data.avatar_hair_color,
-                avatar_top_color: data.avatar_top_color,
-                avatar_accessory: data.avatar_accessory,
-                avatar_gender: data.avatar_gender,
-              }
-            : prev
-        );
+        setProfile((prev) => (prev ? { ...prev, avatar_character: data.avatar_character } : prev));
         setAvatarSavedFlash(true);
         setTimeout(() => setAvatarSavedFlash(false), 2500);
         // L'avatar peut avoir changé l'affichage du classement — on vide le
@@ -2287,24 +2709,10 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                <AvatarSVG
-                  skin={(profile && profile.avatar_skin) || AVATAR_DEFAULTS.skin}
-                  hairStyle={(profile && profile.avatar_hair_style) || AVATAR_DEFAULTS.hairStyle}
-                  hairColor={
-                    (AVATAR_WARDROBE.hairColor.find((h) => h.id === ((profile && profile.avatar_hair_color) || AVATAR_DEFAULTS.hairColor)) || {}).hex ||
-                    "#1A1A1A"
-                  }
-                  topColor={
-                    (AVATAR_WARDROBE.topColor.find((h) => h.id === ((profile && profile.avatar_top_color) || AVATAR_DEFAULTS.topColor)) || {}).hex ||
-                    "#5C6773"
-                  }
-                  accessory={(profile && profile.avatar_accessory) || AVATAR_DEFAULTS.accessory}
-                  gender={(profile && profile.avatar_gender) || AVATAR_DEFAULTS.gender}
-                  size={34}
-                />
+                <CharacterSVG id={(profile && profile.avatar_character) || DEFAULT_CHARACTER_ID} size={34} />
                 <span style={{ flex: 1 }}>
                   <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: pt.rowText }}>
-                    {profile && profile.avatar_hair_style ? "Personnaliser mon avatar" : "Créer mon avatar"}
+                    {profile && profile.avatar_character ? "Changer mon personnage" : "Choisir mon personnage"}
                   </span>
                   <span className="mono" style={{ fontSize: 10, color: pt.subText }}>
                     corps, coiffure, couleurs, accessoires à débloquer
@@ -4108,21 +4516,9 @@ export default function App() {
                 overflow: "hidden",
               }}
             >
-              {user && profile && profile.avatar_hair_style ? (
+              {user && profile && profile.avatar_character ? (
                 <span style={{ display: "flex", alignItems: "flex-start", marginTop: 6 }}>
-                  <AvatarSVG
-                    skin={profile.avatar_skin || AVATAR_DEFAULTS.skin}
-                    hairStyle={profile.avatar_hair_style || AVATAR_DEFAULTS.hairStyle}
-                    hairColor={
-                      (AVATAR_WARDROBE.hairColor.find((h) => h.id === (profile.avatar_hair_color || AVATAR_DEFAULTS.hairColor)) || {}).hex || "#1A1A1A"
-                    }
-                    topColor={
-                      (AVATAR_WARDROBE.topColor.find((h) => h.id === (profile.avatar_top_color || AVATAR_DEFAULTS.topColor)) || {}).hex || "#5C6773"
-                    }
-                    accessory={profile.avatar_accessory || AVATAR_DEFAULTS.accessory}
-                    gender={profile.avatar_gender || AVATAR_DEFAULTS.gender}
-                    size={30}
-                  />
+                  <CharacterSVG id={profile.avatar_character} size={30} />
                 </span>
               ) : (
                 <User size={16} color={pt.menuBtnColor} />
@@ -6200,7 +6596,7 @@ export default function App() {
             ) : (
               <>
                 <p style={{ fontSize: 13, color: pt.subText, marginTop: 0, marginBottom: 16 }}>
-                  Personnalise ton personnage : il s'affiche à côté de ton pseudo dans le classement. Chaque coiffure, couleur ou accessoire se débloque en remplissant un défi — plus tu utilises l'appli, plus tu peux le personnaliser.
+                  Choisis ton personnage : il s'affiche à côté de ton pseudo dans le classement. 5 sont débloqués dès le départ ; les autres se débloquent en remplissant un défi (connexions, estimations, annonces générées, jours de suite...) — plus le défi est dur, plus le perso est stylé.
                 </p>
 
                 {isOwnerPreview && (
@@ -6216,7 +6612,7 @@ export default function App() {
                       marginBottom: 14,
                     }}
                   >
-                    Mode propriétaire : tu peux essayer tous les objets ci-dessous, même verrouillés (aperçu uniquement — les autres comptes doivent toujours remplir le défi).
+                    Mode propriétaire : tu peux essayer tous les personnages ci-dessous, même verrouillés (aperçu uniquement — les autres comptes doivent toujours remplir le défi).
                   </div>
                 )}
 
@@ -6225,21 +6621,16 @@ export default function App() {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    marginBottom: 8,
+                    marginBottom: 18,
                     background: `radial-gradient(circle at 50% 30%, rgba(${accentRgb}, 0.16) 0%, transparent 70%)`,
                     borderRadius: 16,
                     padding: "16px 0 10px",
                   }}
                 >
-                  <AvatarSVG
-                    skin={avatarSkinInput}
-                    hairStyle={avatarHairStyleInput}
-                    hairColor={avatarHairColorHex}
-                    topColor={avatarTopColorHex}
-                    accessory={avatarAccessoryInput}
-                    gender={avatarGenderInput}
-                    size={150}
-                  />
+                  <CharacterSVG id={avatarCharacterInput} size={150} />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: pt.strongColor, marginTop: 6 }}>
+                    {characterMeta(avatarCharacterInput).name}
+                  </span>
                   <span
                     className="mono"
                     style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: pt.subText, marginTop: 4 }}
@@ -6248,119 +6639,49 @@ export default function App() {
                   </span>
                 </div>
 
-                <div style={{ marginBottom: 18 }}>
-                  <div
-                    className="mono"
-                    style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}
-                  >
-                    Silhouette
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {[
-                      { id: "homme", label: "Homme" },
-                      { id: "femme", label: "Femme" },
-                    ].map((g) => {
-                      const selected = avatarGenderInput === g.id;
-                      return (
-                        <button
-                          key={g.id}
-                          onClick={() => setAvatarGenderInput(g.id)}
-                          className="mono"
-                          style={{
-                            flex: 1,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            padding: "8px 10px",
-                            borderRadius: 8,
-                            border: selected ? `2px solid ${accent}` : pt.rowBorder,
-                            background: selected ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
-                            color: pt.rowText,
-                            cursor: "pointer",
-                          }}
-                        >
-                          {g.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 18 }}>
-                  <div
-                    className="mono"
-                    style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}
-                  >
-                    Peau
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {AVATAR_SKIN_TONES.map((hex) => {
-                      const selected = avatarSkinInput === hex;
-                      return (
-                        <button
-                          key={hex}
-                          onClick={() => setAvatarSkinInput(hex)}
-                          title="Teinte de peau"
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: "50%",
-                            background: hex,
-                            border: selected ? `3px solid ${accent}` : "2px solid rgba(255, 255, 255, 0.25)",
-                            boxShadow: selected ? `0 0 0 2px ${accent}` : "none",
-                            cursor: "pointer",
-                            padding: 0,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {[
-                  { category: "hairStyle", title: "Coiffure", kind: "avatar" },
-                  { category: "hairColor", title: "Couleur de cheveux", kind: "swatch" },
-                  { category: "topColor", title: "Couleur de vêtement", kind: "swatch" },
-                  { category: "accessory", title: "Accessoire", kind: "avatar" },
-                ].map(({ category, title, kind }) => {
-                  const currentInput =
-                    category === "hairStyle"
-                      ? avatarHairStyleInput
-                      : category === "hairColor"
-                      ? avatarHairColorInput
-                      : category === "topColor"
-                      ? avatarTopColorInput
-                      : avatarAccessoryInput;
+                {[0, 1, 2, 3, 4, 5, 6].map((tier) => {
+                  const tierChars = CHARACTERS_META.filter((c) => c.tier === tier);
+                  if (!tierChars.length) return null;
+                  const tierTitle =
+                    tier === 0
+                      ? "Gratuits"
+                      : tier === 6
+                      ? "Ultimes"
+                      : `Palier ${tier}`;
                   return (
-                    <div key={category} style={{ marginBottom: 20 }}>
+                    <div key={tier} style={{ marginBottom: 20 }}>
                       <div
                         className="mono"
                         style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}
                       >
-                        {title}
+                        {tierTitle}
                       </div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {AVATAR_WARDROBE[category].map((item) => {
-                          const unlocked = item.free || item.test();
-                          const selected = currentInput === item.id;
+                        {tierChars.map((meta) => {
+                          const unlocked = meta.free || meta.test();
+                          const selected = avatarCharacterInput === meta.id;
                           const clickable = unlocked || isOwnerPreview;
+                          const isHiddenSecret = meta.secret && !unlocked && !isOwnerPreview;
                           return (
                             <button
-                              key={item.id}
-                              onClick={() => pickAvatarItem(category, item.id)}
+                              key={meta.id}
+                              onClick={() => pickCharacter(meta.id)}
                               disabled={!clickable}
                               title={
-                                unlocked
-                                  ? item.label
+                                isHiddenSecret
+                                  ? "Personnage secret"
+                                  : unlocked
+                                  ? meta.name
                                   : isOwnerPreview
-                                  ? `${item.label} — aperçu (verrouillé pour les autres comptes, ${item.hint})`
-                                  : `${item.label} — ${item.hint}`
+                                  ? `${meta.name} — aperçu (verrouillé pour les autres comptes, ${meta.hint})`
+                                  : `${meta.name} — ${meta.hint}`
                               }
                               style={{
                                 display: "flex",
                                 flexDirection: "column",
                                 alignItems: "center",
                                 gap: 4,
-                                width: 72,
+                                width: 76,
                                 background: selected ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
                                 border: selected ? `2px solid ${accent}` : pt.rowBorder,
                                 borderRadius: 10,
@@ -6369,36 +6690,31 @@ export default function App() {
                                 cursor: clickable ? "pointer" : "default",
                               }}
                             >
-                              {kind === "avatar" ? (
-                                <AvatarSVG
-                                  skin={avatarSkinInput}
-                                  hairStyle={category === "hairStyle" ? item.id : avatarHairStyleInput}
-                                  hairColor={avatarHairColorHex}
-                                  topColor={avatarTopColorHex}
-                                  accessory={category === "accessory" ? item.id : "aucun"}
-                                  gender={avatarGenderInput}
-                                  size={38}
-                                />
-                              ) : (
+                              {isHiddenSecret ? (
                                 <span
                                   style={{
-                                    width: 26,
-                                    height: 26,
-                                    borderRadius: "50%",
-                                    background: avatarSwatchBg(item.hex),
-                                    display: "block",
-                                    border: "1px solid rgba(255,255,255,0.25)",
+                                    width: 42,
+                                    height: 50,
+                                    borderRadius: 10,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    background: "rgba(0,0,0,0.35)",
                                   }}
-                                />
+                                >
+                                  <span style={{ fontSize: 20 }}>❓</span>
+                                </span>
+                              ) : (
+                                <CharacterSVG id={meta.id} size={42} />
                               )}
                               <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center", lineHeight: 1.2 }}>
-                                {item.label}
+                                {isHiddenSecret ? "???" : meta.name}
                               </span>
                               {!unlocked && (
                                 <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
                                   <Lock size={8} color={pt.chevronColor} />
                                   <span className="mono" style={{ fontSize: 7, color: pt.chevronColor, textAlign: "center", lineHeight: 1.1 }}>
-                                    {item.hint}
+                                    {isHiddenSecret ? "secret" : meta.hint}
                                   </span>
                                 </span>
                               )}
@@ -6938,21 +7254,7 @@ export default function App() {
                     }}
                   >
                     <span style={{ display: "inline-flex", verticalAlign: "middle" }}>
-                      <AvatarSVG
-                        skin={(profile && profile.avatar_skin) || AVATAR_DEFAULTS.skin}
-                        hairStyle={(profile && profile.avatar_hair_style) || AVATAR_DEFAULTS.hairStyle}
-                        hairColor={
-                          (AVATAR_WARDROBE.hairColor.find((h) => h.id === ((profile && profile.avatar_hair_color) || AVATAR_DEFAULTS.hairColor)) || {}).hex ||
-                          "#1A1A1A"
-                        }
-                        topColor={
-                          (AVATAR_WARDROBE.topColor.find((h) => h.id === ((profile && profile.avatar_top_color) || AVATAR_DEFAULTS.topColor)) || {}).hex ||
-                          "#5C6773"
-                        }
-                        accessory={(profile && profile.avatar_accessory) || AVATAR_DEFAULTS.accessory}
-                        gender={(profile && profile.avatar_gender) || AVATAR_DEFAULTS.gender}
-                        size={17}
-                      />
+                      <CharacterSVG id={(profile && profile.avatar_character) || DEFAULT_CHARACTER_ID} size={17} />
                     </span>
                     Personnaliser mon avatar
                     <ChevronRight size={12} color={accent} />
@@ -7042,15 +7344,9 @@ export default function App() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {rows.map((row, i) => {
                     const isYou = !!(user && row.user_id === user.id);
-                    // L'avatar de chaque joueur (peau/coiffure/couleurs/
-                    // accessoire) est stocké côté serveur comme de simples
-                    // ids/hex — on résout les couleurs de cheveux/vêtement via
-                    // le même catalogue AVATAR_WARDROBE que celui qui sert à
-                    // les débloquer chez soi.
-                    const rowHairColor =
-                      (AVATAR_WARDROBE.hairColor.find((h) => h.id === row.avatar_hair_color) || {}).hex || "#1A1A1A";
-                    const rowTopColor =
-                      (AVATAR_WARDROBE.topColor.find((h) => h.id === row.avatar_top_color) || {}).hex || "#5C6773";
+                    // L'avatar de chaque joueur est stocké côté serveur comme
+                    // un simple id de personnage (avatar_character) — le
+                    // dessin est entièrement local (CHARACTER_VISUALS).
                     return (
                       <div
                         key={row.user_id || i}
@@ -7068,15 +7364,7 @@ export default function App() {
                           {MEDALS[i] || i + 1}
                         </span>
                         <span style={{ flexShrink: 0, display: "flex" }}>
-                          <AvatarSVG
-                            skin={row.avatar_skin || AVATAR_DEFAULTS.skin}
-                            hairStyle={row.avatar_hair_style || AVATAR_DEFAULTS.hairStyle}
-                            hairColor={rowHairColor}
-                            topColor={rowTopColor}
-                            accessory={row.avatar_accessory || AVATAR_DEFAULTS.accessory}
-                            gender={row.avatar_gender || AVATAR_DEFAULTS.gender}
-                            size={22}
-                          />
+                          <CharacterSVG id={row.avatar_character || DEFAULT_CHARACTER_ID} size={22} />
                         </span>
                         <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: isYou ? 700 : 500, color: pt.rowText }}>
                           {row.pseudo}
