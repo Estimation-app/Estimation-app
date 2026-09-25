@@ -196,10 +196,7 @@ function CharacterAvatar({ id, size = 96 }) {
         flexShrink: 0,
         // Fond identique au bleu nuit déjà présent sur tous les portraits
         // (mesuré sur leurs pixels de coin, quasi identique d'une image à
-        // l'autre) : sans ça, le petit espace laissé par l'image réduite à
-        // 86% ci-dessous était transparent, laissait voir le fond de
-        // l'appli derrière, et cassait l'effet de pastille ronde (on
-        // voyait les bords carrés de l'image plutôt qu'un cercle net).
+        // l'autre) — sert de toile de fond derrière le dégradé ci-dessous.
         background: "#0e1628",
       }}
     >
@@ -207,19 +204,27 @@ function CharacterAvatar({ id, size = 96 }) {
         src={src}
         alt=""
         style={{
-          // Les portraits sont déjà carrés (mêmes proportions que la
-          // pastille), donc object-fit: cover ne rogne rien tout seul — le
-          // seul découpage vient du masque rond (borderRadius 50% ci-dessus),
-          // qui coupe net tout ce qui dépasse dans les 4 coins du carré
-          // (oreilles de chat/renard/hibou, pointe du bonnet, antenne...).
-          // On réduit donc légèrement l'image (86%) à l'intérieur de sa
-          // pastille pour que ces extrémités restent dans le cercle visible ;
-          // le span parent (fond bleu nuit ci-dessus) comble le tour pour
-          // que ça reste un cercle net plutôt qu'un carré transparent.
-          width: "86%",
-          height: "86%",
+          // Certains portraits sont composés "plein cadre" (épaules,
+          // oreilles, antenne... jusqu'au bord du carré) : un simple
+          // cercle net (borderRadius) les coupait soit sur les oreilles
+          // (coins), soit par un trait droit en bas (composition qui touche
+          // le bord). Solution unique et universelle : au lieu de découper
+          // net, on fait un fondu radial (masque en dégradé) qui estompe
+          // progressivement le portrait vers le bleu nuit du fond à
+          // l'approche du bord de la pastille. Résultat : plus aucun trait
+          // de découpe visible (ni sur les oreilles/bonnet/antenne, ni en
+          // bas), un rendu plus doux et plus "premium", sans avoir à
+          // retoucher ou reprendre aucune image.
+          width: "100%",
+          height: "100%",
           objectFit: "cover",
           display: "block",
+          WebkitMaskImage: "radial-gradient(circle, #000 58%, transparent 100%)",
+          maskImage: "radial-gradient(circle, #000 58%, transparent 100%)",
+          WebkitMaskSize: "100% 100%",
+          maskSize: "100% 100%",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
         }}
       />
     </span>
@@ -1863,6 +1868,9 @@ export default function App() {
     }
   });
   const [showHistory, setShowHistory] = useState(false);
+  // Message de confirmation avant "tout effacer" dans l'historique — évite
+  // une suppression accidentelle et irréversible.
+  const [confirmClearHistory, setConfirmClearHistory] = useState(false);
 
   // "Ma collection" : panneau gamification/portefeuille (valeur totale,
   // badges, streak, courbe de valeur dans le temps) — calculé côté client à
@@ -2073,76 +2081,104 @@ export default function App() {
       >
         {user ? (
           <div>
+            {/* Carte d'identité : avatar + pseudo (ou email à défaut) + plan
+                en pastille — remplace l'ancien "Connecté : email" / "Plan :
+                Starter" affichés comme du texte brut l'un sous l'autre. */}
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
                 alignItems: "center",
+                gap: 12,
+                background: `radial-gradient(circle at 20% 30%, rgba(${accentRgb}, 0.18) 0%, transparent 75%)`,
+                borderRadius: 14,
+                padding: "12px 12px",
               }}
             >
-              <div style={{ fontSize: 12, color: pt.rowText }}>
-                Connecté : <strong>{user.email}</strong>
-                <div className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 2 }}>
-                  historique illimité, synchronisé
+              <CharacterAvatar id={(profile && profile.avatar_character) || DEFAULT_CHARACTER_ID} size={52} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: pt.strongColor,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {(profile && profile.pseudo) || user.email}
+                </div>
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 10,
+                    color: pt.subText,
+                    marginTop: 2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {profile && profile.pseudo ? user.email : "historique synchronisé"}
                 </div>
               </div>
-              <button
-                className="btn-ghost"
-                onClick={() => {
-                  signOut();
-                  setShowProfilePanel(false);
-                }}
-                style={{ flexShrink: 0 }}
-              >
-                <LogOut size={14} /> déconnexion
-              </button>
+              {profile && (
+                <span
+                  className="mono"
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "#152238",
+                    background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
+                    borderRadius: 20,
+                    padding: "4px 10px",
+                    flexShrink: 0,
+                  }}
+                >
+                  {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                    ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
+                    : "Gratuit"}
+                </span>
+              )}
             </div>
 
             {profile && (
-              <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <div style={{ fontSize: 12, color: pt.rowText }}>
-                    Plan :{" "}
-                    <strong>
-                      {profile.plan !== "gratuit" && profile.subscription_status === "active"
-                        ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
-                        : "Gratuit"}
-                    </strong>
-                    <div className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 2 }}>
-                      {profile.plan !== "gratuit" && profile.subscription_status === "active"
-                        ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} estimations restantes ce mois`
-                        : `${Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) gratuite(s) restante(s) ce mois`}
-                    </div>
-                  </div>
-                  {profile.stripe_customer_id ? (
-                    <button
-                      className="btn-ghost"
-                      onClick={openBillingPortal}
-                      disabled={portalLoading}
-                      style={{ flexShrink: 0 }}
-                    >
-                      <CreditCard size={14} /> {portalLoading ? "…" : "gérer"}
-                    </button>
-                  ) : (
-                    <button
-                      className="btn-ghost"
-                      onClick={() => {
-                        setPaywallInfo(null);
-                        setShowPaywall(true);
-                      }}
-                      style={{ flexShrink: 0 }}
-                    >
-                      <Sparkles size={14} /> s'abonner
-                    </button>
-                  )}
-                </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10, padding: "0 2px" }}>
+                <span className="mono" style={{ fontSize: 11, color: pt.subText }}>
+                  {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                    ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} estimations restantes ce mois`
+                    : `${Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) gratuite(s) restante(s) ce mois`}
+                </span>
+                {profile.stripe_customer_id ? (
+                  <button
+                    className="btn-ghost"
+                    onClick={openBillingPortal}
+                    disabled={portalLoading}
+                    style={{ flexShrink: 0 }}
+                  >
+                    <CreditCard size={14} /> {portalLoading ? "…" : "gérer"}
+                  </button>
+                ) : (
+                  <button
+                    className="btn-ghost"
+                    onClick={() => {
+                      setPaywallInfo(null);
+                      setShowPaywall(true);
+                    }}
+                    style={{ flexShrink: 0 }}
+                  >
+                    <Sparkles size={14} /> s'abonner
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Créer/personnaliser l'avatar : juste en dessous des infos de
-                compte, comme demandé, accessible d'un tap depuis ce même
-                panneau "Profil". */}
-            <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
+            {/* Liste d'actions : un seul style de ligne (icône + titre +
+                chevron ou contrôle), pour un panneau plus lisible d'un
+                coup d'œil qu'une succession de blocs bordés hétérogènes. */}
+            <div style={{ borderTop: pt.dashedBorder, marginTop: 12, paddingTop: 4 }}>
               <button
                 onClick={() => {
                   setShowProfilePanel(false);
@@ -2154,98 +2190,111 @@ export default function App() {
                   gap: 10,
                   width: "100%",
                   textAlign: "left",
-                  background: `rgba(${accentRgb}, 0.1)`,
-                  border: `1px solid rgba(${accentRgb}, 0.3)`,
-                  borderRadius: 10,
-                  padding: "10px 12px",
+                  background: "none",
+                  border: "none",
+                  borderBottom: pt.dashedBorder,
+                  padding: "10px 2px",
                   cursor: "pointer",
                 }}
               >
-                <CharacterAvatar id={(profile && profile.avatar_character) || DEFAULT_CHARACTER_ID} size={34} />
-                <span style={{ flex: 1 }}>
-                  <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: pt.rowText }}>
-                    {profile && profile.avatar_character ? "Changer mon personnage" : "Choisir mon personnage"}
-                  </span>
-                  <span className="mono" style={{ fontSize: 10, color: pt.subText }}>
-                    corps, coiffure, couleurs, accessoires à débloquer
-                  </span>
+                <Smile size={16} color={accent} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: pt.rowText }}>
+                  {profile && profile.avatar_character ? "Changer mon personnage" : "Choisir mon personnage"}
                 </span>
                 <ChevronRight size={14} color={pt.chevronColor} />
               </button>
-            </div>
 
-            <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <Gift size={14} color={accent} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: pt.rowText }}>Parraine un ami</span>
-              </div>
-              <p style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 8 }}>
-                Partage ton lien avec un proche pour lui faire découvrir estim'.
-              </p>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button className="btn-ghost" onClick={shareReferralLink} style={{ flex: 1, justifyContent: "center" }}>
-                  <Share2 size={14} /> partager mon lien
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 2px", borderBottom: pt.dashedBorder }}>
+                <Gift size={16} color={accent} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: pt.rowText }}>Parrainer un ami</span>
+                <button className="btn-ghost" onClick={shareReferralLink} style={{ flexShrink: 0 }} aria-label="partager mon lien">
+                  <Share2 size={14} />
                 </button>
                 <button className="btn-ghost" onClick={copyReferralLink} style={{ flexShrink: 0 }} aria-label="copier le lien">
                   {referralCopied ? "copié !" : <Copy size={14} />}
                 </button>
               </div>
-            </div>
 
-            <div style={{ borderTop: pt.dashedBorder, marginTop: 10, paddingTop: 10 }}>
-              {passwordStatus === "done" ? (
-                <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
-                  Mot de passe défini ! Tu peux maintenant l'utiliser pour te connecter.
-                </p>
-              ) : (
-                <div>
-                  <p style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 6 }}>
-                    Définir un mot de passe (pour te reconnecter sans lien par email) :
-                  </p>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <div className="password-field">
-                      <input
-                        type={showNewPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="nouveau mot de passe"
-                        style={{
-                          width: "100%",
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: 12,
-                          padding: "8px 34px 8px 10px",
-                          borderRadius: 3,
-                          border: pt.inputBorder,
-                          background: pt.inputBg,
-                          color: pt.inputText,
-                          boxSizing: "border-box",
-                        }}
-                      />
+              <div style={{ padding: "10px 2px", borderBottom: pt.dashedBorder }}>
+                {passwordStatus === "done" ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Lock size={16} color={accent} style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: pt.rowText }}>Mot de passe défini</span>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                      <Lock size={16} color={accent} style={{ flexShrink: 0 }} />
+                      <span className="mono" style={{ fontSize: 11, color: pt.subText }}>
+                        définir un mot de passe (se reconnecter sans lien par email)
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <div className="password-field">
+                        <input
+                          type={showNewPassword ? "text" : "password"}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="nouveau mot de passe"
+                          style={{
+                            width: "100%",
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: 12,
+                            padding: "8px 34px 8px 10px",
+                            borderRadius: 3,
+                            border: pt.inputBorder,
+                            background: pt.inputBg,
+                            color: pt.inputText,
+                            boxSizing: "border-box",
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => setShowNewPassword((v) => !v)}
+                          aria-label={showNewPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
+                        >
+                          {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
                       <button
-                        type="button"
-                        className="password-toggle"
-                        onClick={() => setShowNewPassword((v) => !v)}
-                        aria-label={showNewPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
+                        className="btn-ghost"
+                        onClick={setAccountPassword}
+                        disabled={passwordStatus === "saving"}
+                        style={{ flexShrink: 0 }}
                       >
-                        {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                        définir
                       </button>
                     </div>
-                    <button
-                      className="btn-ghost"
-                      onClick={setAccountPassword}
-                      disabled={passwordStatus === "saving"}
-                      style={{ flexShrink: 0 }}
-                    >
-                      définir
-                    </button>
+                    {passwordError && (
+                      <p style={{ fontSize: 11, color: accent, marginTop: 6, marginBottom: 0 }}>
+                        {passwordError}
+                      </p>
+                    )}
                   </div>
-                  {passwordError && (
-                    <p style={{ fontSize: 11, color: accent, marginTop: 6, marginBottom: 0 }}>
-                      {passwordError}
-                    </p>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
+
+              <button
+                onClick={() => {
+                  signOut();
+                  setShowProfilePanel(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  textAlign: "left",
+                  background: "none",
+                  border: "none",
+                  padding: "10px 2px 2px",
+                  cursor: "pointer",
+                }}
+              >
+                <LogOut size={16} color={pt.subText} style={{ flexShrink: 0 }} />
+                <span className="mono" style={{ fontSize: 12, color: pt.subText }}>déconnexion</span>
+              </button>
             </div>
           </div>
         ) : authStatus === "sent" ? (
@@ -5109,7 +5158,10 @@ export default function App() {
             justifyContent: "center",
             zIndex: 10,
           }}
-          onClick={() => setShowHistory(false)}
+          onClick={() => {
+            setShowHistory(false);
+            setConfirmClearHistory(false);
+          }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -5150,7 +5202,7 @@ export default function App() {
                 {history.length > 0 && (
                   <button
                     className="mono"
-                    onClick={clearHistory}
+                    onClick={() => setConfirmClearHistory(true)}
                     style={{
                       background: "none",
                       border: "none",
@@ -5163,7 +5215,10 @@ export default function App() {
                   </button>
                 )}
                 <button
-                  onClick={() => setShowHistory(false)}
+                  onClick={() => {
+                    setShowHistory(false);
+                    setConfirmClearHistory(false);
+                  }}
                   style={{ background: "none", border: "none", padding: 4 }}
                   aria-label="fermer"
                 >
@@ -5257,6 +5312,95 @@ export default function App() {
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation avant suppression totale de l'historique — se superpose
+          au panneau Historique (même famille de bottom-sheet, zIndex plus
+          élevé pour rester au-dessus). */}
+      {showHistory && confirmClearHistory && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(43, 36, 28, 0.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 11,
+          }}
+          onClick={() => setConfirmClearHistory(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: pt.sheetBg,
+              width: "100%",
+              maxWidth: 420,
+              borderRadius: "22px 22px 0 0",
+              padding: "20px 16px 28px",
+              boxShadow: "0 -10px 30px rgba(21, 34, 56, 0.18)",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 3,
+                background: pt.grabBg,
+                margin: "0 auto 16px",
+              }}
+            />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <Trash2 size={18} color={pt.errorColor} />
+              <h2 className="brand" style={{ fontSize: 18, margin: 0, color: pt.titleColor }}>
+                Tout effacer ?
+              </h2>
+            </div>
+            <p className="mono" style={{ fontSize: 13, color: pt.subText, marginBottom: 20, lineHeight: 1.5 }}>
+              Cette action supprimera définitivement {history.length} estimation{history.length > 1 ? "s" : ""} de ton historique. Impossible de revenir en arrière.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                className="mono"
+                onClick={() => setConfirmClearHistory(false)}
+                style={{
+                  flex: 1,
+                  background: pt.rowBg,
+                  border: pt.rowBorder,
+                  borderRadius: 10,
+                  padding: "12px 0",
+                  color: pt.rowText,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                className="mono"
+                onClick={() => {
+                  clearHistory();
+                  setConfirmClearHistory(false);
+                }}
+                style={{
+                  flex: 1,
+                  background: pt.errorColor,
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "12px 0",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Effacer tout
+              </button>
             </div>
           </div>
         </div>
