@@ -35,6 +35,10 @@ import charGriffonCeleste from "./assets/griffonCeleste.jpg";
 import charChevalierDore from "./assets/chevalierDore.jpg";
 import charSpectreElegant from "./assets/spectreElegant.jpg";
 import charDiableEcarlate from "./assets/diableEcarlate.jpg";
+import charLapin from "./assets/lapin.jpg";
+import charPanthereNuit from "./assets/panthereNuit.jpg";
+import charRatonMasque from "./assets/ratonMasque.jpg";
+import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 
 const CHARACTER_IMAGES = {
   chineur: charChineur,
@@ -62,10 +66,10 @@ const CHARACTER_IMAGES = {
   chevalierDore: charChevalierDore,
   spectreElegant: charSpectreElegant,
   diableEcarlate: charDiableEcarlate,
-  // Pas encore de portrait réel pour : lapin, panthereNuit, ratonMasque,
-  // ombreLegendaire — ils sont donc retirés de CHARACTERS_META pour
-  // l'instant (voir plus bas) et reviendront dans le catalogue dès que
-  // Dylan envoie leur image.
+  lapin: charLapin,
+  panthereNuit: charPanthereNuit,
+  ratonMasque: charRatonMasque,
+  ombreLegendaire: charOmbreLegendaire,
 };
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
@@ -182,20 +186,35 @@ const BG_PROGRESSION = BG_SKINS.filter((sk) => sk.key !== "blanc");
 function CharacterAvatar({ id, size = 96 }) {
   const src = CHARACTER_IMAGES[id] || CHARACTER_IMAGES.chineur;
   return (
-    <img
-      src={src}
-      alt=""
-      width={size}
-      height={size * 1.2}
+    <span
       style={{
         width: size,
-        height: size * 1.2,
-        objectFit: "cover",
-        objectPosition: "center 18%",
-        borderRadius: 10,
-        display: "block",
+        height: size,
+        borderRadius: "50%",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
       }}
-    />
+    >
+      <img
+        src={src}
+        alt=""
+        style={{
+          // Pastille ronde pour tous les personnages : on cadre sur un carré
+          // centré horizontalement et légèrement remonté verticalement (les
+          // portraits sont des bustes/pleins pieds, pas tous cadrés pareil —
+          // ce réglage garde le visage bien visible sans couper la tête, que
+          // le corps du perso aille jusqu'en bas de l'image d'origine ou non).
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "center 22%",
+          display: "block",
+        }}
+      />
+    </span>
   );
 }
 
@@ -1932,11 +1951,7 @@ export default function App() {
   // du pseudo).
   //
   // IMPORTANT : seuls les personnages qui ont déjà un vrai portrait
-  // (CHARACTER_IMAGES) figurent ici. Lapin Chanceux, Panthère des Nuits,
-  // Raton Masqué et L'Ombre Légendaire (2e avatar secret) sont prêts côté
-  // seuils/logique mais retirés du catalogue en attendant leur image —
-  // à réintégrer dès que Dylan les envoie (remettre leur entrée + les
-  // rajouter dans valid_ids côté Supabase).
+  // (CHARACTER_IMAGES) figurent ici.
   const DEFAULT_CHARACTER_ID = "chineur";
   const CHARACTERS_META = [
     // --- Palier 0 : gratuits dès le départ ---
@@ -1946,6 +1961,7 @@ export default function App() {
     { id: "renard", name: "Renard Malin", tier: 1, test: () => lifetimeEstimations >= 10, hint: "dès 10 estimations" },
     { id: "robotFerraille", name: "Robot Ferraille", tier: 1, test: () => lifetimeEstimations >= 25, hint: "dès 25 estimations" },
     { id: "chatCurieux", name: "Chat Curieux", tier: 1, test: () => lifetimeEstimations >= 50, hint: "dès 50 estimations" },
+    { id: "lapin", name: "Lapin Chanceux", tier: 1, test: () => lifetimeEstimations >= 75, hint: "dès 75 estimations" },
     { id: "singeFarceur", name: "Singe Farceur", tier: 1, test: () => lifetimeEstimations >= 100, hint: "dès 100 estimations" },
     { id: "hiboo", name: "Hibou Sage", tier: 1, test: () => lifetimeEstimations >= 150, hint: "dès 150 estimations" },
     // --- Palier 2 ---
@@ -1957,10 +1973,12 @@ export default function App() {
     // --- Palier 3 ---
     { id: "alienCurieux", name: "Alien Curieux", tier: 3, test: () => lifetimeEstimations >= 800, hint: "dès 800 estimations" },
     { id: "ninjaSilencieux", name: "Ninja Silencieux", tier: 3, test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
+    { id: "panthereNuit", name: "Panthère des Nuits", tier: 3, test: () => lifetimeEstimations >= 1250, hint: "dès 1250 estimations" },
     { id: "robotChrome", name: "Robot Chrome", tier: 3, test: () => lifetimeEstimations >= 1500, hint: "dès 1500 estimations" },
     { id: "bebeDragon", name: "Bébé Dragon", tier: 3, test: () => lifetimeEstimations >= 2000, hint: "dès 2000 estimations" },
     // --- Palier 4 ---
     { id: "cowboyEncheres", name: "Cowboy des Enchères", tier: 4, test: () => lifetimeEstimations >= 3000, hint: "dès 3000 estimations" },
+    { id: "ratonMasque", name: "Raton Masqué", tier: 4, test: () => lifetimeEstimations >= 4000, hint: "dès 4000 estimations" },
     { id: "chouetteDoree", name: "Chouette Dorée", tier: 4, test: () => lifetimeEstimations >= 5000, hint: "dès 5000 estimations" },
     { id: "pieuvreMystique", name: "Pieuvre Mystique", tier: 4, test: () => lifetimeEstimations >= 7500, hint: "dès 7500 estimations" },
     { id: "phenixArdent", name: "Phénix Ardent", tier: 4, test: () => lifetimeEstimations >= 10000, hint: "dès 10 000 estimations" },
@@ -1969,9 +1987,9 @@ export default function App() {
     { id: "griffonCeleste", name: "Griffon Céleste", tier: 5, test: () => lifetimeEstimations >= 20000, hint: "dès 20 000 estimations" },
     { id: "chevalierDore", name: "Chevalier Doré", tier: 5, test: () => lifetimeEstimations >= 30000, hint: "dès 30 000 estimations" },
     { id: "spectreElegant", name: "Spectre Élégant", tier: 5, test: () => lifetimeEstimations >= 50000, hint: "dès 50 000 estimations" },
-    // --- Palier 6 : le secret déjà illustré (L'Ombre Légendaire, 2e
-    // secret, rejoindra ce palier dès que son portrait arrive) ---
+    // --- Palier 6 : les 2 secrets ---
     { id: "diableEcarlate", name: "Le Diable Écarlate", tier: 6, secret: true, test: () => lifetimeEstimations >= 100000, hint: "??? (secret)" },
+    { id: "ombreLegendaire", name: "L'Ombre Légendaire", tier: 6, secret: true, test: () => lifetimeEstimations >= 100000, hint: "??? (secret)" },
   ];
   function characterMeta(id) {
     return CHARACTERS_META.find((c) => c.id === id) || CHARACTERS_META[0];
@@ -3939,9 +3957,7 @@ export default function App() {
               }}
             >
               {user && profile && profile.avatar_character ? (
-                <span style={{ display: "flex", alignItems: "flex-start", marginTop: 6 }}>
-                  <CharacterAvatar id={profile.avatar_character} size={30} />
-                </span>
+                <CharacterAvatar id={profile.avatar_character} size={30} />
               ) : (
                 <User size={16} color={pt.menuBtnColor} />
               )}
@@ -6061,92 +6077,76 @@ export default function App() {
                   </span>
                 </div>
 
-                {[0, 1, 2, 3, 4, 5, 6].map((tier) => {
-                  const tierChars = CHARACTERS_META.filter((c) => c.tier === tier);
-                  if (!tierChars.length) return null;
-                  const tierTitle =
-                    tier === 0
-                      ? "Gratuits"
-                      : tier === 6
-                      ? "Ultimes"
-                      : `Palier ${tier}`;
-                  return (
-                    <div key={tier} style={{ marginBottom: 20 }}>
-                      <div
-                        className="mono"
-                        style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}
+                {/* Liste unique à la suite, sans regroupement par palier :
+                    juste le seuil d'estimations requis pour débloquer chaque
+                    personnage (demandé explicitement par Dylan). */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+                  {CHARACTERS_META.map((meta) => {
+                    const unlocked = meta.free || meta.test();
+                    const selected = avatarCharacterInput === meta.id;
+                    const clickable = unlocked || isOwnerPreview;
+                    const isHiddenSecret = meta.secret && !unlocked && !isOwnerPreview;
+                    return (
+                      <button
+                        key={meta.id}
+                        onClick={() => pickCharacter(meta.id)}
+                        disabled={!clickable}
+                        title={
+                          isHiddenSecret
+                            ? "Personnage secret"
+                            : unlocked
+                            ? meta.name
+                            : isOwnerPreview
+                            ? `${meta.name} — aperçu (verrouillé pour les autres comptes, ${meta.hint})`
+                            : `${meta.name} — ${meta.hint}`
+                        }
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 4,
+                          width: 76,
+                          background: selected ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
+                          border: selected ? `2px solid ${accent}` : pt.rowBorder,
+                          borderRadius: 10,
+                          padding: "8px 4px",
+                          opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
+                          cursor: clickable ? "pointer" : "default",
+                        }}
                       >
-                        {tierTitle}
-                      </div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {tierChars.map((meta) => {
-                          const unlocked = meta.free || meta.test();
-                          const selected = avatarCharacterInput === meta.id;
-                          const clickable = unlocked || isOwnerPreview;
-                          const isHiddenSecret = meta.secret && !unlocked && !isOwnerPreview;
-                          return (
-                            <button
-                              key={meta.id}
-                              onClick={() => pickCharacter(meta.id)}
-                              disabled={!clickable}
-                              title={
-                                isHiddenSecret
-                                  ? "Personnage secret"
-                                  : unlocked
-                                  ? meta.name
-                                  : isOwnerPreview
-                                  ? `${meta.name} — aperçu (verrouillé pour les autres comptes, ${meta.hint})`
-                                  : `${meta.name} — ${meta.hint}`
-                              }
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: 4,
-                                width: 76,
-                                background: selected ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
-                                border: selected ? `2px solid ${accent}` : pt.rowBorder,
-                                borderRadius: 10,
-                                padding: "8px 4px",
-                                opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
-                                cursor: clickable ? "pointer" : "default",
-                              }}
-                            >
-                              {isHiddenSecret ? (
-                                <span
-                                  style={{
-                                    width: 42,
-                                    height: 50,
-                                    borderRadius: 10,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    background: "rgba(0,0,0,0.35)",
-                                  }}
-                                >
-                                  <span style={{ fontSize: 20 }}>❓</span>
-                                </span>
-                              ) : (
-                                <CharacterAvatar id={meta.id} size={42} />
-                              )}
-                              <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center", lineHeight: 1.2 }}>
-                                {isHiddenSecret ? "???" : meta.name}
-                              </span>
-                              {!unlocked && (
-                                <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                  <Lock size={8} color={pt.chevronColor} />
-                                  <span className="mono" style={{ fontSize: 7, color: pt.chevronColor, textAlign: "center", lineHeight: 1.1 }}>
-                                    {isHiddenSecret ? "secret" : meta.hint}
-                                  </span>
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+                        {isHiddenSecret ? (
+                          <span
+                            style={{
+                              width: 42,
+                              height: 42,
+                              borderRadius: "50%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: "rgba(0,0,0,0.35)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <span style={{ fontSize: 20 }}>❓</span>
+                          </span>
+                        ) : (
+                          <CharacterAvatar id={meta.id} size={42} />
+                        )}
+                        <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center", lineHeight: 1.2 }}>
+                          {isHiddenSecret ? "???" : meta.name}
+                        </span>
+                        {!unlocked && (
+                          <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <Lock size={8} color={pt.chevronColor} />
+                            <span className="mono" style={{ fontSize: 7, color: pt.chevronColor, textAlign: "center", lineHeight: 1.1 }}>
+                              {isHiddenSecret ? "secret" : meta.hint}
+                            </span>
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
 
                 <button
                   className="btn-primary"
