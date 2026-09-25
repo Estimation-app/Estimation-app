@@ -194,6 +194,13 @@ function CharacterAvatar({ id, size = 96 }) {
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
+        // Fond identique au bleu nuit déjà présent sur tous les portraits
+        // (mesuré sur leurs pixels de coin, quasi identique d'une image à
+        // l'autre) : sans ça, le petit espace laissé par l'image réduite à
+        // 86% ci-dessous était transparent, laissait voir le fond de
+        // l'appli derrière, et cassait l'effet de pastille ronde (on
+        // voyait les bords carrés de l'image plutôt qu'un cercle net).
+        background: "#0e1628",
       }}
     >
       <img
@@ -206,8 +213,9 @@ function CharacterAvatar({ id, size = 96 }) {
           // qui coupe net tout ce qui dépasse dans les 4 coins du carré
           // (oreilles de chat/renard/hibou, pointe du bonnet, antenne...).
           // On réduit donc légèrement l'image (86%) à l'intérieur de sa
-          // pastille pour que ces extrémités restent dans le cercle visible,
-          // au prix d'un léger liseré du fond sombre de l'image tout autour.
+          // pastille pour que ces extrémités restent dans le cercle visible ;
+          // le span parent (fond bleu nuit ci-dessus) comble le tour pour
+          // que ça reste un cercle net plutôt qu'un carré transparent.
           width: "86%",
           height: "86%",
           objectFit: "cover",
