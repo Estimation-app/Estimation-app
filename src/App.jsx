@@ -83,6 +83,18 @@ const SOURCE_LABELS = {
   ebaySold: "eBay (vendu)",
 };
 
+// Libellé + couleur affichés pour chaque niveau de confiance d'une
+// estimation (voir result.confiance). "#4ADE80" et l'accent de marque sont
+// déjà utilisés ailleurs dans l'appli pour signaler respectivement une
+// donnée fiable et une donnée standard — on réutilise ces mêmes couleurs
+// ici plutôt que d'en introduire de nouvelles.
+const CONFIDENCE_LABELS = {
+  haute: { label: "Confiance élevée", dot: "#4ADE80" },
+  moyenne: { label: "Confiance moyenne", dot: null }, // null = utilise l'accent de marque (variable selon le thème de l'utilisateur)
+  basse: { label: "Confiance limitée", dot: "muted" },
+  indicative: { label: "Estimation indicative", dot: "muted" },
+};
+
 // Plateformes vers lesquelles on renvoie pour créer une annonce (bouton
 // "Générer une annonce"). On n'utilise pas les logos officiels (fichiers
 // image sous droits/marque déposée) mais un petit badge rond dans la
@@ -1118,6 +1130,7 @@ export default function App() {
   const [resultTab, setResultTab] = useState("estimation"); // estimation | statistiques
   const [trendRange, setTrendRange] = useState("5a"); // période affichée sur la courbe de tendance
   const [correctionOpen, setCorrectionOpen] = useState(false); // affiche le champ "corriger un détail"
+  const [listingsOpen, setListingsOpen] = useState(false); // affiche la liste détaillée des annonces retenues (repliée par défaut, page plus courte)
   const [correctionInput, setCorrectionInput] = useState(""); // texte de la correction en cours de saisie
   const [adText, setAdText] = useState(null); // { titre, description } | null — annonce générée par l'IA
   const [adLoading, setAdLoading] = useState(false);
@@ -2522,6 +2535,7 @@ export default function App() {
     setResult(null);
     setResultTab("estimation");
     setCorrectionOpen(false);
+    setListingsOpen(false);
     setCorrectionInput("");
     setAdText(null);
     setAdLoading(false);
@@ -2789,6 +2803,7 @@ export default function App() {
     setResult(null);
     setResultTab("estimation");
     setCorrectionOpen(false);
+    setListingsOpen(false);
     setCorrectionInput("");
     setAdText(null);
     setAdLoading(false);
@@ -2847,6 +2862,7 @@ export default function App() {
     setDetails(merged);
     setCorrectionInput("");
     setCorrectionOpen(false);
+    setListingsOpen(false);
     await estimate(merged);
   }
 
@@ -3553,6 +3569,7 @@ export default function App() {
     setError(null);
     setResultTab("estimation");
     setCorrectionOpen(false);
+    setListingsOpen(false);
     setCorrectionInput("");
     setAdText(null);
     setAdLoading(false);
@@ -4148,29 +4165,35 @@ export default function App() {
 
           {user && profile && (
             <div
-              className="mono"
               style={{
                 marginTop: 12,
-                fontSize: 11,
-                color: pt.chipText,
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
                 cursor: "pointer",
                 position: "relative",
+                background: pt.chipBg,
+                border: pt.chipBorder,
+                borderRadius: 20,
+                padding: "6px 12px",
+                color: pt.chipText,
               }}
               onClick={() => setShowHistory(true)}
             >
-              <Sparkles size={12} />
+              <Sparkles size={12} color={accent} style={{ flexShrink: 0 }} />
               {profile.plan !== "gratuit" && profile.subscription_status === "active" ? (
-                <span>
-                  {PLANS.find((p) => p.key === profile.plan)?.label || profile.plan} ·{" "}
-                  {Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/{profile.quota_mensuel}{" "}
-                  estimations restantes
+                <span className="brand" style={{ fontSize: 12, fontStyle: "italic", fontWeight: 500 }}>
+                  {PLANS.find((p) => p.key === profile.plan)?.label || profile.plan}
+                  <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 400 }}>
+                    {Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/{profile.quota_mensuel} restantes
+                  </span>
                 </span>
               ) : (
-                <span>
-                  Gratuit · {Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) restante(s) ce mois
+                <span className="brand" style={{ fontSize: 12, fontStyle: "italic", fontWeight: 500 }}>
+                  Gratuit
+                  <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 400 }}>
+                    {Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) restante(s) ce mois
+                  </span>
                 </span>
               )}
             </div>
@@ -4660,13 +4683,12 @@ export default function App() {
 
                 {listingSeed && (
                   <div
-                    className="mono"
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
                       flexWrap: "wrap",
-                      fontSize: 10,
+                      fontSize: 11,
                       color: pt.subText,
                       background: pt.rowBg,
                       border: pt.rowBorder,
@@ -4677,13 +4699,16 @@ export default function App() {
                     }}
                   >
                     <Sparkles size={11} color={accent} style={{ flexShrink: 0 }} />
-                    <span>{listingSeed.fromHistory ? t("reestimate_badge") : t("listing_seed_badge")}</span>
+                    <span className="brand" style={{ fontStyle: "italic" }}>
+                      {listingSeed.fromHistory ? t("reestimate_badge") : t("listing_seed_badge")}
+                    </span>
                     {listingSeed.link && (
                       <a
                         href={listingSeed.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: accent, textDecoration: "underline" }}
+                        className="mono"
+                        style={{ fontSize: 10, color: accent, textDecoration: "underline" }}
                       >
                         {t("listing_seed_link")}
                       </a>
@@ -4843,7 +4868,8 @@ export default function App() {
                   </div>
                 )}
 
-                {result.breakdown && Object.keys(result.breakdown).length > 0 && (
+                {((result.breakdown && Object.keys(result.breakdown).length > 0) ||
+                  (result.listings && result.listings.length > 0)) && (
                   <div
                     style={{
                       borderTop: pt.dashedBorder,
@@ -4851,55 +4877,69 @@ export default function App() {
                       marginBottom: 12,
                     }}
                   >
-                    <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
-                      détail par plateforme :
+                    <div
+                      className="brand"
+                      style={{ fontSize: 13, fontStyle: "italic", fontWeight: 500, color: pt.rowText, marginBottom: 6 }}
+                    >
+                      Détail par plateforme
                     </div>
-                    {["leboncoin", "vinted", "ebay", "ebaySold"].map((key) => {
-                      const b = result.breakdown[key];
-                      if (!b) return null;
-                      const label = SOURCE_LABELS[key] || key;
-                      return (
-                        <div
-                          key={key}
+                    {result.breakdown &&
+                      ["leboncoin", "vinted", "ebay", "ebaySold"].map((key) => {
+                        const b = result.breakdown[key];
+                        if (!b) return null;
+                        const label = SOURCE_LABELS[key] || key;
+                        return (
+                          <div
+                            key={key}
+                            style={{
+                              fontSize: 12,
+                              color: pt.rowText,
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 8,
+                              padding: "3px 0",
+                            }}
+                          >
+                            <span>{label}</span>
+                            {b.count > 0 ? (
+                              <span
+                                className="mono"
+                                style={{ color: key === "ebaySold" ? "#4ADE80" : accent }}
+                              >
+                                {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count} {key === "ebaySold" ? "vente" : "annonce"}
+                                {b.count > 1 ? "s" : ""})
+                              </span>
+                            ) : (
+                              <span style={{ color: pt.chevronColor, fontStyle: "italic" }}>indisponible</span>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                    {result.listings && result.listings.length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setListingsOpen((v) => !v)}
+                          className="mono"
                           style={{
-                            fontSize: 12,
-                            color: pt.rowText,
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 8,
-                            padding: "3px 0",
+                            fontSize: 11,
+                            color: pt.chevronColor,
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            marginTop: 10,
+                            cursor: "pointer",
+                            textDecoration: "underline",
                           }}
                         >
-                          <span>{label}</span>
-                          {b.count > 0 ? (
-                            <span
-                              className="mono"
-                              style={{ color: key === "ebaySold" ? "#4ADE80" : accent }}
-                            >
-                              {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count} {key === "ebaySold" ? "vente" : "annonce"}
-                              {b.count > 1 ? "s" : ""})
-                            </span>
-                          ) : (
-                            <span style={{ color: pt.chevronColor, fontStyle: "italic" }}>indisponible</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {result.listings && result.listings.length > 0 && (
-                  <div
-                    style={{
-                      borderTop: pt.dashedBorder,
-                      paddingTop: 12,
-                      marginBottom: 12,
-                    }}
-                  >
-                    <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
-                      annonces retenues (même produit) :
-                    </div>
-                    {result.listings.map((l, i) => {
+                          {listingsOpen
+                            ? "Réduire"
+                            : `Voir le détail des ${result.listings.length} annonce${result.listings.length > 1 ? "s" : ""} retenue${result.listings.length > 1 ? "s" : ""}`}
+                        </button>
+                        {listingsOpen && (
+                          <div style={{ marginTop: 8 }}>
+                            {result.listings.map((l, i) => {
                       const RowTag = l.link ? "a" : "div";
                       const rowProps = l.link
                         ? { href: l.link, target: "_blank", rel: "noopener noreferrer" }
@@ -4952,7 +4992,11 @@ export default function App() {
                           </span>
                         </RowTag>
                       );
-                    })}
+                            })}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -5416,12 +5460,21 @@ export default function App() {
                   </div>
                 )}
 
-                <div
-                  className="mono"
-                  style={{ fontSize: 11, color: pt.chevronColor, marginTop: 16, lineHeight: 1.6 }}
-                >
-                  confiance: {result.confiance} · {result.source}
-                </div>
+                {(() => {
+                  const conf = CONFIDENCE_LABELS[result.confiance] || { label: result.confiance, dot: "muted" };
+                  const dotColor = conf.dot === "muted" ? pt.chevronColor : conf.dot || accent;
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 16 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                      <span className="brand" style={{ fontSize: 13, fontStyle: "italic", fontWeight: 500, color: pt.rowText }}>
+                        {conf.label}
+                      </span>
+                      <span className="mono" style={{ fontSize: 10, color: pt.chevronColor }}>
+                        · {result.source}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
