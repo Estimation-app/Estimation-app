@@ -39,6 +39,19 @@ import charPanthereNuit from "./assets/panthereNuit.jpg";
 import charRatonMasque from "./assets/ratonMasque.jpg";
 import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 
+// Portraits "en action" (même personnage, nouvelle posture en pied, prêt à
+// scanner un objet) — utilisés uniquement en incrustation semi-transparente
+// dans le cadre "prendre une photo" (voir plus bas), pas dans le reste de
+// l'avatar. Détourés à la main (fond transparent) à partir des générations
+// Nano Banana de Dylan. Tant qu'un personnage n'a pas encore la sienne, il
+// n'apparaît simplement pas dans CHARACTER_ACTION_IMAGES et le cadre photo
+// reste sans incrustation pour ce personnage (pas de génération de repli).
+import charRobotFerrailleAction from "./assets/robotFerrailleAction.png";
+
+const CHARACTER_ACTION_IMAGES = {
+  robotFerraille: charRobotFerrailleAction,
+};
+
 const CHARACTER_IMAGES = {
   chineur: charChineur,
   chineuse: charChineuse,
@@ -2038,6 +2051,12 @@ export default function App() {
   // IMPORTANT : seuls les personnages qui ont déjà un vrai portrait
   // (CHARACTER_IMAGES) figurent ici.
   const DEFAULT_CHARACTER_ID = "chineur";
+  // Portrait "en action" à incruster dans le cadre "prendre une photo" —
+  // celui du personnage actuellement équipé, seulement s'il en a un (voir
+  // CHARACTER_ACTION_IMAGES tout en haut du fichier) ; sinon le cadre reste
+  // sans incrustation, sans repli sur un autre personnage.
+  const activeCharacterId = (profile && profile.avatar_character) || DEFAULT_CHARACTER_ID;
+  const dropZoneMascot = CHARACTER_ACTION_IMAGES[activeCharacterId] || null;
   const CHARACTERS_META = [
     // --- Palier 0 : gratuits dès le départ ---
     { id: "chineur", name: "Le Chineur", tier: 0, free: true },
@@ -3993,6 +4012,16 @@ export default function App() {
           pointer-events: none;
         }
         .drop-zone:active { transform: scale(0.99); }
+        .drop-zone-mascot {
+          position: absolute;
+          bottom: 0;
+          right: 4%;
+          height: 92%;
+          width: auto;
+          opacity: 0.4;
+          pointer-events: none;
+          z-index: 0;
+        }
         .tag-card {
           background: ${pt.formCardBg};
           border: 1px solid ${pt.rowBorder.replace("1px solid ", "")};
@@ -4300,9 +4329,25 @@ export default function App() {
 
         {!image && (
           <label className="drop-zone" htmlFor="photo-input">
-            <Camera size={30} strokeWidth={1.5} style={{ color: accent }} />
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{t("drop_zone_title")}</div>
-            <div style={{ fontSize: 12, opacity: 0.75 }}>{t("drop_zone_sub")}</div>
+            {dropZoneMascot && (
+              <img src={dropZoneMascot} alt="" aria-hidden="true" className="drop-zone-mascot" />
+            )}
+            <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <Camera size={30} strokeWidth={1.5} style={{ color: accent }} />
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{t("drop_zone_title")}</div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>{t("drop_zone_sub")}</div>
+              <span
+                className="btn-ghost"
+                style={{
+                  marginTop: 6,
+                  pointerEvents: "none",
+                  borderColor: pt.ghostBorder,
+                  color: pt.ghostColor,
+                }}
+              >
+                <Upload size={14} /> choisir un fichier
+              </span>
+            </div>
             <input
               id="photo-input"
               type="file"
@@ -4310,17 +4355,6 @@ export default function App() {
               onChange={handleFile}
               style={{ display: "none" }}
             />
-            <span
-              className="btn-ghost"
-              style={{
-                marginTop: 6,
-                pointerEvents: "none",
-                borderColor: pt.ghostBorder,
-                color: pt.ghostColor,
-              }}
-            >
-              <Upload size={14} /> choisir un fichier
-            </span>
           </label>
         )}
 
