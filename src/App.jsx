@@ -103,12 +103,17 @@ const SUPABASE_URL = "https://heykndklprjuvooqztmi.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_HFixMx_zGtcvHw6wqAUKBA_66uuJkBZ";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Les 3 abonnements payants (voir STRIPE_PRICES dans worker.js pour les IDs
-// de prix réels côté serveur — le front n'envoie que la clé du plan).
+// Les 4 abonnements payants (voir STRIPE_PRICES dans worker.js pour les IDs
+// de prix réels côté serveur — le front n'envoie que la clé du plan). "bonus"
+// est le nombre d'estimations offertes en plus du quota, une seule fois au
+// moment de la souscription (voir SIGNUP_BONUS et le webhook Stripe dans
+// worker.js pour l'octroi réel côté serveur — ce champ ne sert qu'à
+// l'affichage ici).
 const PLANS = [
-  { key: "debutant", label: "Starter", price: "2,99 €/mois", quota: 20 },
-  { key: "pro", label: "Pro", price: "9,99 €/mois", quota: 100 },
-  { key: "premium", label: "Premium", price: "19,99 €/mois", quota: 250 },
+  { key: "debutant", label: "Starter", price: "2,99 €/mois", quota: 20, bonus: 3 },
+  { key: "pro", label: "Pro", price: "9,99 €/mois", quota: 100, bonus: 8 },
+  { key: "premium", label: "Premium", price: "24,99 €/mois", quota: 300, bonus: 20 },
+  { key: "elite", label: "Elite", price: "69,99 €/mois", quota: 1000, bonus: 50 },
 ];
 
 // "Habillages" débloqués au fil des estimations (fonctionne comme les
@@ -437,6 +442,8 @@ const TRANSLATIONS = {
     subscription_remaining_paid: "estimations restantes ce mois",
     subscription_remaining_free: "estimation(s) gratuite(s) restante(s) ce mois",
     subscription_plans_title: "Nos abonnements :",
+    subscription_bonus_suffix: "offertes à la souscription",
+    subscription_cancel_anytime: "Résiliable à tout moment, directement depuis ton compte.",
     contact_title: "Contact",
     contact_text: "Une question, un souci, une suggestion ? Écris-nous :",
     language_title: "Langue",
@@ -514,6 +521,8 @@ const TRANSLATIONS = {
     subscription_remaining_paid: "estimates left this month",
     subscription_remaining_free: "free estimate(s) left this month",
     subscription_plans_title: "Our plans:",
+    subscription_bonus_suffix: "offered when you subscribe",
+    subscription_cancel_anytime: "Cancel anytime, directly from your account.",
     contact_title: "Contact",
     contact_text: "A question, an issue, a suggestion? Write to us:",
     language_title: "Language",
@@ -591,6 +600,8 @@ const TRANSLATIONS = {
     subscription_remaining_paid: "estimaciones restantes este mes",
     subscription_remaining_free: "estimación(es) gratuita(s) restante(s) este mes",
     subscription_plans_title: "Nuestros planes:",
+    subscription_bonus_suffix: "de regalo al suscribirte",
+    subscription_cancel_anytime: "Cancelable en cualquier momento, directamente desde tu cuenta.",
     contact_title: "Contacto",
     contact_text: "¿Una pregunta, un problema, una sugerencia? Escríbenos:",
     language_title: "Idioma",
@@ -7313,8 +7324,15 @@ export default function App() {
                     disabled={!user || checkoutLoading !== null}
                     style={{ justifyContent: "space-between", width: "100%", opacity: user ? 1 : 0.6 }}
                   >
-                    <span>
-                      {plan.label} — {plan.quota}/mois
+                    <span style={{ textAlign: "left" }}>
+                      <span style={{ display: "block" }}>
+                        {plan.label} — {plan.quota}/mois
+                      </span>
+                      {plan.bonus > 0 && (
+                        <span style={{ display: "block", fontSize: 11, opacity: 0.85 }}>
+                          + {plan.bonus} {t("subscription_bonus_suffix")}
+                        </span>
+                      )}
                     </span>
                     <span>
                       {checkoutLoading === plan.key ? (
@@ -7326,6 +7344,9 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              <p className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 10, marginBottom: 0 }}>
+                {t("subscription_cancel_anytime")}
+              </p>
             </div>
           </div>
         </div>
@@ -7481,8 +7502,15 @@ export default function App() {
                     disabled={checkoutLoading !== null}
                     style={{ justifyContent: "space-between", width: "100%" }}
                   >
-                    <span>
-                      {plan.label} — {plan.quota}/mois
+                    <span style={{ textAlign: "left" }}>
+                      <span style={{ display: "block" }}>
+                        {plan.label} — {plan.quota}/mois
+                      </span>
+                      {plan.bonus > 0 && (
+                        <span style={{ display: "block", fontSize: 11, opacity: 0.85 }}>
+                          + {plan.bonus} {t("subscription_bonus_suffix")}
+                        </span>
+                      )}
                     </span>
                     <span>
                       {checkoutLoading === plan.key ? (
@@ -7494,6 +7522,9 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              <p className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 10, marginBottom: 0 }}>
+                {t("subscription_cancel_anytime")}
+              </p>
             </div>
           </div>
         </div>
