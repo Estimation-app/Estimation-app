@@ -108,7 +108,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const PLANS = [
   { key: "debutant", label: "Starter", price: "2,99 €/mois", quota: 20 },
   { key: "pro", label: "Pro", price: "9,99 €/mois", quota: 100 },
-  { key: "premium", label: "Premium", price: "19,99 €/mois", quota: 300 },
+  { key: "premium", label: "Premium", price: "19,99 €/mois", quota: 250 },
 ];
 
 // "Habillages" débloqués au fil des estimations (fonctionne comme les
