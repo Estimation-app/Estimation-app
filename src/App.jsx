@@ -46,10 +46,18 @@ import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 // Nano Banana de Dylan. Tant qu'un personnage n'a pas encore la sienne, il
 // n'apparaît simplement pas dans CHARACTER_ACTION_IMAGES et le cadre photo
 // reste sans incrustation pour ce personnage (pas de génération de repli).
+//
+// `anchor` = bord du cadre où positionner le personnage — TOUJOURS à
+// l'opposé du sens de son regard/de son outil (loupe, téléphone...), pour
+// qu'il ait l'air de regarder VERS l'intérieur du cadre plutôt que de lui
+// tourner le dos. À définir au cas par cas pour chaque nouveau personnage
+// selon sa posture (pas de valeur par défaut qui pourrait être fausse).
 import charRobotFerrailleAction from "./assets/robotFerrailleAction.png";
 
 const CHARACTER_ACTION_IMAGES = {
-  robotFerraille: charRobotFerrailleAction,
+  // Robot Ferraille tend sa loupe vers la droite → ancré à gauche, pour
+  // qu'il regarde vers le centre du cadre.
+  robotFerraille: { src: charRobotFerrailleAction, anchor: "left" },
 };
 
 const CHARACTER_IMAGES = {
@@ -4015,13 +4023,14 @@ export default function App() {
         .drop-zone-mascot {
           position: absolute;
           bottom: 0;
-          right: 4%;
           height: 92%;
           width: auto;
           opacity: 0.4;
           pointer-events: none;
           z-index: 0;
         }
+        .drop-zone-mascot-left { left: 4%; }
+        .drop-zone-mascot-right { right: 4%; }
         .tag-card {
           background: ${pt.formCardBg};
           border: 1px solid ${pt.rowBorder.replace("1px solid ", "")};
@@ -4330,7 +4339,12 @@ export default function App() {
         {!image && (
           <label className="drop-zone" htmlFor="photo-input">
             {dropZoneMascot && (
-              <img src={dropZoneMascot} alt="" aria-hidden="true" className="drop-zone-mascot" />
+              <img
+                src={dropZoneMascot.src}
+                alt=""
+                aria-hidden="true"
+                className={`drop-zone-mascot drop-zone-mascot-${dropZoneMascot.anchor}`}
+              />
             )}
             <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
               <Camera size={30} strokeWidth={1.5} style={{ color: accent }} />
