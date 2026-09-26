@@ -128,18 +128,22 @@ const PLANS = [
   { key: "elite", label: "Elite", price: "69,99 €/mois", quota: 1000, bonus: 50 },
 ];
 
-// "Habillages" débloqués au fil des estimations (fonctionne comme les
-// badges de "Ma collection", mais change carrément l'accent visuel de toute
-// l'appli à la place de l'orange, en plus du choix fond clair/sombre). Le
+// "Habillages" débloqués selon le PLAN D'ABONNEMENT souscrit (et non plus
+// au fil des estimations) — change carrément l'accent visuel de toute
+// l'appli à la place de l'orange, en plus du choix fond clair/sombre. Le
 // premier ("defaut") correspond à l'orange de marque habituel — il n'est
 // jamais verrouillé. Chaque palier a sa propre teinte + une variante plus
-// foncée (dégradés type bouton) et plus claire (surbrillance).
+// foncée (dégradés type bouton) et plus claire (surbrillance). `planRank`
+// est comparé à PLAN_GRADE_RANK[profile.plan] : un plan plus élevé
+// débloque automatiquement tous les paliers en dessous du sien (Premium
+// débloque aussi Argent et Bronze, etc.) — voir userPlanRank plus bas.
+const PLAN_GRADE_RANK = { gratuit: 0, debutant: 1, pro: 2, premium: 3, elite: 4 };
 const GRADES = [
-  { key: "defaut", threshold: 0, label: "Estim' classique", emoji: "🟠", accent: "#F2662E", accentDark: "#E0501D", accentLight: "#FF8A52", glow: 0 },
-  { key: "bronze", threshold: 100, label: "Bronze", emoji: "🥉", accent: "#C97A3D", accentDark: "#8C5225", accentLight: "#E7A876", glow: 0.16 },
-  { key: "argent", threshold: 500, label: "Argent", emoji: "🥈", accent: "#8B98A6", accentDark: "#5C6773", accentLight: "#F1F5F9", glow: 0.22 },
-  { key: "or", threshold: 1000, label: "Or", emoji: "🥇", accent: "#D4A017", accentDark: "#96700D", accentLight: "#F6D978", glow: 0.3 },
-  { key: "diamant", threshold: 5000, label: "Diamant", emoji: "💎", accent: "#4FC3E8", accentDark: "#1E7FA3", accentLight: "#D6F6FF", glow: 0.4 },
+  { key: "defaut", planRank: 0, planLabel: null, label: "Estim' classique", emoji: "🟠", accent: "#F2662E", accentDark: "#E0501D", accentLight: "#FF8A52", glow: 0 },
+  { key: "bronze", planRank: 1, planLabel: "Starter", label: "Bronze", emoji: "🥉", accent: "#C97A3D", accentDark: "#8C5225", accentLight: "#E7A876", glow: 0.16 },
+  { key: "argent", planRank: 2, planLabel: "Pro", label: "Argent", emoji: "🥈", accent: "#8B98A6", accentDark: "#5C6773", accentLight: "#F1F5F9", glow: 0.22 },
+  { key: "or", planRank: 3, planLabel: "Premium", label: "Or", emoji: "🥇", accent: "#D4A017", accentDark: "#96700D", accentLight: "#F6D978", glow: 0.3 },
+  { key: "diamant", planRank: 4, planLabel: "Elite", label: "Diamant", emoji: "💎", accent: "#4FC3E8", accentDark: "#1E7FA3", accentLight: "#D6F6FF", glow: 0.4 },
 ];
 
 // Convertit un hex ("#RRGGBB") en triplet "r, g, b" pour construire des
@@ -153,37 +157,37 @@ function hexToRgbString(hex) {
   return `${r}, ${g}, ${b}`;
 }
 
-// "Fonds" débloqués au fil des GÉNÉRATIONS D'ANNONCE (et non des
-// estimations comme pour les habillages — on génère bien moins d'annonces
-// que d'estimations, donc les paliers sont volontairement beaucoup plus
-// bas). Le premier ("bleu") correspond au fond navy/blanc habituel — il
-// n'est jamais verrouillé et ne modifie rien (voir la logique de pt.* plus
-// bas : on ne touche aux dégradés de fond que pour les autres teintes).
-// Chaque teinte fournit 3 tons pour le mode sombre et 3 pour le mode clair,
-// utilisés pour reconstruire dynamiquement pageBg/sheetBg/headerBg/etc.
-// "bleu" et "blanc" sont les deux fonds historiques (l'ancienne bascule
-// fond sombre/clair du menu, désormais fusionnée ici) : toujours débloqués,
-// jamais retouchés (mode "dark"/"light" = les thèmes PANEL_THEMES existants
-// tels quels). Les couleurs suivantes sont volontairement saturées/vives
-// (pas de pastel délavé) pour bien se voir, sur le même principe que le
-// bleu nuit d'origine — seules les grandes surfaces (page/panneaux/header/
+// "Fonds" débloqués au fil des JOURS DE CONNEXION CONSÉCUTIFS (et non plus
+// des générations d'annonce) — voir connectionStreak plus bas, dérivé du
+// même suivi de dates que lifetimeConnectionDays. Le premier ("bleu")
+// correspond au fond navy/blanc habituel — il n'est jamais verrouillé et
+// ne modifie rien (voir la logique de pt.* plus bas : on ne touche aux
+// dégradés de fond que pour les autres teintes). Chaque teinte fournit 3
+// tons pour le mode sombre et 3 pour le mode clair, utilisés pour
+// reconstruire dynamiquement pageBg/sheetBg/headerBg/etc. "bleu" et
+// "blanc" sont les deux fonds historiques (l'ancienne bascule fond sombre/
+// clair du menu, désormais fusionnée ici) : toujours débloqués, jamais
+// retouchés (mode "dark"/"light" = les thèmes PANEL_THEMES existants tels
+// quels). Les couleurs suivantes sont volontairement saturées/vives (pas
+// de pastel délavé) pour bien se voir, sur le même principe que le bleu
+// nuit d'origine — seules les grandes surfaces (page/panneaux/header/
 // carte résultat/écran de chargement/zone photo) sont retouchées, via un
 // dégradé base → mid → high propre à chaque teinte (voir plus bas dans le
 // composant, juste avant `const pt = ...`).
 const BG_SKINS = [
   { key: "bleu", threshold: 0, label: "Bleu nuit", emoji: "🔵", mode: "dark", base: "#0A1220", mid: "#152238", high: "#26374E" },
   { key: "blanc", threshold: 0, label: "Blanc", emoji: "⚪", mode: "light", base: "#E9EDF2", mid: "#F4F6F9", high: "#D7DEE6" },
-  { key: "vert", threshold: 10, label: "Vert", emoji: "🟢", mode: "dark", base: "#051A10", mid: "#0F3D26", high: "#17824C" },
-  { key: "jaune", threshold: 40, label: "Jaune", emoji: "🟡", mode: "dark", base: "#1F1605", mid: "#4D3800", high: "#8A6800" },
-  { key: "marron", threshold: 90, label: "Marron", emoji: "🟤", mode: "dark", base: "#1C120A", mid: "#442A17", high: "#7A4A26" },
-  { key: "rouge", threshold: 180, label: "Rouge", emoji: "🔴", mode: "dark", base: "#210609", mid: "#6E1620", high: "#B22B3A" },
-  { key: "violet", threshold: 320, label: "Violet", emoji: "🟣", mode: "dark", base: "#180A28", mid: "#3F1768", high: "#6D2FB0" },
+  { key: "vert", threshold: 3, label: "Vert", emoji: "🟢", mode: "dark", base: "#051A10", mid: "#0F3D26", high: "#17824C" },
+  { key: "jaune", threshold: 7, label: "Jaune", emoji: "🟡", mode: "dark", base: "#1F1605", mid: "#4D3800", high: "#8A6800" },
+  { key: "marron", threshold: 14, label: "Marron", emoji: "🟤", mode: "dark", base: "#1C120A", mid: "#442A17", high: "#7A4A26" },
+  { key: "rouge", threshold: 30, label: "Rouge", emoji: "🔴", mode: "dark", base: "#210609", mid: "#6E1620", high: "#B22B3A" },
+  { key: "violet", threshold: 60, label: "Violet", emoji: "🟣", mode: "dark", base: "#180A28", mid: "#3F1768", high: "#6D2FB0" },
   // "Platine" : palier ultime ("masterclass" demandé) — argenté/brillant,
   // avec des nuances qui tirent vers le bleu-cyan du grade "diamant" (voir
   // GRADES plus haut) pour rappeler la pierre précieuse sans le copier.
   // Seul palier avec `glow` (halo lumineux) et petits glyphes "incrustés"
   // (voir le bloc `activeBgSkin.key === "platine"` dans le header).
-  { key: "platine", threshold: 500, label: "Platine", emoji: "💠", mode: "dark", base: "#10141B", mid: "#5A6C82", high: "#D9F3FF", glow: 0.4 },
+  { key: "platine", threshold: 100, label: "Platine", emoji: "💠", mode: "dark", base: "#10141B", mid: "#5A6C82", high: "#D9F3FF", glow: 0.4 },
 ];
 // Progression réelle des paliers à débloquer (le "blanc" est un fond
 // alternatif toujours disponible, pas une récompense — il ne fait donc pas
@@ -1483,15 +1487,21 @@ export default function App() {
     })();
   }, [user]);
 
-  function gradeForCount(n) {
+  // Rang du plan d'abonnement actif (voir PLAN_GRADE_RANK et GRADES plus
+  // haut) — 0 si non connecté, plan gratuit, ou abonnement non actif
+  // (résilié, impayé, etc. — même vérification que isPremiumPlan ailleurs
+  // dans le fichier).
+  const userPlanRank = profile && profile.subscription_status === "active" ? PLAN_GRADE_RANK[profile.plan] || 0 : 0;
+
+  function gradeForPlanRank(rank) {
     let g = GRADES[0];
     for (const gr of GRADES) {
-      if (n >= gr.threshold) g = gr;
+      if (rank >= gr.planRank) g = gr;
     }
     return g;
   }
-  const highestUnlockedGrade = gradeForCount(lifetimeEstimations);
-  const nextGrade = GRADES.find((g) => g.threshold > lifetimeEstimations) || null;
+  const highestUnlockedGrade = gradeForPlanRank(userPlanRank);
+  const nextGrade = GRADES.find((g) => g.planRank > userPlanRank) || null;
 
   // Palier choisi par l'utilisateur (peut revenir à un palier déjà débloqué
   // moins "haut" s'il préfère ce style) — bascule automatiquement sur le
@@ -1530,7 +1540,7 @@ export default function App() {
 
   const activeGrade =
     (selectedGradeKey &&
-      GRADES.find((g) => g.key === selectedGradeKey && (g.threshold <= lifetimeEstimations || isOwnerPreview))) ||
+      GRADES.find((g) => g.key === selectedGradeKey && (g.planRank <= userPlanRank || isOwnerPreview))) ||
     highestUnlockedGrade;
   const accent = activeGrade.accent;
   const accentDark = activeGrade.accentDark;
@@ -1555,22 +1565,28 @@ export default function App() {
     } catch (e) {}
   }, [lifetimeAdGenerations]);
 
-  function bgSkinForCount(n) {
-    let b = BG_PROGRESSION[0];
-    for (const sk of BG_PROGRESSION) {
-      if (n >= sk.threshold) b = sk;
+  // Nombre de jours DISTINCTS où l'appli a été ouverte, et jours
+  // CONSÉCUTIFS jusqu'à aujourd'hui (streak) — sert désormais à débloquer
+  // les "fonds" de couleur (BG_SKINS plus haut) à la place des générations
+  // d'annonce, et sert toujours à débloquer certains personnages de
+  // l'avatar (voir CHARACTERS_META plus bas). Propre à l'appareil (local
+  // uniquement) : on garde la liste des dates (YYYY-MM-DD) déjà vues dans
+  // localStorage, et on ajoute la date du jour une seule fois au montage
+  // si elle n'y est pas encore.
+  function computeConnectionStreak(days) {
+    try {
+      const set = new Set(Array.isArray(days) ? days : []);
+      let streak = 0;
+      const cursor = new Date();
+      while (set.has(cursor.toISOString().slice(0, 10))) {
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+      return streak;
+    } catch (e) {
+      return 0;
     }
-    return b;
   }
-  const highestUnlockedBgSkin = bgSkinForCount(lifetimeAdGenerations);
-  const nextBgSkin = BG_PROGRESSION.find((sk) => sk.threshold > lifetimeAdGenerations) || null;
-
-  // Nombre de jours DISTINCTS où l'appli a été ouverte ("nombre de
-  // connexions") — sert à débloquer certains personnages de l'avatar (voir
-  // CHARACTERS_META plus bas). Propre à l'appareil (local uniquement, comme
-  // lifetimeAdGenerations ci-dessus) : on garde la liste des dates
-  // (YYYY-MM-DD) déjà vues dans localStorage, et on ajoute la date du jour
-  // une seule fois au montage si elle n'y est pas encore.
   const [lifetimeConnectionDays, setLifetimeConnectionDays] = useState(() => {
     try {
       const raw = localStorage.getItem("estim_lifetime_connection_days");
@@ -1580,19 +1596,42 @@ export default function App() {
       return 0;
     }
   });
+  const [connectionStreak, setConnectionStreak] = useState(() => {
+    try {
+      const raw = localStorage.getItem("estim_lifetime_connection_days");
+      const arr = raw ? JSON.parse(raw) : [];
+      return computeConnectionStreak(arr);
+    } catch (e) {
+      return 0;
+    }
+  });
   useEffect(() => {
     try {
       const raw = localStorage.getItem("estim_lifetime_connection_days");
       const arr = raw ? JSON.parse(raw) : [];
+      const list = Array.isArray(arr) ? arr : [];
       const today = new Date().toISOString().slice(0, 10);
-      if (!Array.isArray(arr) || !arr.includes(today)) {
-        const next = (Array.isArray(arr) ? arr : []).concat([today]);
+      if (!list.includes(today)) {
+        const next = list.concat([today]);
         localStorage.setItem("estim_lifetime_connection_days", JSON.stringify(next));
         setLifetimeConnectionDays(next.length);
+        setConnectionStreak(computeConnectionStreak(next));
+      } else {
+        setConnectionStreak(computeConnectionStreak(list));
       }
     } catch (e) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function bgSkinForStreak(n) {
+    let b = BG_PROGRESSION[0];
+    for (const sk of BG_PROGRESSION) {
+      if (n >= sk.threshold) b = sk;
+    }
+    return b;
+  }
+  const highestUnlockedBgSkin = bgSkinForStreak(connectionStreak);
+  const nextBgSkin = BG_PROGRESSION.find((sk) => sk.threshold > connectionStreak) || null;
 
   const [selectedBgSkinKey, setSelectedBgSkinKey] = useState(() => {
     try {
@@ -1625,7 +1664,7 @@ export default function App() {
 
   const activeBgSkin =
     (selectedBgSkinKey &&
-      BG_SKINS.find((sk) => sk.key === selectedBgSkinKey && (sk.threshold <= lifetimeAdGenerations || isOwnerPreview))) ||
+      BG_SKINS.find((sk) => sk.key === selectedBgSkinKey && (sk.threshold <= connectionStreak || isOwnerPreview))) ||
     highestUnlockedBgSkin;
   // Utilisé pour le halo et les petits glyphes "incrustés" du palier
   // "platine" (voir header plus bas) — calculé une fois ici, indépendant
@@ -5828,7 +5867,7 @@ export default function App() {
               </span>
               {nextGrade && (
                 <span className="mono" style={{ fontSize: 10, color: "#152238", opacity: 0.85 }}>
-                  {nextGrade.label} dans {nextGrade.threshold - lifetimeEstimations}
+                  {nextGrade.label} avec l'abonnement {nextGrade.planLabel}
                 </span>
               )}
             </div>
@@ -6298,11 +6337,15 @@ export default function App() {
 
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
-                Habillage ({lifetimeEstimations} estimation{lifetimeEstimations > 1 ? "s" : ""} au total)
+                Habillage (plan actuel :{" "}
+                {profile && profile.plan !== "gratuit" && profile.subscription_status === "active"
+                  ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
+                  : "Gratuit"}
+                )
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {GRADES.map((g) => {
-                  const unlocked = lifetimeEstimations >= g.threshold;
+                  const unlocked = g.planRank <= userPlanRank;
                   const canSelect = unlocked || isOwnerPreview;
                   const isActive = activeGrade.key === g.key;
                   return (
@@ -6313,8 +6356,8 @@ export default function App() {
                         unlocked
                           ? g.label
                           : isOwnerPreview
-                          ? `${g.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${g.threshold} estimations)`
-                          : `${g.label} — débloqué à ${g.threshold} estimations`
+                          ? `${g.label} — aperçu (verrouillé pour les autres comptes, débloqué avec l'abonnement ${g.planLabel})`
+                          : `${g.label} — débloqué avec l'abonnement ${g.planLabel}`
                       }
                       style={{
                         display: "flex",
@@ -6347,7 +6390,7 @@ export default function App() {
                         {g.emoji} {g.label}
                       </span>
                       <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
-                        {g.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${g.threshold} estim.`}
+                        {g.planRank === 0 ? "toujours" : unlocked ? "débloqué" : g.planLabel}
                       </span>
                     </button>
                   );
@@ -6355,20 +6398,18 @@ export default function App() {
               </div>
               {nextGrade && (
                 <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
-                  Prochain palier : {nextGrade.label} à {nextGrade.threshold} estimations (
-                  {lifetimeEstimations}/{nextGrade.threshold})
+                  Prochain palier : {nextGrade.label} avec l'abonnement {nextGrade.planLabel}
                 </div>
               )}
             </div>
 
             <div style={{ borderTop: pt.dashedBorder, marginTop: 16, paddingTop: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
-                Fonds ({lifetimeAdGenerations} annonce{lifetimeAdGenerations > 1 ? "s" : ""} générée
-                {lifetimeAdGenerations > 1 ? "s" : ""} au total)
+                Fonds ({connectionStreak} jour{connectionStreak > 1 ? "s" : ""} de connexion d'affilée)
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {BG_SKINS.map((sk) => {
-                  const unlocked = lifetimeAdGenerations >= sk.threshold;
+                  const unlocked = sk.threshold <= connectionStreak;
                   const canSelect = unlocked || isOwnerPreview;
                   const isActive = activeBgSkin.key === sk.key;
                   return (
@@ -6379,8 +6420,8 @@ export default function App() {
                         unlocked
                           ? sk.label
                           : isOwnerPreview
-                          ? `${sk.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${sk.threshold} annonces générées)`
-                          : `${sk.label} — débloqué à ${sk.threshold} annonces générées`
+                          ? `${sk.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${sk.threshold} jours de connexion d'affilée)`
+                          : `${sk.label} — débloqué à ${sk.threshold} jours de connexion d'affilée`
                       }
                       style={{
                         display: "flex",
@@ -6434,7 +6475,7 @@ export default function App() {
                         {sk.emoji} {sk.label}
                       </span>
                       <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
-                        {sk.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${sk.threshold} annonces`}
+                        {sk.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${sk.threshold} jours`}
                       </span>
                     </button>
                   );
@@ -6442,8 +6483,8 @@ export default function App() {
               </div>
               {nextBgSkin && (
                 <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
-                  Prochain fond : {nextBgSkin.label} à {nextBgSkin.threshold} annonces générées (
-                  {lifetimeAdGenerations}/{nextBgSkin.threshold})
+                  Prochain fond : {nextBgSkin.label} à {nextBgSkin.threshold} jours de connexion d'affilée (
+                  {connectionStreak}/{nextBgSkin.threshold})
                 </div>
               )}
             </div>
