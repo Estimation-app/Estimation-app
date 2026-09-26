@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User, Download } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 import logoWordmarkDark from "./assets/logo-wordmark.png";
 
@@ -1143,6 +1143,12 @@ export default function App() {
     }
   }
   const [adGenCount, setAdGenCount] = useState(0); // nb de générations/régénérations d'annonce pour l'estimation en cours (max 3, pour éviter un abus d'appels IA gratuits)
+  // Photos IA sous d'autres angles (jusqu'à 2), fonctionnalité Premium :
+  // extraAngles = [{ mime_type, data(base64) }, ...] une fois générées.
+  const [extraAngles, setExtraAngles] = useState(null);
+  const [extraAnglesLoading, setExtraAnglesLoading] = useState(false);
+  const [extraAnglesError, setExtraAnglesError] = useState(null);
+  const [extraAnglesAttempted, setExtraAnglesAttempted] = useState(false); // masque le bouton une fois un essai réussi (coût réel par génération)
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
 
   // Message vocal pour dicter les précisions (Web Speech API, native au
@@ -2511,6 +2517,10 @@ export default function App() {
     setAdError(null);
     setAdCopied(false);
     setAdGenCount(0);
+    setExtraAngles(null);
+    setExtraAnglesLoading(false);
+    setExtraAnglesError(null);
+    setExtraAnglesAttempted(false);
     setStatus("idle");
     setListingSeed(null); // on repart d'une vraie photo, plus d'une annonce
 
@@ -2774,6 +2784,10 @@ export default function App() {
     setAdError(null);
     setAdCopied(false);
     setAdGenCount(0);
+    setExtraAngles(null);
+    setExtraAnglesLoading(false);
+    setExtraAnglesError(null);
+    setExtraAnglesAttempted(false);
 
     const seed = {
       title: item.title || "",
@@ -2884,6 +2898,62 @@ export default function App() {
       .catch(() => {
         setAdError("Impossible de copier automatiquement, sélectionne le texte à la main.");
       });
+  }
+
+  // Génère jusqu'à 2 photos supplémentaires du même objet sous d'autres
+  // angles (IA), pour compléter une annonce avec plusieurs vraies photos au
+  // lieu d'une seule. Réservé aux abonnés payants : ça a un coût réel par
+  // génération, revérifié aussi côté serveur (le Worker ignore toute requête
+  // directe d'un compte non payant, même en contournant l'appli). On ne
+  // relance pas automatiquement après un premier succès (extraAnglesAttempted)
+  // pour éviter un abus de clics — un échec permet en revanche de réessayer.
+  async function generateExtraAngles() {
+    if (!image || !image.base64 || !user) return;
+    if (!isPremiumPlan) {
+      setPaywallInfo(null);
+      setShowPaywall(true);
+      return;
+    }
+    setExtraAnglesAttempted(true);
+    setExtraAnglesLoading(true);
+    setExtraAnglesError(null);
+    try {
+      const res = await fetch(PROXY_URL + "/generate-angles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          image_base64: image.base64,
+          mime_type: image.mediaType || "image/jpeg",
+          object_label: result ? result.objet : "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur lors de la génération.");
+      if (!data.images || data.images.length === 0) {
+        throw new Error(data.error || "Aucune photo n'a pu être générée, réessaie.");
+      }
+      setExtraAngles(data.images);
+    } catch (e) {
+      setExtraAnglesAttempted(false); // on relibère le bouton "réessayer"
+      setExtraAnglesError(e.message || "Impossible de générer les photos, réessaie.");
+    } finally {
+      setExtraAnglesLoading(false);
+    }
+  }
+
+  // Téléchargement direct sur le téléphone (data URL → lien <a download>),
+  // pour que l'utilisateur puisse ensuite la joindre à son annonce.
+  function downloadExtraAngle(img, index) {
+    try {
+      const link = document.createElement("a");
+      link.href = `data:${img.mime_type};base64,${img.data}`;
+      const safeLabel = (result?.objet || "objet").toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "");
+      link.download = `estim-${safeLabel || "objet"}-angle-${index + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {}
   }
 
   // Génère une petite carte visuelle (canvas) reprenant l'objet, le prix et
@@ -3020,6 +3090,10 @@ export default function App() {
     setAdError(null);
     setAdCopied(false);
     setAdGenCount(0);
+    setExtraAngles(null);
+    setExtraAnglesLoading(false);
+    setExtraAnglesError(null);
+    setExtraAnglesAttempted(false);
     try {
       let identification;
       if (effectiveListingSeed) {
@@ -3453,6 +3527,10 @@ export default function App() {
     setAdError(null);
     setAdCopied(false);
     setAdGenCount(0);
+    setExtraAngles(null);
+    setExtraAnglesLoading(false);
+    setExtraAnglesError(null);
+    setExtraAnglesAttempted(false);
     setStatus("idle");
     setPendingIdentification(null);
     setVehicleForm({ annee: "", kilometrage: "", etat: "bon état" });
@@ -5134,6 +5212,177 @@ export default function App() {
                     </div>
                   )}
                 </div>
+
+                {image && image.base64 && (
+                  <div
+                    style={{
+                      borderTop: pt.dashedBorder,
+                      paddingTop: 12,
+                      marginTop: 14,
+                    }}
+                  >
+                    <div
+                      className="mono"
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: pt.strongColor,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Photos IA sous d'autres angles
+                    </div>
+
+                    {!isPremiumPlan && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaywallInfo(null);
+                          setShowPaywall(true);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          width: "100%",
+                          background: `rgba(${accentRgb}, 0.12)`,
+                          border: `1px dashed rgba(${accentRgb}, 0.5)`,
+                          borderRadius: 8,
+                          padding: "10px 12px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Lock size={13} color={accent} style={{ flexShrink: 0 }} />
+                        <span className="mono" style={{ fontSize: 11, color: accent, textAlign: "left", lineHeight: 1.4 }}>
+                          Fonctionnalité premium — génère jusqu'à 2 photos IA de cet objet sous d'autres angles pour ton
+                          annonce
+                        </span>
+                      </button>
+                    )}
+
+                    {isPremiumPlan && !extraAnglesAttempted && !extraAnglesLoading && (
+                      <button
+                        type="button"
+                        onClick={generateExtraAngles}
+                        className="mono"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 7,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          letterSpacing: "0.01em",
+                          color: "#152238",
+                          background: `linear-gradient(135deg, ${accent} 0%, ${accentLight} 100%)`,
+                          border: "none",
+                          borderRadius: 20,
+                          padding: "9px 16px",
+                          cursor: "pointer",
+                          boxShadow: "0 6px 14px rgba(0, 0, 0, 0.28)",
+                        }}
+                      >
+                        <Sparkles size={14} />
+                        Générer 2 photos sous d'autres angles
+                      </button>
+                    )}
+
+                    {extraAnglesLoading && (
+                      <div>
+                        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                          {[0, 1].map((i) => (
+                            <div
+                              key={i}
+                              style={{
+                                width: 92,
+                                height: 92,
+                                borderRadius: 10,
+                                background: pt.rowBg,
+                                border: pt.rowBorder,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <Loader2 size={18} color={accent} style={{ animation: "spin 1s linear infinite" }} />
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 12, color: pt.chevronColor }}>
+                          Génération en cours (10 à 20 secondes)…
+                        </div>
+                      </div>
+                    )}
+
+                    {extraAnglesError && !extraAnglesLoading && (
+                      <div>
+                        <div style={{ fontSize: 12, color: accent, marginBottom: 8 }}>{extraAnglesError}</div>
+                        <button
+                          type="button"
+                          onClick={generateExtraAngles}
+                          className="mono"
+                          style={{
+                            fontSize: 12,
+                            padding: "8px 12px",
+                            borderRadius: 4,
+                            border: "1px solid " + pt.rowBorder.replace("1px solid ", ""),
+                            background: "transparent",
+                            color: pt.chevronColor,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Réessayer
+                        </button>
+                      </div>
+                    )}
+
+                    {extraAngles && extraAngles.length > 0 && !extraAnglesLoading && (
+                      <div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                          {extraAngles.map((img, i) => (
+                            <div key={i} style={{ position: "relative" }}>
+                              <img
+                                src={`data:${img.mime_type};base64,${img.data}`}
+                                alt=""
+                                style={{
+                                  width: 110,
+                                  height: 110,
+                                  objectFit: "cover",
+                                  borderRadius: 10,
+                                  border: pt.rowBorder,
+                                  display: "block",
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => downloadExtraAngle(img, i)}
+                                aria-label="télécharger cette photo"
+                                style={{
+                                  position: "absolute",
+                                  bottom: 6,
+                                  right: 6,
+                                  background: "rgba(21, 34, 56, 0.72)",
+                                  border: "none",
+                                  borderRadius: 20,
+                                  padding: 6,
+                                  display: "flex",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <Download size={13} color="#FFFFFF" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
+                          Télécharge-les puis ajoute-les à ta photo d'origine sur Leboncoin, Vinted ou eBay.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div
                   className="mono"
