@@ -2747,6 +2747,21 @@ export default function App() {
   // 20%, et on reconstruit un texte simple. Garantit le comportement
   // demandé à chaque estimation, plutôt que d'espérer que l'IA l'applique
   // correctement elle-même.
+  // Une estimation lancée depuis "Rechercher un produit" / "Produits du
+  // moment" avec la catégorie "Immobilier" ou "Véhicules" passe par le même
+  // pipeline générique que n'importe quel objet (voir identification.type_
+  // sujet forcé à "objet" pour ce cas dans runEstimationCore) — mais un prix
+  // "brocante" n'a aucun sens pour une maison ou une voiture. On se base sur
+  // le libellé de catégorie CHOISI dans le menu (fixe, dans PRODUCT_
+  // CATEGORIES), jamais sur une catégorie en texte libre générée par l'IA,
+  // pour ne jamais exclure à tort un vrai petit objet vendable (ex: un
+  // casque de moto) à cause d'un simple mot dans sa description.
+  function isBrocanteExcludedCategory(categoryLabel) {
+    if (!categoryLabel) return false;
+    const c = categoryLabel.toLowerCase();
+    return c.includes("immobilier") || c.includes("véhicule") || c.includes("vehicule");
+  }
+
   function applyBrocanteDiscount(rawText, prixBasFallback) {
     const numbers =
       typeof rawText === "string"
@@ -3550,7 +3565,9 @@ export default function App() {
           pricing = {
             prix_bas,
             prix_haut,
-            prix_brocante: applyBrocanteDiscount(extra.prix_brocante, prix_bas),
+            prix_brocante: isBrocanteExcludedCategory(effectiveListingSeed && effectiveListingSeed.category)
+              ? null
+              : applyBrocanteDiscount(extra.prix_brocante, prix_bas),
             conseil: extra.conseil,
             alerte: extra.alerte || null,
             facilite_vente: typeof extra.facilite_vente === "number" ? extra.facilite_vente : null,
@@ -3598,7 +3615,9 @@ export default function App() {
           ...fallback,
           prix_bas: fbBas,
           prix_haut: fbHaut,
-          prix_brocante: applyBrocanteDiscount(fallback.prix_brocante, fbBas),
+          prix_brocante: isBrocanteExcludedCategory(effectiveListingSeed && effectiveListingSeed.category)
+            ? null
+            : applyBrocanteDiscount(fallback.prix_brocante, fbBas),
           facilite_vente: typeof fallback.facilite_vente === "number" ? fallback.facilite_vente : null,
           rarete: typeof fallback.rarete === "number" ? fallback.rarete : null,
           tendance_marche: Array.isArray(fallback.tendance_marche)
@@ -5082,10 +5101,14 @@ export default function App() {
                     lineHeight: 1.5,
                   }}
                 >
-                  <strong>En brocante :</strong> {result.prix_brocante}
-                </div>
-                <div style={{ fontSize: 13, color: pt.rowText, marginTop: 8, lineHeight: 1.5 }}>
-                  <strong>Conseil :</strong> {result.conseil}
+                  {result.prix_brocante && (
+                    <div style={{ marginBottom: 8 }}>
+                      <strong>En brocante :</strong> {result.prix_brocante}
+                    </div>
+                  )}
+                  <div>
+                    <strong>Conseil :</strong> {result.conseil}
+                  </div>
                 </div>
                   </>
                 )}
