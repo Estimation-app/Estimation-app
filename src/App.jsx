@@ -2953,14 +2953,35 @@ export default function App() {
     }
   }
 
-  // Téléchargement direct sur le téléphone (data URL → lien <a download>),
-  // pour que l'utilisateur puisse ensuite la joindre à son annonce.
-  function downloadExtraAngle(img, index) {
+  // Enregistrement d'une photo générée. On tente d'abord le partage natif
+  // (Web Share API avec fichier) : sur mobile, ça ouvre la feuille de
+  // partage du système avec l'option "Enregistrer l'image", qui range la
+  // photo directement dans la pellicule/Photos — contrairement à un simple
+  // lien <a download>, qui atterrit dans le dossier Téléchargements. On
+  // garde ce lien <a download> comme repli pour desktop ou navigateurs qui
+  // ne supportent pas le partage de fichiers.
+  async function downloadExtraAngle(img, index) {
+    const safeLabel = (result?.objet || "objet").toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "");
+    const filename = `estim-${safeLabel || "objet"}-angle-${index + 1}.jpg`;
+
+    try {
+      const byteChars = atob(img.data);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([bytes], { type: img.mime_type });
+      const file = new File([blob], filename, { type: img.mime_type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") return; // partage annulé par l'utilisateur
+    }
+
     try {
       const link = document.createElement("a");
       link.href = `data:${img.mime_type};base64,${img.data}`;
-      const safeLabel = (result?.objet || "objet").toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "");
-      link.download = `estim-${safeLabel || "objet"}-angle-${index + 1}.jpg`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
