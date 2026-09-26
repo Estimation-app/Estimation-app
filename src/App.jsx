@@ -2268,7 +2268,7 @@ export default function App() {
                           placeholder="nouveau mot de passe"
                           style={{
                             width: "100%",
-                            fontFamily: "'JetBrains Mono', monospace",
+                            fontFamily: "'Inter', sans-serif",
                             fontSize: 12,
                             padding: "8px 34px 8px 10px",
                             borderRadius: 3,
@@ -2348,7 +2348,7 @@ export default function App() {
               placeholder="ton@email.com"
               style={{
                 width: "100%",
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "'Inter', sans-serif",
                 fontSize: 12,
                 padding: "8px 10px",
                 borderRadius: 3,
@@ -2367,7 +2367,7 @@ export default function App() {
                 placeholder="mot de passe"
                 style={{
                   width: "100%",
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "'Inter', sans-serif",
                   fontSize: 12,
                   padding: "8px 34px 8px 10px",
                   borderRadius: 3,
@@ -2698,6 +2698,38 @@ export default function App() {
     } catch (e) {
       throw new Error("JSON invalide: " + text.slice(0, 300));
     }
+  }
+
+  // Le prompt d'estimation demande déjà à l'IA un prix "brocante" prudent,
+  // déjà réduit pour tenir compte du marchandage typique — mais en
+  // pratique elle reste souvent trop optimiste (retour utilisateur). On ne
+  // se repose donc plus uniquement sur son texte libre : on en extrait le
+  // ou les nombres, on leur applique une décote supplémentaire fixe de
+  // 20%, et on reconstruit un texte simple. Garantit le comportement
+  // demandé à chaque estimation, plutôt que d'espérer que l'IA l'applique
+  // correctement elle-même.
+  function applyBrocanteDiscount(rawText, prixBasFallback) {
+    const numbers =
+      typeof rawText === "string"
+        ? (rawText.match(/\d+(?:[.,]\d+)?/g) || []).map((n) => parseFloat(n.replace(",", ".")))
+        : [];
+    let low, high;
+    if (numbers.length >= 2) {
+      low = Math.min(...numbers);
+      high = Math.max(...numbers);
+    } else if (numbers.length === 1) {
+      low = numbers[0] * 0.85;
+      high = numbers[0] * 1.05;
+    } else {
+      // Repli: aucun nombre exploitable dans le texte de l'IA (rare), on
+      // part directement de prix_bas — déjà le bas de la fourchette
+      // "normale" — pour rester cohérent.
+      low = (prixBasFallback || 0) * 0.55;
+      high = (prixBasFallback || 0) * 0.7;
+    }
+    low = Math.max(1, Math.round(low * 0.8));
+    high = Math.max(low + 1, Math.round(high * 0.8));
+    return low === high ? `environ ${low} €` : `environ ${low}–${high} €`;
   }
 
   // Interroge le serveur relais /prices-multi (Leboncoin + Vinted + eBay en
@@ -3065,7 +3097,7 @@ export default function App() {
 
       ctx.textAlign = "center";
       ctx.fillStyle = accent;
-      ctx.font = "700 32px 'JetBrains Mono', monospace";
+      ctx.font = "700 32px 'Inter', sans-serif";
       ctx.fillText((result.categorie || "").toUpperCase(), W / 2, 945);
 
       ctx.fillStyle = "#FFFFFF";
@@ -3073,7 +3105,7 @@ export default function App() {
       canvasWrapText(ctx, result.objet || "", W / 2, 1005, 900, 54, 2);
 
       ctx.fillStyle = accent;
-      ctx.font = "800 90px 'JetBrains Mono', monospace";
+      ctx.font = "800 90px 'Inter', sans-serif";
       ctx.fillText(`${result.prix_bas}–${result.prix_haut} €`, W / 2, 1175);
 
       ctx.fillStyle = "#B9C3D1";
@@ -3314,6 +3346,9 @@ export default function App() {
                 "Indique UNIQUEMENT les numéros des annonces qui correspondent vraiment au MÊME produit " +
                 "(même modèle, même taille/format/volume si applicable — pas juste la même marque ou catégorie). " +
                 "Exclus tout ce qui est un format, coloris ou modèle différent. " +
+                "Exclus aussi toute annonce d'un produit clairement d'une autre gamme ou d'un autre positionnement que l'objet identifié " +
+                "(par exemple : l'objet identifié est un modèle basique/premier prix/générique sans marque reconnue, mais l'annonce concerne un modèle premium ou d'une marque reconnue nettement plus chère — ou inversement). " +
+                "Même s'il s'agit globalement du même type de produit, un écart de gamme ou de marque trop important fausse l'estimation et doit être exclu. " +
                 'Réponds UNIQUEMENT en JSON: {"indices_pertinents": [0, 2]} (liste vide si rien ne correspond vraiment).',
             },
           ], "claude-haiku-4-5-20251001");
@@ -3476,7 +3511,7 @@ export default function App() {
           pricing = {
             prix_bas,
             prix_haut,
-            prix_brocante: extra.prix_brocante,
+            prix_brocante: applyBrocanteDiscount(extra.prix_brocante, prix_bas),
             conseil: extra.conseil,
             alerte: extra.alerte || null,
             facilite_vente: typeof extra.facilite_vente === "number" ? extra.facilite_vente : null,
@@ -3524,6 +3559,7 @@ export default function App() {
           ...fallback,
           prix_bas: fbBas,
           prix_haut: fbHaut,
+          prix_brocante: applyBrocanteDiscount(fallback.prix_brocante, fbBas),
           facilite_vente: typeof fallback.facilite_vente === "number" ? fallback.facilite_vente : null,
           rarete: typeof fallback.rarete === "number" ? fallback.rarete : null,
           tendance_marche: Array.isArray(fallback.tendance_marche)
@@ -3783,10 +3819,14 @@ export default function App() {
       )}
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&display=swap');
         * { box-sizing: border-box; }
         .brand { font-family: 'Fraunces', serif; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
+        /* Remplace l'ancienne police "JetBrains Mono" (trop "code/debug" au
+           goût de l'utilisateur) par Inter, déjà chargée pour le corps du
+           texte — un seul point de changement qui s'applique à tous les
+           usages de .mono dans toute l'appli. */
+        .mono { font-family: 'Inter', sans-serif; }
         button { font-family: inherit; cursor: pointer; }
         @keyframes sparkle-pulse {
           0%, 100% { opacity: 0.15; transform: scale(0.8); }
@@ -4258,12 +4298,6 @@ export default function App() {
                 border: pt.formCardBorder,
               }}
             />
-            {image.debug && (
-              <div className="mono" style={{ fontSize: 11, color: pt.chevronColor }}>
-                debug: {image.debug} · type: {image.mediaType}
-              </div>
-            )}
-
             {(status === "analyzing" || status === "pricing") && (
               <div
                 style={{
@@ -4335,7 +4369,7 @@ export default function App() {
                     rows={2}
                     style={{
                       flex: 1,
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: "'Inter', sans-serif",
                       fontSize: 13,
                       padding: "10px 12px",
                       borderRadius: 3,
@@ -4405,7 +4439,7 @@ export default function App() {
                       placeholder="ex: 2018"
                       style={{
                         width: "100%",
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "'Inter', sans-serif",
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
@@ -4427,7 +4461,7 @@ export default function App() {
                       placeholder="ex: 85000"
                       style={{
                         width: "100%",
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "'Inter', sans-serif",
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
@@ -4447,7 +4481,7 @@ export default function App() {
                       onChange={(e) => setVehicleForm((v) => ({ ...v, etat: e.target.value }))}
                       style={{
                         width: "100%",
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "'Inter', sans-serif",
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
@@ -4493,7 +4527,7 @@ export default function App() {
                       placeholder="ex: Rennes centre"
                       style={{
                         width: "100%",
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "'Inter', sans-serif",
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
@@ -4515,7 +4549,7 @@ export default function App() {
                       placeholder="ex: 65"
                       style={{
                         width: "100%",
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "'Inter', sans-serif",
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
@@ -4537,7 +4571,7 @@ export default function App() {
                       placeholder="ex: 3"
                       style={{
                         width: "100%",
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "'Inter', sans-serif",
                         fontSize: 13,
                         padding: "8px 10px",
                         borderRadius: 3,
