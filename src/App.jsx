@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User, Download } from "lucide-react";
@@ -63,6 +64,7 @@ import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 // fausse).
 import charRobotFerrailleAction from "./assets/robotFerrailleAction.png";
 import charChineurAction from "./assets/chineurAction.png";
+import charChineuseAction from "./assets/chineuseAction.png";
 
 const CHARACTER_ACTION_IMAGES = {
   // Robot Ferraille : droite yeux (46.6%, 43.9%) → loupe (82.1%, 48.2%)
@@ -77,6 +79,9 @@ const CHARACTER_ACTION_IMAGES = {
   // centre exact de la loupe, pas de décalage), comme s'il l'observait à
   // travers elle.
   chineur: { src: charChineurAction, aimX: 0.318, aimY: 0.32, scale: 0.72 },
+  // La Chineuse : même principe que Le Chineur, loupe collée à l'œil,
+  // icône posée pile au centre du verre.
+  chineuse: { src: charChineuseAction, aimX: 0.456, aimY: 0.296, scale: 0.72 },
 };
 
 const CHARACTER_IMAGES = {
