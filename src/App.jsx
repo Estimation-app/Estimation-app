@@ -39,25 +39,31 @@ import charPanthereNuit from "./assets/panthereNuit.jpg";
 import charRatonMasque from "./assets/ratonMasque.jpg";
 import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 
-// Portraits "en action" (même personnage, nouvelle posture en pied, prêt à
-// scanner un objet) — utilisés uniquement en incrustation semi-transparente
-// dans le cadre "prendre une photo" (voir plus bas), pas dans le reste de
-// l'avatar. Détourés à la main (fond transparent) à partir des générations
-// Nano Banana de Dylan. Tant qu'un personnage n'a pas encore la sienne, il
-// n'apparaît simplement pas dans CHARACTER_ACTION_IMAGES et le cadre photo
-// reste sans incrustation pour ce personnage (pas de génération de repli).
+// Portraits "en action" (même personnage, corps entier, prêt à scanner un
+// objet) — utilisés en incrustation semi-transparente PLEIN CADRE dans le
+// cadre "prendre une photo" (voir plus bas, mode "immersif"), à la place du
+// texte "Ajoute une photo" / "choisir un fichier", uniquement quand un
+// avatar est réellement sélectionné (voir hasChosenAvatar plus bas). Pas
+// dans le reste de l'avatar. Détourés à la main (fond transparent) à partir
+// des générations Nano Banana de Dylan. Tant qu'un personnage n'a pas
+// encore la sienne, il n'apparaît simplement pas dans CHARACTER_ACTION_IMAGES
+// et le cadre photo reste en mode "de base" (avec le texte) pour ce
+// personnage (pas de génération de repli).
 //
-// `anchor` = bord du cadre où positionner le personnage — TOUJOURS à
-// l'opposé du sens de son regard/de son outil (loupe, téléphone...), pour
-// qu'il ait l'air de regarder VERS l'intérieur du cadre plutôt que de lui
-// tourner le dos. À définir au cas par cas pour chaque nouveau personnage
-// selon sa posture (pas de valeur par défaut qui pourrait être fausse).
+// `aimX` / `aimY` = position (fraction 0→1 de la largeur/hauteur de
+// l'image) du point que le personnage vise avec sa loupe/son outil. Ce
+// point est aligné avec le centre du cadre (où se trouve l'icône appareil
+// photo) via un positionnement CSS calculé, pour qu'il ait toujours
+// l'air de viser exactement l'appareil photo, quelle que soit sa posture
+// (à gauche, à droite, en bas, allongé, en vol...). À mesurer au cas par
+// cas pour chaque nouveau personnage (pas de valeur par défaut qui
+// pourrait être fausse).
 import charRobotFerrailleAction from "./assets/robotFerrailleAction.png";
 
 const CHARACTER_ACTION_IMAGES = {
-  // Robot Ferraille tend sa loupe vers la droite → ancré à gauche, pour
-  // qu'il regarde vers le centre du cadre.
-  robotFerraille: { src: charRobotFerrailleAction, anchor: "left" },
+  // Robot Ferraille : la loupe (avec son halo vert) est centrée autour de
+  // 82% de la largeur et 48% de la hauteur de l'image détourée.
+  robotFerraille: { src: charRobotFerrailleAction, aimX: 0.82, aimY: 0.48 },
 };
 
 const CHARACTER_IMAGES = {
@@ -1541,8 +1547,25 @@ export default function App() {
     } catch (e) {}
   }, [selectedGradeKey]);
   const prevGradeKeyRef = useRef(highestUnlockedGrade.key);
+  // `profile` vaut null le temps du tout premier chargement (avant la
+  // réponse Supabase), donc userPlanRank/highestUnlockedGrade démarrent
+  // TOUJOURS à "defaut" puis sautent au vrai palier dès que le profil
+  // arrive — même si rien n'a été débloqué à l'instant. Sans ce garde-fou,
+  // ce saut était pris pour un "nouveau déblocage" à CHAQUE rechargement
+  // de page et écrasait le palier choisi par l'utilisateur (ex: revenu
+  // volontairement à "classique") en le remettant sur le palier du plan.
+  // On ignore donc le tout premier calcul une fois le profil chargé (simple
+  // synchronisation silencieuse), et seul un changement RÉEL par la suite
+  // (upgrade d'abonnement en cours de session) déclenche le bascule + toast.
+  const gradeProfileSyncedRef = useRef(false);
   const [gradeUnlockToast, setGradeUnlockToast] = useState(null);
   useEffect(() => {
+    if (!profile) return;
+    if (!gradeProfileSyncedRef.current) {
+      gradeProfileSyncedRef.current = true;
+      prevGradeKeyRef.current = highestUnlockedGrade.key;
+      return;
+    }
     if (highestUnlockedGrade.key !== prevGradeKeyRef.current) {
       prevGradeKeyRef.current = highestUnlockedGrade.key;
       if (highestUnlockedGrade.key !== "defaut") {
@@ -1551,7 +1574,7 @@ export default function App() {
         setTimeout(() => setGradeUnlockToast(null), 5000);
       }
     }
-  }, [highestUnlockedGrade.key]);
+  }, [highestUnlockedGrade.key, profile]);
 
   // Exception personnelle (compte de Dylan uniquement) : peut sélectionner
   // n'importe quel habillage pour l'aperçu, même non débloqué. N'affecte que
@@ -2059,12 +2082,18 @@ export default function App() {
   // IMPORTANT : seuls les personnages qui ont déjà un vrai portrait
   // (CHARACTER_IMAGES) figurent ici.
   const DEFAULT_CHARACTER_ID = "chineur";
-  // Portrait "en action" à incruster dans le cadre "prendre une photo" —
-  // celui du personnage actuellement équipé, seulement s'il en a un (voir
-  // CHARACTER_ACTION_IMAGES tout en haut du fichier) ; sinon le cadre reste
-  // sans incrustation, sans repli sur un autre personnage.
-  const activeCharacterId = (profile && profile.avatar_character) || DEFAULT_CHARACTER_ID;
-  const dropZoneMascot = CHARACTER_ACTION_IMAGES[activeCharacterId] || null;
+  // Vrai uniquement si l'utilisateur a explicitement choisi un avatar au
+  // moins une fois — SANS repli sur DEFAULT_CHARACTER_ID. Un nouvel
+  // utilisateur n'a aucun avatar sélectionné (même pas "chineur") et doit
+  // voir le cadre "prendre une photo" dans son mode de base (avec texte),
+  // pas le mode immersif plein cadre.
+  const hasChosenAvatar = !!(profile && profile.avatar_character);
+  // Portrait "en action" à incruster en plein cadre dans "prendre une
+  // photo" — celui du personnage réellement équipé, seulement s'il en a un
+  // (voir CHARACTER_ACTION_IMAGES tout en haut du fichier) ; sinon (ou si
+  // aucun avatar n'est choisi) le cadre reste en mode de base, sans repli
+  // sur un autre personnage.
+  const dropZoneMascot = hasChosenAvatar ? CHARACTER_ACTION_IMAGES[profile.avatar_character] || null : null;
   const CHARACTERS_META = [
     // --- Palier 0 : gratuits dès le départ ---
     { id: "chineur", name: "Le Chineur", tier: 0, free: true },
@@ -4020,17 +4049,17 @@ export default function App() {
           pointer-events: none;
         }
         .drop-zone:active { transform: scale(0.99); }
-        .drop-zone-mascot {
+        .drop-zone-mascot-immersive {
           position: absolute;
-          bottom: 0;
-          height: 92%;
+          left: 50%;
+          top: 50%;
+          height: 100%;
           width: auto;
+          max-width: none;
           opacity: 0.4;
           pointer-events: none;
           z-index: 0;
         }
-        .drop-zone-mascot-left { left: 4%; }
-        .drop-zone-mascot-right { right: 4%; }
         .tag-card {
           background: ${pt.formCardBg};
           border: 1px solid ${pt.rowBorder.replace("1px solid ", "")};
@@ -4338,30 +4367,39 @@ export default function App() {
 
         {!image && (
           <label className="drop-zone" htmlFor="photo-input">
-            {dropZoneMascot && (
-              <img
-                src={dropZoneMascot.src}
-                alt=""
-                aria-hidden="true"
-                className={`drop-zone-mascot drop-zone-mascot-${dropZoneMascot.anchor}`}
-              />
+            {dropZoneMascot ? (
+              <>
+                <img
+                  src={dropZoneMascot.src}
+                  alt=""
+                  aria-hidden="true"
+                  className="drop-zone-mascot-immersive"
+                  style={{
+                    transform: `translate(-${dropZoneMascot.aimX * 100}%, -${dropZoneMascot.aimY * 100}%)`,
+                  }}
+                />
+                <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Camera size={30} strokeWidth={1.5} style={{ color: accent }} />
+                </div>
+              </>
+            ) : (
+              <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                <Camera size={30} strokeWidth={1.5} style={{ color: accent }} />
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{t("drop_zone_title")}</div>
+                <div style={{ fontSize: 12, opacity: 0.75 }}>{t("drop_zone_sub")}</div>
+                <span
+                  className="btn-ghost"
+                  style={{
+                    marginTop: 6,
+                    pointerEvents: "none",
+                    borderColor: pt.ghostBorder,
+                    color: pt.ghostColor,
+                  }}
+                >
+                  <Upload size={14} /> choisir un fichier
+                </span>
+              </div>
             )}
-            <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-              <Camera size={30} strokeWidth={1.5} style={{ color: accent }} />
-              <div style={{ fontSize: 14, fontWeight: 600 }}>{t("drop_zone_title")}</div>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>{t("drop_zone_sub")}</div>
-              <span
-                className="btn-ghost"
-                style={{
-                  marginTop: 6,
-                  pointerEvents: "none",
-                  borderColor: pt.ghostBorder,
-                  color: pt.ghostColor,
-                }}
-              >
-                <Upload size={14} /> choisir un fichier
-              </span>
-            </div>
             <input
               id="photo-input"
               type="file"
