@@ -65,12 +65,11 @@ import charRobotFerrailleAction from "./assets/robotFerrailleAction.png";
 
 const CHARACTER_ACTION_IMAGES = {
   // Robot Ferraille : droite yeux (46.6%, 43.9%) → loupe (82.1%, 48.2%)
-  // prolongée d'environ 180px (à l'échelle de l'image 780x900) au-delà de
-  // la loupe, pour que l'icône se pose à sa droite avec un petit espace
-  // visible (pas collée sur l'anneau). Légèrement réduit (scale) pour que
-  // le corps entier tienne dans le cadre, et aimY légèrement augmenté pour
-  // remonter un peu le personnage et affiner l'alignement.
-  robotFerraille: { src: charRobotFerrailleAction, aimX: 1.0498, aimY: 0.529, scale: 0.74 },
+  // prolongée d'environ 280px (à l'échelle de l'image 780x900) au-delà de
+  // la loupe, pour que l'icône se pose nettement à sa droite, avec un bon
+  // espace visible (le personnage est décalé à gauche, loin de l'icône).
+  // Réduit (scale) pour que le corps entier tienne dans le cadre.
+  robotFerraille: { src: charRobotFerrailleAction, aimX: 1.1768, aimY: 0.554, scale: 0.54 },
 };
 
 const CHARACTER_IMAGES = {
