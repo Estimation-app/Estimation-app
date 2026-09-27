@@ -69,7 +69,7 @@ const CHARACTER_ACTION_IMAGES = {
   // la loupe, pour que l'icône se pose nettement à sa droite, avec un bon
   // espace visible (le personnage est décalé à gauche, loin de l'icône).
   // Réduit (scale) pour que le corps entier tienne dans le cadre.
-  robotFerraille: { src: charRobotFerrailleAction, aimX: 1.1768, aimY: 0.554, scale: 0.62 },
+  robotFerraille: { src: charRobotFerrailleAction, aimX: 1.1468, aimY: 0.554, scale: 0.62 },
 };
 
 const CHARACTER_IMAGES = {
