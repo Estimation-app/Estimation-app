@@ -102,7 +102,7 @@ const CHARACTER_ACTION_IMAGES = {
   // appareil photo est donc posée PILE au centre de la loupe (aimX/aimY =
   // centre exact de la loupe, pas de décalage), comme s'il l'observait à
   // travers elle.
-  chineur: { src: charChineurAction, aimX: 0.318, aimY: 0.32, scale: 0.72 },
+  chineur: { src: charChineurAction, aimX: 0.318, aimY: 0.32, scale: 0.76 },
   // La Chineuse : même principe que Le Chineur, loupe collée à l'œil,
   // icône posée pile au centre du verre.
   chineuse: { src: charChineuseAction, aimX: 0.456, aimY: 0.296, scale: 0.77 },
@@ -4454,8 +4454,29 @@ export default function App() {
                     transform: `translate(-${dropZoneMascot.aimX * 100}%, -${dropZoneMascot.aimY * 100}%)`,
                   }}
                 />
-                <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Camera size={30} strokeWidth={1.5} style={{ color: accent }} />
+                <div
+                  style={{
+                    position: "relative",
+                    zIndex: 1,
+                    width: 34,
+                    height: 34,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {/* Doublure pleine (même icône, remplie, légèrement plus
+                      grande) qui épouse exactement le contour de l'icône
+                      appareil photo, pour effacer uniquement cette forme
+                      précise de l'avatar en dessous — pas un rond générique. */}
+                  <Camera
+                    size={34}
+                    strokeWidth={0}
+                    fill={pt.dropZoneBg}
+                    stroke="none"
+                    style={{ position: "absolute", color: pt.dropZoneBg }}
+                  />
+                  <Camera size={30} strokeWidth={1.5} style={{ position: "relative", color: accent }} />
                 </div>
               </>
             ) : (
