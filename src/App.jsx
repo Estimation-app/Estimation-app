@@ -64,6 +64,31 @@ import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 import charRobotFerrailleAction from "./assets/robotFerrailleAction.png";
 import charChineurAction from "./assets/chineurAction.png";
 import charChineuseAction from "./assets/chineuseAction.png";
+import charRenardAction from "./assets/renardAction.png";
+import charChevalierDoreAction from "./assets/chevalierDoreAction.png";
+import charNinjaSilencieuxAction from "./assets/ninjaSilencieuxAction.png";
+import charAlienCurieuxAction from "./assets/alienCurieuxAction.png";
+import charSorciereFuteeAction from "./assets/sorciereFuteeAction.png";
+import charTigreStyleAction from "./assets/tigreStyleAction.png";
+import charLoupDetectiveAction from "./assets/loupDetectiveAction.png";
+import charAstroDebutantAction from "./assets/astroDebutantAction.png";
+import charCowboyEncheresAction from "./assets/cowboyEncheresAction.png";
+import charHibooAction from "./assets/hibooAction.png";
+import charSingeFarceurAction from "./assets/singeFarceurAction.png";
+import charLapinAction from "./assets/lapinAction.png";
+import charChatCurieuxAction from "./assets/chatCurieuxAction.png";
+import charRobotChromeAction from "./assets/robotChromeAction.png";
+import charPieuvreMystiqueAction from "./assets/pieuvreMystiqueAction.png";
+import charDiableEcarlateAction from "./assets/diableEcarlateAction.png";
+import charSpectreElegantAction from "./assets/spectreElegantAction.png";
+import charPanthereNuitAction from "./assets/panthereNuitAction.png";
+import charGriffonCelesteAction from "./assets/griffonCelesteAction.png";
+import charPhenixArdentAction from "./assets/phenixArdentAction.png";
+import charOmbreLegendaireAction from "./assets/ombreLegendaireAction.png";
+import charChouetteDoreeAction from "./assets/chouetteDoreeAction.png";
+import charRatonMasqueAction from "./assets/ratonMasqueAction.png";
+import charCapitainePirateAction from "./assets/capitainePirateAction.png";
+import charBebeDragonAction from "./assets/bebeDragonAction.png";
 
 const CHARACTER_ACTION_IMAGES = {
   // Robot Ferraille : droite yeux (46.6%, 43.9%) → loupe (82.1%, 48.2%)
@@ -81,6 +106,40 @@ const CHARACTER_ACTION_IMAGES = {
   // La Chineuse : même principe que Le Chineur, loupe collée à l'œil,
   // icône posée pile au centre du verre.
   chineuse: { src: charChineuseAction, aimX: 0.456, aimY: 0.296, scale: 0.77 },
+  // Lot de 13 personnages "corps entier, loupe collée à l'œil" (même
+  // principe que Chineur/Chineuse : icône pile au centre du verre, sans
+  // décalage), mesurés par détourage + repérage précis du centre de la
+  // loupe, taille (scale) harmonisée à 0.75 pour tout le lot.
+  renard: { src: charRenardAction, aimX: 0.40, aimY: 0.31, scale: 0.75 },
+  chevalierDore: { src: charChevalierDoreAction, aimX: 0.46, aimY: 0.34, scale: 0.75 },
+  ninjaSilencieux: { src: charNinjaSilencieuxAction, aimX: 0.35, aimY: 0.40, scale: 0.75 },
+  alienCurieux: { src: charAlienCurieuxAction, aimX: 0.59, aimY: 0.32, scale: 0.75 },
+  sorciereFutee: { src: charSorciereFuteeAction, aimX: 0.46, aimY: 0.38, scale: 0.75 },
+  tigreStyle: { src: charTigreStyleAction, aimX: 0.51, aimY: 0.39, scale: 0.75 },
+  loupDetective: { src: charLoupDetectiveAction, aimX: 0.64, aimY: 0.30, scale: 0.75 },
+  astroDebutant: { src: charAstroDebutantAction, aimX: 0.32, aimY: 0.30, scale: 0.75 },
+  cowboyEncheres: { src: charCowboyEncheresAction, aimX: 0.30, aimY: 0.32, scale: 0.75 },
+  hiboo: { src: charHibooAction, aimX: 0.52, aimY: 0.34, scale: 0.75 },
+  singeFarceur: { src: charSingeFarceurAction, aimX: 0.55, aimY: 0.34, scale: 0.75 },
+  lapin: { src: charLapinAction, aimX: 0.54, aimY: 0.30, scale: 0.75 },
+  chatCurieux: { src: charChatCurieuxAction, aimX: 0.59, aimY: 0.48, scale: 0.75 },
+  // Lot de 12 personnages "buste, loupe collée à l'œil" (portraits plus
+  // carrés, sans le corps entier) — même principe (icône pile au centre du
+  // verre), taille (scale) harmonisée à 0.68 pour tout le lot (un peu
+  // moins que le lot "corps entier" ci-dessus car ces images sont plus
+  // carrées / prennent plus de largeur à hauteur égale).
+  robotChrome: { src: charRobotChromeAction, aimX: 0.27, aimY: 0.32, scale: 0.68 },
+  pieuvreMystique: { src: charPieuvreMystiqueAction, aimX: 0.61, aimY: 0.34, scale: 0.68 },
+  diableEcarlate: { src: charDiableEcarlateAction, aimX: 0.51, aimY: 0.38, scale: 0.68 },
+  spectreElegant: { src: charSpectreElegantAction, aimX: 0.54, aimY: 0.36, scale: 0.68 },
+  panthereNuit: { src: charPanthereNuitAction, aimX: 0.76, aimY: 0.38, scale: 0.68 },
+  griffonCeleste: { src: charGriffonCelesteAction, aimX: 0.50, aimY: 0.38, scale: 0.68 },
+  phenixArdent: { src: charPhenixArdentAction, aimX: 0.60, aimY: 0.34, scale: 0.68 },
+  ombreLegendaire: { src: charOmbreLegendaireAction, aimX: 0.63, aimY: 0.31, scale: 0.68 },
+  chouetteDoree: { src: charChouetteDoreeAction, aimX: 0.32, aimY: 0.36, scale: 0.68 },
+  ratonMasque: { src: charRatonMasqueAction, aimX: 0.45, aimY: 0.32, scale: 0.68 },
+  capitainePirate: { src: charCapitainePirateAction, aimX: 0.32, aimY: 0.33, scale: 0.68 },
+  bebeDragon: { src: charBebeDragonAction, aimX: 0.57, aimY: 0.43, scale: 0.68 },
 };
 
 const CHARACTER_IMAGES = {
