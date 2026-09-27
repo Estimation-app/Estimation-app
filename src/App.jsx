@@ -50,20 +50,27 @@ import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 // et le cadre photo reste en mode "de base" (avec le texte) pour ce
 // personnage (pas de génération de repli).
 //
-// `aimX` / `aimY` = position (fraction 0→1 de la largeur/hauteur de
-// l'image) du point que le personnage vise avec sa loupe/son outil. Ce
-// point est aligné avec le centre du cadre (où se trouve l'icône appareil
-// photo) via un positionnement CSS calculé, pour qu'il ait toujours
-// l'air de viser exactement l'appareil photo, quelle que soit sa posture
-// (à gauche, à droite, en bas, allongé, en vol...). À mesurer au cas par
-// cas pour chaque nouveau personnage (pas de valeur par défaut qui
-// pourrait être fausse).
+// `aimX` / `aimY` = position (fraction de la largeur/hauteur de l'image,
+// peut dépasser 1 = un point situé hors de l'image) alignée avec le centre
+// du cadre, où se trouve l'icône appareil photo. Ce point est calculé en
+// PROLONGEANT la droite qui va du regard (yeux) du personnage jusqu'au
+// centre de sa loupe/son outil, un peu plus loin dans le vide juste à côté
+// — ainsi les yeux, la loupe et l'icône appareil photo sont exactement
+// alignés en ligne droite, et la loupe se retrouve juste à côté de l'icône
+// (visée), sans la recouvrir. `scale` = hauteur du personnage en % de la
+// hauteur du cadre. À mesurer/calculer au cas par cas pour chaque nouveau
+// personnage selon sa posture (pas de valeur par défaut qui pourrait être
+// fausse).
 import charRobotFerrailleAction from "./assets/robotFerrailleAction.png";
 
 const CHARACTER_ACTION_IMAGES = {
-  // Robot Ferraille : la loupe (avec son halo vert) est centrée autour de
-  // 82% de la largeur et 48% de la hauteur de l'image détourée.
-  robotFerraille: { src: charRobotFerrailleAction, aimX: 0.82, aimY: 0.48 },
+  // Robot Ferraille : droite yeux (46.6%, 43.9%) → loupe (82.1%, 48.2%)
+  // prolongée d'environ 180px (à l'échelle de l'image 780x900) au-delà de
+  // la loupe, pour que l'icône se pose à sa droite avec un petit espace
+  // visible (pas collée sur l'anneau). Légèrement réduit (scale) pour que
+  // le corps entier tienne dans le cadre, et aimY légèrement augmenté pour
+  // remonter un peu le personnage et affiner l'alignement.
+  robotFerraille: { src: charRobotFerrailleAction, aimX: 1.0498, aimY: 0.529, scale: 0.74 },
 };
 
 const CHARACTER_IMAGES = {
@@ -4051,9 +4058,6 @@ export default function App() {
         .drop-zone:active { transform: scale(0.99); }
         .drop-zone-mascot-immersive {
           position: absolute;
-          left: 50%;
-          top: 50%;
-          height: 100%;
           width: auto;
           max-width: none;
           opacity: 0.4;
@@ -4375,6 +4379,9 @@ export default function App() {
                   aria-hidden="true"
                   className="drop-zone-mascot-immersive"
                   style={{
+                    height: `${dropZoneMascot.scale * 100}%`,
+                    left: "50%",
+                    top: "50%",
                     transform: `translate(-${dropZoneMascot.aimX * 100}%, -${dropZoneMascot.aimY * 100}%)`,
                   }}
                 />
