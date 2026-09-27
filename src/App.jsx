@@ -102,7 +102,7 @@ const CHARACTER_ACTION_IMAGES = {
   // appareil photo est donc posée PILE au centre de la loupe (aimX/aimY =
   // centre exact de la loupe, pas de décalage), comme s'il l'observait à
   // travers elle.
-  chineur: { src: charChineurAction, aimX: 0.333, aimY: 0.335, scale: 0.76 },
+  chineur: { src: charChineurAction, aimX: 0.333, aimY: 0.325, scale: 0.76 },
   // La Chineuse : même principe que Le Chineur, loupe collée à l'œil,
   // icône posée pile au centre du verre.
   chineuse: { src: charChineuseAction, aimX: 0.456, aimY: 0.296, scale: 0.77 },
