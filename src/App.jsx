@@ -62,6 +62,7 @@ import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 // personnage selon sa posture (pas de valeur par défaut qui pourrait être
 // fausse).
 import charRobotFerrailleAction from "./assets/robotFerrailleAction.png";
+import charChineurAction from "./assets/chineurAction.png";
 
 const CHARACTER_ACTION_IMAGES = {
   // Robot Ferraille : droite yeux (46.6%, 43.9%) → loupe (82.1%, 48.2%)
@@ -70,6 +71,12 @@ const CHARACTER_ACTION_IMAGES = {
   // espace visible (le personnage est décalé à gauche, loin de l'icône).
   // Réduit (scale) pour que le corps entier tienne dans le cadre.
   robotFerraille: { src: charRobotFerrailleAction, aimX: 1.1218, aimY: 0.554, scale: 0.62 },
+  // Le Chineur : ici le personnage regarde à travers sa loupe collée à son
+  // œil (contrairement à Robot Ferraille qui la tend à distance) — l'icône
+  // appareil photo est donc posée PILE au centre de la loupe (aimX/aimY =
+  // centre exact de la loupe, pas de décalage), comme s'il l'observait à
+  // travers elle.
+  chineur: { src: charChineurAction, aimX: 0.318, aimY: 0.32, scale: 0.72 },
 };
 
 const CHARACTER_IMAGES = {
