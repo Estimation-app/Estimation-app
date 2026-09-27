@@ -4465,16 +4465,32 @@ export default function App() {
                     justifyContent: "center",
                   }}
                 >
-                  {/* Doublure pleine (même icône, remplie, légèrement plus
-                      grande) qui épouse exactement le contour de l'icône
-                      appareil photo, pour effacer uniquement cette forme
-                      précise de l'avatar en dessous — pas un rond générique. */}
-                  <Camera
-                    size={34}
-                    strokeWidth={0}
-                    fill={pt.dropZoneBg}
-                    stroke="none"
-                    style={{ position: "absolute", color: pt.dropZoneBg }}
+                  {/* Doublure qui épouse exactement le contour de l'icône
+                      appareil photo (même tracé, légèrement plus grand) pour
+                      effacer uniquement cette forme précise de l'avatar en
+                      dessous. `pt.dropZoneBg` est un dégradé CSS (pas une
+                      couleur unie) donc inutilisable comme `fill` SVG — on
+                      passe par un masque CSS (mask-image) qui applique le
+                      vrai fond du cadre (exactement le même, dégradé compris,
+                      quel que soit le thème choisi) découpé à la forme de
+                      l'icône. */}
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: pt.dropZoneBg,
+                      WebkitMaskImage:
+                        'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z\'/%3E%3Ccircle cx=\'12\' cy=\'13\' r=\'3\'/%3E%3C/svg%3E")',
+                      maskImage:
+                        'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z\'/%3E%3Ccircle cx=\'12\' cy=\'13\' r=\'3\'/%3E%3C/svg%3E")',
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                      WebkitMaskPosition: "center",
+                      maskPosition: "center",
+                    }}
                   />
                   <Camera size={30} strokeWidth={1.5} style={{ position: "relative", color: accent }} />
                 </div>
