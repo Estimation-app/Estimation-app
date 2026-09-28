@@ -121,7 +121,7 @@ const CHARACTER_ACTION_IMAGES = {
   cowboyEncheres: { src: charCowboyEncheresAction, aimX: 0.36, aimY: 0.35, scale: 0.75 },
   hiboo: { src: charHibooAction, aimX: 0.46, aimY: 0.415, scale: 0.75 },
   singeFarceur: { src: charSingeFarceurAction, aimX: 0.58, aimY: 0.46, scale: 0.75 },
-  lapin: { src: charLapinAction, aimX: 0.52, aimY: 0.33, scale: 0.79 },
+  lapin: { src: charLapinAction, aimX: 0.51, aimY: 0.33, scale: 0.79 },
   chatCurieux: { src: charChatCurieuxAction, aimX: 0.55, aimY: 0.52, scale: 0.75 },
   // Lot de 12 personnages "buste, loupe collée à l'œil" (portraits plus
   // carrés, sans le corps entier) — même principe (icône pile au centre du
