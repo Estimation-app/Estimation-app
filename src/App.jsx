@@ -111,7 +111,7 @@ const CHARACTER_ACTION_IMAGES = {
   // décalage), mesurés par détourage + repérage précis du centre de la
   // loupe, taille (scale) harmonisée à 0.75 pour tout le lot.
   renard: { src: charRenardAction, aimX: 0.44, aimY: 0.34, scale: 0.75 },
-  chevalierDore: { src: charChevalierDoreAction, aimX: 0.485, aimY: 0.45, scale: 0.75 },
+  chevalierDore: { src: charChevalierDoreAction, aimX: 0.515, aimY: 0.45, scale: 0.75 },
   ninjaSilencieux: { src: charNinjaSilencieuxAction, aimX: 0.46, aimY: 0.42, scale: 0.75 },
   alienCurieux: { src: charAlienCurieuxAction, aimX: 0.54, aimY: 0.39, scale: 0.75 },
   sorciereFutee: { src: charSorciereFuteeAction, aimX: 0.46, aimY: 0.42, scale: 0.83 },
