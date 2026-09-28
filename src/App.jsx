@@ -481,10 +481,10 @@ const PANEL_THEMES = {
 
 const TRANSLATIONS = {
   fr: {
-    hero_title_1: "Une photo. Un prix.",
-    hero_title_2: "Direct.",
+    hero_title_1: "Tout a un prix.",
+    hero_title_2: "Même ça.",
     hero_subtitle:
-      "Dégaine ton téléphone : le prix de revente réel, façon Leboncoin ou brocante, en quelques secondes chrono.",
+      "Meuble, bijou, vieux jouet, gadget bizarre... Prends-le en photo, Estim' te dit ce qu'il vaut vraiment, en quelques secondes.",
     drop_zone_title: "Ajouter une photo",
     drop_zone_sub: "appareil photo ou galerie",
     loading_analyzing: "Identification de l'objet…",
@@ -566,10 +566,10 @@ const TRANSLATIONS = {
     reestimate_badge: "Réestimation à partir de ton historique — pour voir si le prix a bougé",
   },
   en: {
-    hero_title_1: "One photo. One price.",
-    hero_title_2: "Instantly.",
+    hero_title_1: "Everything has a price.",
+    hero_title_2: "Even that.",
     hero_subtitle:
-      "Grab your phone: the real resale price, flea-market or classifieds style, in a few seconds.",
+      "Furniture, jewelry, an old toy, some weird gadget... snap a photo and Estim' tells you what it's really worth, in seconds.",
     drop_zone_title: "Add a photo",
     drop_zone_sub: "camera or gallery",
     loading_analyzing: "Identifying the item…",
@@ -651,10 +651,10 @@ const TRANSLATIONS = {
     reestimate_badge: "Re-checked from your history — to see if the price has moved",
   },
   es: {
-    hero_title_1: "Una foto. Un precio.",
-    hero_title_2: "Al instante.",
+    hero_title_1: "Todo tiene un precio.",
+    hero_title_2: "Hasta eso.",
     hero_subtitle:
-      "Saca el móvil: el precio real de reventa, estilo mercadillo o anuncios, en pocos segundos.",
+      "Un mueble, una joya, un juguete viejo, un cacharro raro... Haz una foto y Estim' te dice cuánto vale de verdad, en segundos.",
     drop_zone_title: "Añadir una foto",
     drop_zone_sub: "cámara o galería",
     loading_analyzing: "Identificando el objeto…",
@@ -1378,7 +1378,7 @@ export default function App() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_character, avatar_display_mode, credits_achetes"
+        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_character, avatar_display_mode, credits_achetes, has_password"
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1573,6 +1573,13 @@ export default function App() {
     } else {
       setPasswordStatus("done");
       setNewPassword("");
+      // Persiste côté serveur (table "profiles") que ce compte a désormais
+      // un mot de passe, pour que le formulaire ne réapparaisse pas à la
+      // prochaine connexion — "passwordStatus" seul ne survit pas à un
+      // rechargement de page.
+      supabase.rpc("mark_password_set").then(({ error: rpcError }) => {
+        if (!rpcError) setProfile((prev) => (prev ? { ...prev, has_password: true } : prev));
+      });
     }
   }
 
@@ -2556,7 +2563,7 @@ export default function App() {
               </div>
 
               <div style={{ padding: "10px 2px", borderBottom: pt.dashedBorder }}>
-                {passwordStatus === "done" ? (
+                {passwordStatus === "done" || (profile && profile.has_password) ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <Lock size={16} color={accent} style={{ flexShrink: 0 }} />
                     <span style={{ fontSize: 13, color: pt.rowText }}>Mot de passe défini</span>
@@ -4745,7 +4752,7 @@ export default function App() {
                       boxShadow: "0 2px 6px rgba(178, 129, 22, 0.35)",
                     }}
                   >
-                    🪙 +{profile.credits_achetes}
+                    <Tag size={11} strokeWidth={2.5} style={{ transform: "rotate(-8deg)" }} />+{profile.credits_achetes}
                   </span>
                 )}
               </div>
@@ -4832,6 +4839,24 @@ export default function App() {
                   />
                   <Camera size={30} strokeWidth={1.5} style={{ position: "relative", color: accent }} />
                 </div>
+                {/* Rappel discret (repris sur le même fond que le cadre,
+                    comme la doublure ci-dessus) : sans lui, ce texte
+                    disparaissait complètement dès qu'un avatar était actif
+                    en fond — demandé par Dylan. */}
+                <span
+                  style={{
+                    position: "relative",
+                    zIndex: 1,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: pt.dropZoneText,
+                    background: pt.dropZoneBg,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                  }}
+                >
+                  {t("drop_zone_sub")}
+                </span>
               </>
             ) : (
               <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
