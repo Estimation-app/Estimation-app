@@ -137,7 +137,7 @@ const CHARACTER_ACTION_IMAGES = {
   phenixArdent: { src: charPhenixArdentAction, aimX: 0.58, aimY: 0.39, scale: 0.72 },
   ombreLegendaire: { src: charOmbreLegendaireAction, aimX: 0.59, aimY: 0.41, scale: 0.82 },
   chouetteDoree: { src: charChouetteDoreeAction, aimX: 0.44, aimY: 0.40, scale: 0.71 },
-  ratonMasque: { src: charRatonMasqueAction, aimX: 0.52, aimY: 0.36, scale: 0.68 },
+  ratonMasque: { src: charRatonMasqueAction, aimX: 0.52, aimY: 0.38, scale: 0.68 },
   capitainePirate: { src: charCapitainePirateAction, aimX: 0.31, aimY: 0.40, scale: 0.78 },
   bebeDragon: { src: charBebeDragonAction, aimX: 0.525, aimY: 0.45, scale: 0.68 },
 };
