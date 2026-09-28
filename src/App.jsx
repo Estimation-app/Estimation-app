@@ -13,9 +13,6 @@ import logoWordmarkDark from "./assets/logo-wordmark.png";
 import charChineur from "./assets/chineur.jpg";
 import charChineuse from "./assets/chineuse.jpg";
 import charRenard from "./assets/renard.jpg";
-import charRobotFerraille from "./assets/robotFerraille.jpg";
-import charChatCurieux from "./assets/chatCurieux.jpg";
-import charSingeFarceur from "./assets/singeFarceur.jpg";
 import charHibouSage from "./assets/hibouSage.jpg";
 import charCapitainePirate from "./assets/capitainePirate.jpg";
 import charAstroDebutant from "./assets/astroDebutant.jpg";
@@ -26,8 +23,6 @@ import charAlienCurieux from "./assets/alienCurieux.jpg";
 import charNinjaSilencieux from "./assets/ninjaSilencieux.jpg";
 import charRobotChrome from "./assets/robotChrome.jpg";
 import charBebeDragon from "./assets/bebeDragon.jpg";
-import charCowboyEncheres from "./assets/cowboyEncheres.jpg";
-import charChouetteDoree from "./assets/chouetteDoree.jpg";
 import charPieuvreMystique from "./assets/pieuvreMystique.jpg";
 import charPhenixArdent from "./assets/phenixArdent.jpg";
 import charGriffonCeleste from "./assets/griffonCeleste.jpg";
@@ -37,7 +32,6 @@ import charDiableEcarlate from "./assets/diableEcarlate.jpg";
 import charLapin from "./assets/lapin.jpg";
 import charPanthereNuit from "./assets/panthereNuit.jpg";
 import charRatonMasque from "./assets/ratonMasque.jpg";
-import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 
 // Portraits "en action" (même personnage, corps entier, prêt à scanner un
 // objet) — utilisés en incrustation semi-transparente PLEIN CADRE dans le
@@ -61,7 +55,6 @@ import charOmbreLegendaire from "./assets/ombreLegendaire.jpg";
 // hauteur du cadre. À mesurer/calculer au cas par cas pour chaque nouveau
 // personnage selon sa posture (pas de valeur par défaut qui pourrait être
 // fausse).
-import charRobotFerrailleAction from "./assets/robotFerrailleAction.png";
 import charChineurAction from "./assets/chineurAction.png";
 import charChineuseAction from "./assets/chineuseAction.png";
 import charRenardAction from "./assets/renardAction.png";
@@ -72,11 +65,8 @@ import charSorciereFuteeAction from "./assets/sorciereFuteeAction.png";
 import charTigreStyleAction from "./assets/tigreStyleAction.png";
 import charLoupDetectiveAction from "./assets/loupDetectiveAction.png";
 import charAstroDebutantAction from "./assets/astroDebutantAction.png";
-import charCowboyEncheresAction from "./assets/cowboyEncheresAction.png";
 import charHibooAction from "./assets/hibooAction.png";
-import charSingeFarceurAction from "./assets/singeFarceurAction.png";
 import charLapinAction from "./assets/lapinAction.png";
-import charChatCurieuxAction from "./assets/chatCurieuxAction.png";
 import charRobotChromeAction from "./assets/robotChromeAction.png";
 import charPieuvreMystiqueAction from "./assets/pieuvreMystiqueAction.png";
 import charDiableEcarlateAction from "./assets/diableEcarlateAction.png";
@@ -84,24 +74,15 @@ import charSpectreElegantAction from "./assets/spectreElegantAction.png";
 import charPanthereNuitAction from "./assets/panthereNuitAction.png";
 import charGriffonCelesteAction from "./assets/griffonCelesteAction.png";
 import charPhenixArdentAction from "./assets/phenixArdentAction.png";
-import charOmbreLegendaireAction from "./assets/ombreLegendaireAction.png";
-import charChouetteDoreeAction from "./assets/chouetteDoreeAction.png";
 import charRatonMasqueAction from "./assets/ratonMasqueAction.png";
 import charCapitainePirateAction from "./assets/capitainePirateAction.png";
 import charBebeDragonAction from "./assets/bebeDragonAction.png";
 
 const CHARACTER_ACTION_IMAGES = {
-  // Robot Ferraille : droite yeux (46.6%, 43.9%) → loupe (82.1%, 48.2%)
-  // prolongée d'environ 280px (à l'échelle de l'image 780x900) au-delà de
-  // la loupe, pour que l'icône se pose nettement à sa droite, avec un bon
-  // espace visible (le personnage est décalé à gauche, loin de l'icône).
-  // Réduit (scale) pour que le corps entier tienne dans le cadre.
-  robotFerraille: { src: charRobotFerrailleAction, aimX: 1.1218, aimY: 0.554, scale: 0.62 },
   // Le Chineur : ici le personnage regarde à travers sa loupe collée à son
-  // œil (contrairement à Robot Ferraille qui la tend à distance) — l'icône
-  // appareil photo est donc posée PILE au centre de la loupe (aimX/aimY =
-  // centre exact de la loupe, pas de décalage), comme s'il l'observait à
-  // travers elle.
+  // œil — l'icône appareil photo est donc posée PILE au centre de la loupe
+  // (aimX/aimY = centre exact de la loupe, pas de décalage), comme s'il
+  // l'observait à travers elle.
   chineur: { src: charChineurAction, aimX: 0.333, aimY: 0.325, scale: 0.76 },
   // La Chineuse : même principe que Le Chineur, loupe collée à l'œil,
   // icône posée pile au centre du verre.
@@ -118,11 +99,8 @@ const CHARACTER_ACTION_IMAGES = {
   tigreStyle: { src: charTigreStyleAction, aimX: 0.51, aimY: 0.41, scale: 0.75 },
   loupDetective: { src: charLoupDetectiveAction, aimX: 0.62, aimY: 0.325, scale: 0.75 },
   astroDebutant: { src: charAstroDebutantAction, aimX: 0.33, aimY: 0.33, scale: 0.78 },
-  cowboyEncheres: { src: charCowboyEncheresAction, aimX: 0.36, aimY: 0.35, scale: 0.75 },
   hiboo: { src: charHibooAction, aimX: 0.46, aimY: 0.415, scale: 0.75 },
-  singeFarceur: { src: charSingeFarceurAction, aimX: 0.58, aimY: 0.46, scale: 0.75 },
   lapin: { src: charLapinAction, aimX: 0.51, aimY: 0.33, scale: 0.79 },
-  chatCurieux: { src: charChatCurieuxAction, aimX: 0.55, aimY: 0.52, scale: 0.75 },
   // Lot de 12 personnages "buste, loupe collée à l'œil" (portraits plus
   // carrés, sans le corps entier) — même principe (icône pile au centre du
   // verre), taille (scale) harmonisée à 0.68 pour tout le lot (un peu
@@ -135,8 +113,6 @@ const CHARACTER_ACTION_IMAGES = {
   panthereNuit: { src: charPanthereNuitAction, aimX: 0.68, aimY: 0.46, scale: 0.72 },
   griffonCeleste: { src: charGriffonCelesteAction, aimX: 0.53, aimY: 0.44, scale: 0.72 },
   phenixArdent: { src: charPhenixArdentAction, aimX: 0.58, aimY: 0.39, scale: 0.72 },
-  ombreLegendaire: { src: charOmbreLegendaireAction, aimX: 0.59, aimY: 0.41, scale: 0.82 },
-  chouetteDoree: { src: charChouetteDoreeAction, aimX: 0.44, aimY: 0.40, scale: 0.71 },
   ratonMasque: { src: charRatonMasqueAction, aimX: 0.52, aimY: 0.38, scale: 0.68 },
   capitainePirate: { src: charCapitainePirateAction, aimX: 0.32, aimY: 0.40, scale: 0.82 },
   bebeDragon: { src: charBebeDragonAction, aimX: 0.525, aimY: 0.45, scale: 0.68 },
@@ -146,9 +122,6 @@ const CHARACTER_IMAGES = {
   chineur: charChineur,
   chineuse: charChineuse,
   renard: charRenard,
-  robotFerraille: charRobotFerraille,
-  chatCurieux: charChatCurieux,
-  singeFarceur: charSingeFarceur,
   hiboo: charHibouSage,
   capitainePirate: charCapitainePirate,
   astroDebutant: charAstroDebutant,
@@ -159,8 +132,6 @@ const CHARACTER_IMAGES = {
   ninjaSilencieux: charNinjaSilencieux,
   robotChrome: charRobotChrome,
   bebeDragon: charBebeDragon,
-  cowboyEncheres: charCowboyEncheres,
-  chouetteDoree: charChouetteDoree,
   pieuvreMystique: charPieuvreMystique,
   phenixArdent: charPhenixArdent,
   griffonCeleste: charGriffonCeleste,
@@ -170,7 +141,6 @@ const CHARACTER_IMAGES = {
   lapin: charLapin,
   panthereNuit: charPanthereNuit,
   ratonMasque: charRatonMasque,
-  ombreLegendaire: charOmbreLegendaire,
 };
 
 // Ton serveur relais (Cloudflare Worker) — cache les clés API et évite le
@@ -2176,16 +2146,9 @@ export default function App() {
     { id: "chineuse", name: "La Chineuse", tier: 0, free: true },
     // --- Palier 1 ---
     { id: "renard", name: "Renard Malin", tier: 1, test: () => lifetimeEstimations >= 10, hint: "dès 10 estimations" },
-    { id: "robotFerraille", name: "Robot Ferraille", tier: 1, test: () => lifetimeEstimations >= 25, hint: "dès 25 estimations" },
-    { id: "chatCurieux", name: "Chat Curieux", tier: 1, test: () => lifetimeEstimations >= 50, hint: "dès 50 estimations" },
     { id: "lapin", name: "Lapin Chanceux", tier: 1, test: () => lifetimeEstimations >= 75, hint: "dès 75 estimations" },
-    { id: "singeFarceur", name: "Singe Farceur", tier: 1, test: () => lifetimeEstimations >= 100, hint: "dès 100 estimations" },
     { id: "hiboo", name: "Hibou Sage", tier: 1, test: () => lifetimeEstimations >= 150, hint: "dès 150 estimations" },
     // --- Palier 2 ---
-    // Cowboy des Enchères <-> Capitaine Pirate : seuils inversés (demandé
-    // par Dylan) — c'est bien le cowboy qui est maintenant le plus facile
-    // à débloquer, et le capitaine pirate qui a migré plus loin (palier 3).
-    { id: "cowboyEncheres", name: "Cowboy des Enchères", tier: 2, test: () => lifetimeEstimations >= 200, hint: "dès 200 estimations" },
     { id: "astroDebutant", name: "Astro Débutant", tier: 2, test: () => lifetimeEstimations >= 300, hint: "dès 300 estimations" },
     { id: "loupDetective", name: "Loup Détective", tier: 2, test: () => lifetimeEstimations >= 400, hint: "dès 400 estimations" },
     { id: "tigreStyle", name: "Tigre Stylé", tier: 2, test: () => lifetimeEstimations >= 500, hint: "dès 500 estimations" },
@@ -2201,16 +2164,14 @@ export default function App() {
     // --- Palier 4 ---
     { id: "capitainePirate", name: "Capitaine Pirate", tier: 4, test: () => lifetimeEstimations >= 3000, hint: "dès 3000 estimations" },
     { id: "ratonMasque", name: "Raton Masqué", tier: 4, test: () => lifetimeEstimations >= 4000, hint: "dès 4000 estimations" },
-    { id: "chouetteDoree", name: "Chouette Dorée", tier: 4, test: () => lifetimeEstimations >= 5000, hint: "dès 5000 estimations" },
     { id: "pieuvreMystique", name: "Pieuvre Mystique", tier: 4, test: () => lifetimeEstimations >= 7500, hint: "dès 7500 estimations" },
     { id: "phenixArdent", name: "Phénix Ardent", tier: 4, test: () => lifetimeEstimations >= 10000, hint: "dès 10 000 estimations" },
     // --- Palier 5 (Loup Argenté Alpha retiré du catalogue) ---
     { id: "griffonCeleste", name: "Griffon Céleste", tier: 5, test: () => lifetimeEstimations >= 20000, hint: "dès 20 000 estimations" },
     { id: "panthereNuit", name: "Panthère des Nuits", tier: 5, test: () => lifetimeEstimations >= 30000, hint: "dès 30 000 estimations" },
     { id: "spectreElegant", name: "Spectre Élégant", tier: 5, test: () => lifetimeEstimations >= 50000, hint: "dès 50 000 estimations" },
-    // --- Palier 6 : les 2 secrets ---
+    // --- Palier 6 : le secret ---
     { id: "diableEcarlate", name: "Le Diable Écarlate", tier: 6, secret: true, test: () => lifetimeEstimations >= 100000, hint: "??? (secret)" },
-    { id: "ombreLegendaire", name: "L'Ombre Légendaire", tier: 6, secret: true, test: () => lifetimeEstimations >= 100000, hint: "??? (secret)" },
   ];
   function characterMeta(id) {
     return CHARACTERS_META.find((c) => c.id === id) || CHARACTERS_META[0];
