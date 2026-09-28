@@ -260,7 +260,13 @@ const BG_SKINS = [
   // GRADES plus haut) pour rappeler la pierre précieuse sans le copier.
   // Seul palier avec `glow` (halo lumineux) et petits glyphes "incrustés"
   // (voir le bloc `activeBgSkin.key === "platine"` dans le header).
-  { key: "platine", threshold: 100, label: "Platine", emoji: "💠", mode: "dark", base: "#10141B", mid: "#5A6C82", high: "#D9F3FF", glow: 0.4 },
+  // "high" a été assombri (l'ancien #D9F3FF, quasi blanc, rendait illisible
+  // le texte clair du thème sombre — chevronColor, subText, etc. — sur les
+  // panneaux/écrans utilisant pt.sheetBg/loadingBg dérivés de cette teinte,
+  // notamment le seuil d'estimations sous les avatars verrouillés). L'effet
+  // "brillant" reste porté par `glow` + les glyphes incrustés, pas par la
+  // clarté du dégradé de fond.
+  { key: "platine", threshold: 100, label: "Platine", emoji: "💠", mode: "dark", base: "#10141B", mid: "#3C4B5E", high: "#5F7186", glow: 0.4 },
 ];
 // Progression réelle des paliers à débloquer (le "blanc" est un fond
 // alternatif toujours disponible, pas une récompense — il ne fait donc pas
