@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User, Download } from "lucide-react";
+import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User, Download, Plus, Minus } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 import logoWordmarkDark from "./assets/logo-wordmark.png";
 
@@ -200,6 +200,17 @@ const PLANS = [
   { key: "premium", label: "Premium", price: "24,99 €/mois", quota: 300, bonus: 20 },
   { key: "elite", label: "Elite", price: "69,99 €/mois", quota: 1000, bonus: 50 },
 ];
+
+// Achat d'estimations "à l'unité" (hors abonnement) : 0,30 € pièce, sans
+// aucune remise sur le prix — seul avantage, tous les 100 estimations
+// achetées (payées) donnent 10 estimations offertes en plus, sans limite
+// (200 achetées → 20 offertes, etc.). Toujours plus cher à l'unité que le
+// pack Starter (0,1495 €/estimation) même à très gros volume, comme exigé.
+// Le prix réel facturé est recalculé côté serveur (worker.js) — ces
+// constantes ne servent qu'à l'affichage et à la validation du champ ici.
+const CREDIT_UNIT_PRICE = 0.3;
+const CREDIT_BONUS_PER_HUNDRED = 10;
+const CREDIT_PURCHASE_MAX_QUANTITY = 2000;
 
 // "Habillages" débloqués selon le PLAN D'ABONNEMENT souscrit (et non plus
 // au fil des estimations) — change carrément l'accent visuel de toute
@@ -539,6 +550,12 @@ const TRANSLATIONS = {
     subscription_plans_title: "Nos abonnements :",
     subscription_bonus_suffix: "offertes à la souscription",
     subscription_cancel_anytime: "Résiliable à tout moment, directement depuis ton compte.",
+    credits_section_title: "Ou achète des estimations à l'unité :",
+    credits_section_subtitle: "Utilisées seulement une fois ton quota du mois épuisé. N'expirent jamais.",
+    credits_balance_label: "estimation(s) achetée(s) disponible(s)",
+    credits_bonus_suffix: "offerte(s)",
+    credits_total_suffix: "estimations au total",
+    credits_buy_button: "Acheter",
     contact_title: "Contact",
     contact_text: "Une question, un souci, une suggestion ? Écris-nous :",
     language_title: "Langue",
@@ -618,6 +635,12 @@ const TRANSLATIONS = {
     subscription_plans_title: "Our plans:",
     subscription_bonus_suffix: "offered when you subscribe",
     subscription_cancel_anytime: "Cancel anytime, directly from your account.",
+    credits_section_title: "Or buy estimations one by one:",
+    credits_section_subtitle: "Used only once your monthly quota is used up. Never expire.",
+    credits_balance_label: "purchased estimation(s) available",
+    credits_bonus_suffix: "free",
+    credits_total_suffix: "estimations total",
+    credits_buy_button: "Buy",
     contact_title: "Contact",
     contact_text: "A question, an issue, a suggestion? Write to us:",
     language_title: "Language",
@@ -697,6 +720,12 @@ const TRANSLATIONS = {
     subscription_plans_title: "Nuestros planes:",
     subscription_bonus_suffix: "de regalo al suscribirte",
     subscription_cancel_anytime: "Cancelable en cualquier momento, directamente desde tu cuenta.",
+    credits_section_title: "O compra estimaciones por unidad:",
+    credits_section_subtitle: "Se usan solo una vez agotada tu cuota mensual. Nunca caducan.",
+    credits_balance_label: "estimación(es) comprada(s) disponible(s)",
+    credits_bonus_suffix: "de regalo",
+    credits_total_suffix: "estimaciones en total",
+    credits_buy_button: "Comprar",
     contact_title: "Contacto",
     contact_text: "¿Una pregunta, un problema, una sugerencia? Escríbenos:",
     language_title: "Idioma",
@@ -1332,6 +1361,9 @@ export default function App() {
   const [adWatching, setAdWatching] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(null); // clé du plan en cours de traitement
   const [portalLoading, setPortalLoading] = useState(false);
+  const [creditQuantity, setCreditQuantity] = useState(10);
+  const [creditCheckoutLoading, setCreditCheckoutLoading] = useState(false);
+  const [creditError, setCreditError] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
@@ -1345,7 +1377,7 @@ export default function App() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_character, avatar_display_mode"
+        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_character, avatar_display_mode, credits_achetes"
       )
       .eq("id", userId)
       .maybeSingle();
@@ -1394,6 +1426,35 @@ export default function App() {
       console.error(e);
       setPaywallInfo((prev) => ({ ...(prev || {}), message: e.message || "Erreur lors de la création du paiement." }));
       setCheckoutLoading(null);
+    }
+  }
+
+  // Achat d'estimations à l'unité (hors abonnement) : session Stripe en
+  // mode paiement unique, quantité choisie via le stepper +/-. Le prix
+  // réel (0,30 €/estimation, sans remise) est recalculé côté serveur —
+  // "quantity" est la seule donnée envoyée, jamais un prix.
+  async function startCreditCheckout() {
+    if (!user) return;
+    setCreditError(null);
+    setCreditCheckoutLoading(true);
+    try {
+      const res = await fetch(PROXY_URL + "/create-credit-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          email: user.email,
+          quantity: creditQuantity,
+          return_url: window.location.origin,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de la création du paiement.");
+      window.location.href = data.url;
+    } catch (e) {
+      console.error(e);
+      setCreditError(e.message || "Erreur lors de la création du paiement.");
+      setCreditCheckoutLoading(false);
     }
   }
 
@@ -2441,6 +2502,14 @@ export default function App() {
                     <Sparkles size={14} /> s'abonner
                   </button>
                 )}
+              </div>
+            )}
+
+            {profile && profile.credits_achetes > 0 && (
+              <div style={{ padding: "0 2px", marginTop: 4 }}>
+                <span className="mono" style={{ fontSize: 11, color: pt.strongColor, fontWeight: 700 }}>
+                  +{profile.credits_achetes} {t("credits_balance_label")}
+                </span>
               </div>
             )}
 
@@ -3968,6 +4037,95 @@ export default function App() {
       setError(e.message || "L'estimation du bien immobilier a échoué.");
       setStatus("error");
     }
+  }
+
+  // Bloc réutilisé à deux endroits (panneau "Abonnement" + paywall quota
+  // atteint) : stepper +/- pour choisir la quantité, prix live (0,30 €
+  // pièce, sans remise) et rappel du bonus "10 offertes tous les 100".
+  function renderCreditPurchaseBlock() {
+    const bonus = Math.floor(creditQuantity / 100) * CREDIT_BONUS_PER_HUNDRED;
+    const total = creditQuantity + bonus;
+    const priceLabel = (creditQuantity * CREDIT_UNIT_PRICE).toFixed(2).replace(".", ",") + " €";
+    return (
+      <div style={{ borderTop: pt.dashedBorder, paddingTop: 14, marginTop: 14 }}>
+        <p className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 2 }}>
+          {t("credits_section_title")}
+        </p>
+        <p className="mono" style={{ fontSize: 10.5, color: pt.subText, marginTop: 0, marginBottom: 10, opacity: 0.85 }}>
+          {t("credits_section_subtitle")}
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <button
+            type="button"
+            onClick={() => setCreditQuantity((q) => Math.max(1, q - 1))}
+            className="btn-ghost"
+            style={{ padding: "6px 10px", borderColor: pt.ghostBorder, color: pt.ghostColor, background: pt.ghostBg }}
+            aria-label="moins"
+          >
+            <Minus size={14} />
+          </button>
+          <input
+            type="number"
+            min={1}
+            max={CREDIT_PURCHASE_MAX_QUANTITY}
+            value={creditQuantity}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              setCreditQuantity(Number.isFinite(v) ? Math.min(CREDIT_PURCHASE_MAX_QUANTITY, Math.max(1, v)) : 1);
+            }}
+            className="mono"
+            style={{
+              width: 64,
+              textAlign: "center",
+              fontSize: 15,
+              fontWeight: 800,
+              color: pt.strongColor,
+              background: pt.rowBg,
+              border: pt.rowBorder,
+              borderRadius: 8,
+              padding: "6px 4px",
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setCreditQuantity((q) => Math.min(CREDIT_PURCHASE_MAX_QUANTITY, q + 1))}
+            className="btn-ghost"
+            style={{ padding: "6px 10px", borderColor: pt.ghostBorder, color: pt.ghostColor, background: pt.ghostBg }}
+            aria-label="plus"
+          >
+            <Plus size={14} />
+          </button>
+          <span className="mono" style={{ fontSize: 12, color: pt.subText }}>
+            estimation{creditQuantity > 1 ? "s" : ""}
+          </span>
+        </div>
+        {bonus > 0 && (
+          <p className="mono" style={{ fontSize: 11, color: accent, marginTop: 0, marginBottom: 8, fontWeight: 700 }}>
+            + {bonus} {t("credits_bonus_suffix")} → {total} {t("credits_total_suffix")}
+          </p>
+        )}
+        {creditError && (
+          <p className="mono" style={{ fontSize: 11, color: accent, marginTop: 0, marginBottom: 8 }}>
+            {creditError}
+          </p>
+        )}
+        <button
+          className="btn-primary"
+          onClick={() => (user ? startCreditCheckout() : null)}
+          disabled={!user || creditCheckoutLoading}
+          style={{ justifyContent: "space-between", width: "100%", opacity: user ? 1 : 0.6 }}
+        >
+          <span>{t("credits_buy_button")}</span>
+          <span>
+            {creditCheckoutLoading ? (
+              <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+            ) : (
+              priceLabel
+            )}
+          </span>
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -7927,6 +8085,8 @@ export default function App() {
                 {t("subscription_cancel_anytime")}
               </p>
             </div>
+
+            {renderCreditPurchaseBlock()}
           </div>
         </div>
       )}
@@ -8105,6 +8265,8 @@ export default function App() {
                 {t("subscription_cancel_anytime")}
               </p>
             </div>
+
+            {renderCreditPurchaseBlock()}
           </div>
         </div>
       )}
