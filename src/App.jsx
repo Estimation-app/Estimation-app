@@ -113,7 +113,7 @@ const CHARACTER_ACTION_IMAGES = {
   renard: { src: charRenardAction, aimX: 0.44, aimY: 0.34, scale: 0.75 },
   chevalierDore: { src: charChevalierDoreAction, aimX: 0.495, aimY: 0.45, scale: 0.75 },
   ninjaSilencieux: { src: charNinjaSilencieuxAction, aimX: 0.46, aimY: 0.42, scale: 0.75 },
-  alienCurieux: { src: charAlienCurieuxAction, aimX: 0.55, aimY: 0.39, scale: 0.75 },
+  alienCurieux: { src: charAlienCurieuxAction, aimX: 0.56, aimY: 0.39, scale: 0.75 },
   sorciereFutee: { src: charSorciereFuteeAction, aimX: 0.46, aimY: 0.42, scale: 0.83 },
   tigreStyle: { src: charTigreStyleAction, aimX: 0.51, aimY: 0.415, scale: 0.75 },
   loupDetective: { src: charLoupDetectiveAction, aimX: 0.62, aimY: 0.305, scale: 0.75 },
