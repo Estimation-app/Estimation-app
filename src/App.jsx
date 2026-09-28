@@ -206,11 +206,11 @@ const PLANS = [
 // achetées (payées) donnent 10 estimations offertes en plus, sans limite
 // (200 achetées → 20 offertes, etc.). Toujours plus cher à l'unité que le
 // pack Starter (0,1495 €/estimation) même à très gros volume, comme exigé.
-// Le prix réel facturé est recalculé côté serveur (worker.js) — ces
-// constantes ne servent qu'à l'affichage et à la validation du champ ici.
+// Le prix réel facturé est recalculé côté serveur (worker.js) — cette
+// constante ne sert qu'à l'affichage ici. Aucune quantité maximale côté
+// front (demandé par Dylan) : seul le minimum de 1 est imposé.
 const CREDIT_UNIT_PRICE = 0.3;
 const CREDIT_BONUS_PER_HUNDRED = 10;
-const CREDIT_PURCHASE_MAX_QUANTITY = 2000;
 
 // "Habillages" débloqués selon le PLAN D'ABONNEMENT souscrit (et non plus
 // au fil des estimations) — change carrément l'accent visuel de toute
@@ -1361,7 +1361,8 @@ export default function App() {
   const [adWatching, setAdWatching] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(null); // clé du plan en cours de traitement
   const [portalLoading, setPortalLoading] = useState(false);
-  const [creditQuantity, setCreditQuantity] = useState(10);
+  const [creditQuantity, setCreditQuantity] = useState(10); // valeur numérique validée (>=1), utilisée pour le calcul et l'achat
+  const [creditQuantityText, setCreditQuantityText] = useState("10"); // texte affiché dans le champ, peut être vide pendant la saisie
   const [creditCheckoutLoading, setCreditCheckoutLoading] = useState(false);
   const [creditError, setCreditError] = useState(null);
 
@@ -4057,7 +4058,13 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
           <button
             type="button"
-            onClick={() => setCreditQuantity((q) => Math.max(1, q - 1))}
+            onClick={() =>
+              setCreditQuantity((q) => {
+                const next = Math.max(1, q - 1);
+                setCreditQuantityText(String(next));
+                return next;
+              })
+            }
             className="btn-ghost"
             style={{ padding: "6px 10px", borderColor: pt.ghostBorder, color: pt.ghostColor, background: pt.ghostBg }}
             aria-label="moins"
@@ -4067,15 +4074,29 @@ export default function App() {
           <input
             type="number"
             min={1}
-            max={CREDIT_PURCHASE_MAX_QUANTITY}
-            value={creditQuantity}
+            value={creditQuantityText}
             onChange={(e) => {
-              const v = parseInt(e.target.value, 10);
-              setCreditQuantity(Number.isFinite(v) ? Math.min(CREDIT_PURCHASE_MAX_QUANTITY, Math.max(1, v)) : 1);
+              const raw = e.target.value;
+              setCreditQuantityText(raw);
+              // On ne met à jour la quantité validée (prix/bonus, achat) que
+              // si ce qui est tapé est déjà un entier valide — le champ peut
+              // rester vide ou partiel pendant la saisie sans jamais se
+              // faire réinitialiser à "1" sous les doigts de l'utilisateur.
+              const v = parseInt(raw, 10);
+              if (Number.isInteger(v) && v >= 1 && String(v) === raw.trim()) {
+                setCreditQuantity(v);
+              }
+            }}
+            onBlur={() => {
+              // En sortant du champ, si ce qui reste tapé n'est pas un
+              // nombre valide (vide, 0, négatif...), on retombe sur la
+              // dernière quantité valide connue plutôt que de laisser le
+              // champ dans un état incohérent.
+              setCreditQuantityText(String(creditQuantity));
             }}
             className="mono"
             style={{
-              width: 64,
+              width: 76,
               textAlign: "center",
               fontSize: 15,
               fontWeight: 800,
@@ -4088,7 +4109,13 @@ export default function App() {
           />
           <button
             type="button"
-            onClick={() => setCreditQuantity((q) => Math.min(CREDIT_PURCHASE_MAX_QUANTITY, q + 1))}
+            onClick={() =>
+              setCreditQuantity((q) => {
+                const next = q + 1;
+                setCreditQuantityText(String(next));
+                return next;
+              })
+            }
             className="btn-ghost"
             style={{ padding: "6px 10px", borderColor: pt.ghostBorder, color: pt.ghostColor, background: pt.ghostBg }}
             aria-label="plus"
