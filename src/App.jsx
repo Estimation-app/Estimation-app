@@ -4324,6 +4324,8 @@ export default function App() {
         }
         .btn-primary:active { transform: scale(0.98); box-shadow: 0 3px 10px rgba(${accentRgb}, 0.28); }
         .btn-primary:disabled { opacity: 0.55; box-shadow: none; }
+        .btn-cta-pill { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+        .btn-cta-pill:active { transform: scale(0.94); box-shadow: 0 3px 10px rgba(${accentRgb}, 0.28); }
         .btn-ghost {
           background: transparent;
           color: ${pt.ghostColor};
@@ -4684,46 +4686,66 @@ export default function App() {
           </p>
 
           {user && profile && (
-            <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+            <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
               <div
+                onClick={() => setShowHistory(true)}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 6,
+                  gap: 9,
                   cursor: "pointer",
                   position: "relative",
-                  background: pt.chipBg,
-                  border: pt.chipBorder,
-                  borderRadius: 20,
-                  padding: "6px 12px",
-                  color: pt.chipText,
+                  background: `linear-gradient(135deg, rgba(${accentRgb}, 0.16) 0%, rgba(${accentRgb}, 0.05) 100%)`,
+                  border: `1.5px solid rgba(${accentRgb}, 0.35)`,
+                  borderRadius: 999,
+                  padding: "5px 13px 5px 5px",
                 }}
-                onClick={() => setShowHistory(true)}
               >
-                <Sparkles size={12} color={accent} style={{ flexShrink: 0 }} />
-                {profile.plan !== "gratuit" && profile.subscription_status === "active" ? (
-                  <span className="brand" style={{ fontSize: 12, fontStyle: "italic", fontWeight: 500 }}>
-                    {PLANS.find((p) => p.key === profile.plan)?.label || profile.plan}
-                    <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 400 }}>
-                      {Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/{profile.quota_mensuel} restantes
-                    </span>
-                    {profile.credits_achetes > 0 && (
-                      <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 700, color: accent }}>
-                        +{profile.credits_achetes} achetées
-                      </span>
-                    )}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
+                    boxShadow: `0 2px 6px rgba(${accentRgb}, 0.45)`,
+                  }}
+                >
+                  <Sparkles size={13} color="#FFFFFF" className="sparkle" />
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
+                  <span className="brand" style={{ fontSize: 17, fontWeight: 600, color: pt.strongColor }}>
+                    {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                      ? Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)
+                      : Math.max(0, 3 - profile.gratuit_utilisees)}
                   </span>
-                ) : (
-                  <span className="brand" style={{ fontSize: 12, fontStyle: "italic", fontWeight: 500 }}>
-                    Gratuit
-                    <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 400 }}>
-                      {Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) restante(s) ce mois
-                    </span>
-                    {profile.credits_achetes > 0 && (
-                      <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 700, color: accent }}>
-                        +{profile.credits_achetes} achetées
-                      </span>
-                    )}
+                  <span className="mono" style={{ fontSize: 11, fontWeight: 500, color: pt.subText }}>
+                    {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                      ? `/${profile.quota_mensuel} estim' restantes`
+                      : "estim' gratuite(s) restante(s)"}
+                  </span>
+                </span>
+                {profile.credits_achetes > 0 && (
+                  <span
+                    className="mono"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 3,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: "#7A5300",
+                      background: "linear-gradient(135deg, #FFE9A8 0%, #FFD056 60%, #F2B33D 100%)",
+                      borderRadius: 999,
+                      padding: "3px 9px",
+                      boxShadow: "0 2px 6px rgba(178, 129, 22, 0.35)",
+                    }}
+                  >
+                    🪙 +{profile.credits_achetes}
                   </span>
                 )}
               </div>
@@ -4732,22 +4754,23 @@ export default function App() {
                   setPaywallInfo(null);
                   setShowSubscriptionPanel(true);
                 }}
-                className="mono"
+                className="mono btn-cta-pill"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 6,
-                  background: "none",
-                  border: `1px dashed rgba(${accentRgb}, 0.55)`,
-                  borderRadius: 20,
-                  padding: "6px 12px",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: accent,
-                  cursor: "pointer",
+                  gap: 7,
+                  background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
+                  border: "none",
+                  borderRadius: 999,
+                  padding: "9px 16px",
+                  fontSize: 12.5,
+                  fontWeight: 800,
+                  letterSpacing: "0.01em",
+                  color: "#FFFFFF",
+                  boxShadow: `0 6px 16px rgba(${accentRgb}, 0.35)`,
                 }}
               >
-                <Plus size={12} /> Obtenir plus d'estim'
+                <span style={{ fontSize: 14, lineHeight: 1 }}>⚡</span> Obtenir plus d'estim'
               </button>
             </div>
           )}
