@@ -4839,24 +4839,6 @@ export default function App() {
                   />
                   <Camera size={30} strokeWidth={1.5} style={{ position: "relative", color: accent }} />
                 </div>
-                {/* Rappel discret (repris sur le même fond que le cadre,
-                    comme la doublure ci-dessus) : sans lui, ce texte
-                    disparaissait complètement dès qu'un avatar était actif
-                    en fond — demandé par Dylan. */}
-                <span
-                  style={{
-                    position: "relative",
-                    zIndex: 1,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: pt.dropZoneText,
-                    background: pt.dropZoneBg,
-                    padding: "4px 10px",
-                    borderRadius: 999,
-                  }}
-                >
-                  {t("drop_zone_sub")}
-                </span>
               </>
             ) : (
               <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
