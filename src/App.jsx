@@ -134,7 +134,7 @@ const CHARACTER_ACTION_IMAGES = {
   spectreElegant: { src: charSpectreElegantAction, aimX: 0.56, aimY: 0.41, scale: 0.73 },
   panthereNuit: { src: charPanthereNuitAction, aimX: 0.68, aimY: 0.46, scale: 0.72 },
   griffonCeleste: { src: charGriffonCelesteAction, aimX: 0.53, aimY: 0.44, scale: 0.72 },
-  phenixArdent: { src: charPhenixArdentAction, aimX: 0.58, aimY: 0.385, scale: 0.72 },
+  phenixArdent: { src: charPhenixArdentAction, aimX: 0.58, aimY: 0.39, scale: 0.72 },
   ombreLegendaire: { src: charOmbreLegendaireAction, aimX: 0.59, aimY: 0.41, scale: 0.82 },
   chouetteDoree: { src: charChouetteDoreeAction, aimX: 0.46, aimY: 0.40, scale: 0.71 },
   ratonMasque: { src: charRatonMasqueAction, aimX: 0.52, aimY: 0.36, scale: 0.68 },
