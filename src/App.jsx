@@ -110,7 +110,7 @@ const CHARACTER_ACTION_IMAGES = {
   // principe que Chineur/Chineuse : icône pile au centre du verre, sans
   // décalage), mesurés par détourage + repérage précis du centre de la
   // loupe, taille (scale) harmonisée à 0.75 pour tout le lot.
-  renard: { src: charRenardAction, aimX: 0.44, aimY: 0.36, scale: 0.75 },
+  renard: { src: charRenardAction, aimX: 0.44, aimY: 0.365, scale: 0.75 },
   chevalierDore: { src: charChevalierDoreAction, aimX: 0.495, aimY: 0.45, scale: 0.75 },
   ninjaSilencieux: { src: charNinjaSilencieuxAction, aimX: 0.46, aimY: 0.42, scale: 0.75 },
   alienCurieux: { src: charAlienCurieuxAction, aimX: 0.56, aimY: 0.39, scale: 0.75 },
