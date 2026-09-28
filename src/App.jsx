@@ -2370,6 +2370,32 @@ export default function App() {
     }
   }
 
+  // Avatar de l'utilisateur, ou icône neutre si "aucun avatar" a été choisi
+  // (avatar_character === "") — même logique que l'icône en haut à droite
+  // du header, réutilisée ici pour ne pas faire retomber sur "chineur" par
+  // défaut dès qu'un avatar_character est vide (bug remonté par Dylan).
+  function renderAvatarOrPlaceholder(characterId, size) {
+    if (characterId) {
+      return <CharacterAvatar id={characterId} size={size} />;
+    }
+    return (
+      <span
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          background: pt.rowBg,
+        }}
+      >
+        <User size={Math.max(10, Math.round(size * 0.5))} color={pt.subText} />
+      </span>
+    );
+  }
+
   // Bloc connexion / compte (email+mot de passe, lien magique, plan,
   // parrainage, mot de passe) — affiché dans le panneau "Profil" (icône en
   // haut à droite du header). Simple fonction plutôt qu'un composant séparé :
@@ -2399,7 +2425,7 @@ export default function App() {
                 padding: "12px 12px",
               }}
             >
-              <CharacterAvatar id={(profile && profile.avatar_character) || DEFAULT_CHARACTER_ID} size={52} />
+              {renderAvatarOrPlaceholder(profile && profile.avatar_character, 52)}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
@@ -4658,38 +4684,71 @@ export default function App() {
           </p>
 
           {user && profile && (
-            <div
-              style={{
-                marginTop: 12,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                cursor: "pointer",
-                position: "relative",
-                background: pt.chipBg,
-                border: pt.chipBorder,
-                borderRadius: 20,
-                padding: "6px 12px",
-                color: pt.chipText,
-              }}
-              onClick={() => setShowHistory(true)}
-            >
-              <Sparkles size={12} color={accent} style={{ flexShrink: 0 }} />
-              {profile.plan !== "gratuit" && profile.subscription_status === "active" ? (
-                <span className="brand" style={{ fontSize: 12, fontStyle: "italic", fontWeight: 500 }}>
-                  {PLANS.find((p) => p.key === profile.plan)?.label || profile.plan}
-                  <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 400 }}>
-                    {Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/{profile.quota_mensuel} restantes
+            <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  cursor: "pointer",
+                  position: "relative",
+                  background: pt.chipBg,
+                  border: pt.chipBorder,
+                  borderRadius: 20,
+                  padding: "6px 12px",
+                  color: pt.chipText,
+                }}
+                onClick={() => setShowHistory(true)}
+              >
+                <Sparkles size={12} color={accent} style={{ flexShrink: 0 }} />
+                {profile.plan !== "gratuit" && profile.subscription_status === "active" ? (
+                  <span className="brand" style={{ fontSize: 12, fontStyle: "italic", fontWeight: 500 }}>
+                    {PLANS.find((p) => p.key === profile.plan)?.label || profile.plan}
+                    <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 400 }}>
+                      {Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/{profile.quota_mensuel} restantes
+                    </span>
+                    {profile.credits_achetes > 0 && (
+                      <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 700, color: accent }}>
+                        +{profile.credits_achetes} achetées
+                      </span>
+                    )}
                   </span>
-                </span>
-              ) : (
-                <span className="brand" style={{ fontSize: 12, fontStyle: "italic", fontWeight: 500 }}>
-                  Gratuit
-                  <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 400 }}>
-                    {Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) restante(s) ce mois
+                ) : (
+                  <span className="brand" style={{ fontSize: 12, fontStyle: "italic", fontWeight: 500 }}>
+                    Gratuit
+                    <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 400 }}>
+                      {Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) restante(s) ce mois
+                    </span>
+                    {profile.credits_achetes > 0 && (
+                      <span className="mono" style={{ marginLeft: 6, fontStyle: "normal", fontWeight: 700, color: accent }}>
+                        +{profile.credits_achetes} achetées
+                      </span>
+                    )}
                   </span>
-                </span>
-              )}
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setPaywallInfo(null);
+                  setShowSubscriptionPanel(true);
+                }}
+                className="mono"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "none",
+                  border: `1px dashed rgba(${accentRgb}, 0.55)`,
+                  borderRadius: 20,
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: accent,
+                  cursor: "pointer",
+                }}
+              >
+                <Plus size={12} /> Obtenir plus d'estim'
+              </button>
             </div>
           )}
         </header>
@@ -6867,7 +6926,15 @@ export default function App() {
                       <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
                         {g.emoji} {g.label}
                       </span>
-                      <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
+                      <span
+                        className="mono"
+                        style={{
+                          fontSize: 8,
+                          fontWeight: g.planRank === 0 ? 400 : 700,
+                          color: unlocked ? "#4ADE80" : g.accent,
+                          textAlign: "center",
+                        }}
+                      >
                         {g.planRank === 0 ? "toujours" : unlocked ? "débloqué" : g.planLabel}
                       </span>
                     </button>
@@ -7856,7 +7923,7 @@ export default function App() {
                     }}
                   >
                     <span style={{ display: "inline-flex", verticalAlign: "middle" }}>
-                      <CharacterAvatar id={(profile && profile.avatar_character) || DEFAULT_CHARACTER_ID} size={17} />
+                      {renderAvatarOrPlaceholder(profile && profile.avatar_character, 17)}
                     </span>
                     Personnaliser mon avatar
                     <ChevronRight size={12} color={accent} />
