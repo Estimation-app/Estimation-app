@@ -119,7 +119,7 @@ const CHARACTER_ACTION_IMAGES = {
   loupDetective: { src: charLoupDetectiveAction, aimX: 0.62, aimY: 0.325, scale: 0.75 },
   astroDebutant: { src: charAstroDebutantAction, aimX: 0.33, aimY: 0.33, scale: 0.78 },
   cowboyEncheres: { src: charCowboyEncheresAction, aimX: 0.36, aimY: 0.35, scale: 0.75 },
-  hiboo: { src: charHibooAction, aimX: 0.48, aimY: 0.415, scale: 0.75 },
+  hiboo: { src: charHibooAction, aimX: 0.46, aimY: 0.415, scale: 0.75 },
   singeFarceur: { src: charSingeFarceurAction, aimX: 0.58, aimY: 0.46, scale: 0.75 },
   lapin: { src: charLapinAction, aimX: 0.52, aimY: 0.33, scale: 0.79 },
   chatCurieux: { src: charChatCurieuxAction, aimX: 0.55, aimY: 0.52, scale: 0.75 },
