@@ -1339,7 +1339,7 @@ export default function App() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_character"
+        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_character, avatar_display_mode"
       )
       .eq("id", userId)
       .maybeSingle();
@@ -2138,55 +2138,104 @@ export default function App() {
   // photo" — celui du personnage réellement équipé, seulement s'il en a un
   // (voir CHARACTER_ACTION_IMAGES tout en haut du fichier) ; sinon (ou si
   // aucun avatar n'est choisi) le cadre reste en mode de base, sans repli
-  // sur un autre personnage.
-  const dropZoneMascot = hasChosenAvatar ? CHARACTER_ACTION_IMAGES[profile.avatar_character] || null : null;
+  // sur un autre personnage. Egalement absent si l'utilisateur a choisi de
+  // n'utiliser son avatar que comme icône (avatar_display_mode = "icone" —
+  // voir le choix proposé dans le panneau Avatars) : dans ce cas l'écran
+  // photo garde son interface de base, sans le perso en grand.
+  const avatarDisplayMode = (profile && profile.avatar_display_mode) || "fond";
+  const dropZoneMascot =
+    hasChosenAvatar && avatarDisplayMode !== "icone" ? CHARACTER_ACTION_IMAGES[profile.avatar_character] || null : null;
+  // Nouvelle progression (demandée par Dylan, septembre 2026) : seuils
+  // d'estimations entièrement revus, et 4 personnages passent en
+  // déblocage par ABONNEMENT plutôt que par nombre d'estimations (voir
+  // planRank, comparé à userPlanRank — même mécanique que GRADES plus
+  // haut : un plan plus élevé débloque aussi tous les paliers en dessous).
+  // Hibou Sage garde en plus son seuil d'estimations : il se débloque par
+  // L'UN OU L'AUTRE des deux chemins (voir isCharacterUnlocked).
   const CHARACTERS_META = [
     // --- Palier 0 : gratuits dès le départ ---
     { id: "chineur", name: "Le Chineur", tier: 0, free: true },
     { id: "chineuse", name: "La Chineuse", tier: 0, free: true },
     // --- Palier 1 ---
     { id: "renard", name: "Renard Malin", tier: 1, test: () => lifetimeEstimations >= 10, hint: "dès 10 estimations" },
-    { id: "lapin", name: "Lapin Chanceux", tier: 1, test: () => lifetimeEstimations >= 75, hint: "dès 75 estimations" },
-    { id: "hiboo", name: "Hibou Sage", tier: 1, test: () => lifetimeEstimations >= 150, hint: "dès 150 estimations" },
+    { id: "robotChrome", name: "Robot Chrome", tier: 1, test: () => lifetimeEstimations >= 25, hint: "dès 25 estimations" },
+    { id: "lapin", name: "Lapin Chanceux", tier: 1, test: () => lifetimeEstimations >= 50, hint: "dès 50 estimations" },
+    { id: "tigreStyle", name: "Tigre Stylé", tier: 1, test: () => lifetimeEstimations >= 100, hint: "dès 100 estimations" },
     // --- Palier 2 ---
-    { id: "astroDebutant", name: "Astro Débutant", tier: 2, test: () => lifetimeEstimations >= 300, hint: "dès 300 estimations" },
-    { id: "loupDetective", name: "Loup Détective", tier: 2, test: () => lifetimeEstimations >= 400, hint: "dès 400 estimations" },
-    { id: "tigreStyle", name: "Tigre Stylé", tier: 2, test: () => lifetimeEstimations >= 500, hint: "dès 500 estimations" },
-    { id: "sorciereFutee", name: "Sorcière Futée", tier: 2, test: () => lifetimeEstimations >= 650, hint: "dès 650 estimations" },
+    { id: "astroDebutant", name: "Astro Débutant", tier: 2, test: () => lifetimeEstimations >= 250, hint: "dès 250 estimations" },
+    { id: "hiboo", name: "Hibou Sage", tier: 2, planRank: PLAN_GRADE_RANK.debutant, hint: "avec le pack Starter" },
+    { id: "loupDetective", name: "Loup Détective", tier: 2, test: () => lifetimeEstimations >= 500, hint: "dès 500 estimations" },
+    { id: "sorciereFutee", name: "Sorcière Futée", tier: 2, test: () => lifetimeEstimations >= 750, hint: "dès 750 estimations" },
     // --- Palier 3 ---
-    { id: "alienCurieux", name: "Alien Curieux", tier: 3, test: () => lifetimeEstimations >= 800, hint: "dès 800 estimations" },
-    { id: "ninjaSilencieux", name: "Ninja Silencieux", tier: 3, test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
-    // Chevalier Doré <-> Panthère des Nuits : seuils inversés (demandé par
-    // Dylan) — le chevalier est maintenant le plus facile des deux.
-    { id: "chevalierDore", name: "Chevalier Doré", tier: 3, test: () => lifetimeEstimations >= 1250, hint: "dès 1250 estimations" },
-    { id: "robotChrome", name: "Robot Chrome", tier: 3, test: () => lifetimeEstimations >= 1500, hint: "dès 1500 estimations" },
-    { id: "bebeDragon", name: "Bébé Dragon", tier: 3, test: () => lifetimeEstimations >= 2000, hint: "dès 2000 estimations" },
+    { id: "alienCurieux", name: "Alien Curieux", tier: 3, test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
+    { id: "ninjaSilencieux", name: "Ninja Silencieux", tier: 3, test: () => lifetimeEstimations >= 1300, hint: "dès 1300 estimations" },
+    { id: "chevalierDore", name: "Chevalier Doré", tier: 3, test: () => lifetimeEstimations >= 1800, hint: "dès 1800 estimations" },
+    { id: "bebeDragon", name: "Bébé Dragon", tier: 3, test: () => lifetimeEstimations >= 2500, hint: "dès 2500 estimations" },
     // --- Palier 4 ---
-    { id: "capitainePirate", name: "Capitaine Pirate", tier: 4, test: () => lifetimeEstimations >= 3000, hint: "dès 3000 estimations" },
-    { id: "ratonMasque", name: "Raton Masqué", tier: 4, test: () => lifetimeEstimations >= 4000, hint: "dès 4000 estimations" },
-    { id: "pieuvreMystique", name: "Pieuvre Mystique", tier: 4, test: () => lifetimeEstimations >= 7500, hint: "dès 7500 estimations" },
-    { id: "phenixArdent", name: "Phénix Ardent", tier: 4, test: () => lifetimeEstimations >= 10000, hint: "dès 10 000 estimations" },
-    // --- Palier 5 (Loup Argenté Alpha retiré du catalogue) ---
-    { id: "griffonCeleste", name: "Griffon Céleste", tier: 5, test: () => lifetimeEstimations >= 20000, hint: "dès 20 000 estimations" },
-    { id: "panthereNuit", name: "Panthère des Nuits", tier: 5, test: () => lifetimeEstimations >= 30000, hint: "dès 30 000 estimations" },
-    { id: "spectreElegant", name: "Spectre Élégant", tier: 5, test: () => lifetimeEstimations >= 50000, hint: "dès 50 000 estimations" },
+    { id: "capitainePirate", name: "Capitaine Pirate", tier: 4, test: () => lifetimeEstimations >= 3500, hint: "dès 3500 estimations" },
+    { id: "ratonMasque", name: "Raton Masqué", tier: 4, planRank: PLAN_GRADE_RANK.pro, hint: "avec le pack Pro" },
+    { id: "pieuvreMystique", name: "Pieuvre Mystique", tier: 4, test: () => lifetimeEstimations >= 5000, hint: "dès 5000 estimations" },
+    { id: "phenixArdent", name: "Phénix Ardent", tier: 4, test: () => lifetimeEstimations >= 7000, hint: "dès 7000 estimations" },
+    // --- Palier 5 ---
+    { id: "panthereNuit", name: "Panthère des Nuits", tier: 5, test: () => lifetimeEstimations >= 10000, hint: "dès 10 000 estimations" },
+    { id: "spectreElegant", name: "Spectre Élégant", tier: 5, planRank: PLAN_GRADE_RANK.premium, hint: "avec le pack Premium" },
+    { id: "griffonCeleste", name: "Griffon Céleste", tier: 5, planRank: PLAN_GRADE_RANK.elite, hint: "avec le pack Elite" },
     // --- Palier 6 : le secret ---
-    { id: "diableEcarlate", name: "Le Diable Écarlate", tier: 6, secret: true, test: () => lifetimeEstimations >= 100000, hint: "??? (secret)" },
+    { id: "diableEcarlate", name: "Le Diable Écarlate", tier: 6, secret: true, test: () => lifetimeEstimations >= 20000, hint: "??? (secret)" },
   ];
   function characterMeta(id) {
     return CHARACTERS_META.find((c) => c.id === id) || CHARACTERS_META[0];
   }
   function isCharacterUnlocked(id) {
     const meta = characterMeta(id);
-    return !!meta.free || meta.test();
+    if (meta.free) return true;
+    const byEstimations = meta.test ? meta.test() : false;
+    const byPlan = meta.planRank ? userPlanRank >= meta.planRank : false;
+    return byEstimations || byPlan;
   }
+  // Message "félicitations, tu viens de débloquer un avatar" au moment où
+  // l'abonnement est validé (demandé par Dylan) — même mécanique que
+  // gradeUnlockToast/bgSkinUnlockToast plus haut : on ignore le tout
+  // premier calcul après le chargement du profil (pas un vrai déblocage,
+  // juste la synchronisation initiale), et seule une VRAIE montée de
+  // palier d'abonnement en cours de session déclenche le toast.
+  const prevAvatarPlanRankRef = useRef(userPlanRank);
+  const avatarPlanRankSyncedRef = useRef(false);
+  const [avatarUnlockToast, setAvatarUnlockToast] = useState(null);
+  useEffect(() => {
+    if (!profile) return;
+    if (!avatarPlanRankSyncedRef.current) {
+      avatarPlanRankSyncedRef.current = true;
+      prevAvatarPlanRankRef.current = userPlanRank;
+      return;
+    }
+    if (userPlanRank > prevAvatarPlanRankRef.current) {
+      const newlyUnlocked = CHARACTERS_META.filter(
+        (m) => m.planRank && m.planRank > prevAvatarPlanRankRef.current && m.planRank <= userPlanRank
+      );
+      prevAvatarPlanRankRef.current = userPlanRank;
+      if (newlyUnlocked.length > 0) {
+        setAvatarUnlockToast({ names: newlyUnlocked.map((m) => m.name) });
+        setTimeout(() => setAvatarUnlockToast(null), 5000);
+      }
+    } else {
+      prevAvatarPlanRankRef.current = userPlanRank;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userPlanRank, profile]);
   const [avatarCharacterInput, setAvatarCharacterInput] = useState(DEFAULT_CHARACTER_ID);
+  // "fond" = mascotte plein cadre sur l'écran photo (comportement historique)
+  // "icone" = avatar utilisé seulement comme icône (haut à droite / classement),
+  // l'écran photo garde son interface de base. Proposé à l'utilisateur juste
+  // en dessous du choix de personnage (demandé par Dylan).
+  const [avatarDisplayModeInput, setAvatarDisplayModeInput] = useState("fond");
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
   const [avatarSavedFlash, setAvatarSavedFlash] = useState(false);
   useEffect(() => {
     if (showAvatarPanel) {
       setAvatarCharacterInput((profile && profile.avatar_character) || DEFAULT_CHARACTER_ID);
+      setAvatarDisplayModeInput((profile && profile.avatar_display_mode) || "fond");
       setAvatarError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2199,7 +2248,10 @@ export default function App() {
     if (!isCharacterUnlocked(id) && !isOwnerPreview) return;
     setAvatarCharacterInput(id);
   }
-  const avatarDirty = !!profile && avatarCharacterInput !== (profile.avatar_character || DEFAULT_CHARACTER_ID);
+  const avatarDirty =
+    !!profile &&
+    (avatarCharacterInput !== (profile.avatar_character || DEFAULT_CHARACTER_ID) ||
+      avatarDisplayModeInput !== (profile.avatar_display_mode || "fond"));
   async function saveAvatar() {
     if (!user || avatarSaving) return;
     setAvatarSaving(true);
@@ -2207,10 +2259,13 @@ export default function App() {
     try {
       const { data, error } = await supabase.rpc("set_avatar", {
         p_character_id: avatarCharacterInput,
+        p_display_mode: avatarDisplayModeInput,
       });
       if (error) throw new Error(error.message);
       if (data && data.ok) {
-        setProfile((prev) => (prev ? { ...prev, avatar_character: data.avatar_character } : prev));
+        setProfile((prev) =>
+          prev ? { ...prev, avatar_character: data.avatar_character, avatar_display_mode: data.avatar_display_mode } : prev
+        );
         setAvatarSavedFlash(true);
         setTimeout(() => setAvatarSavedFlash(false), 2500);
         // L'avatar peut avoir changé l'affichage du classement — on vide le
@@ -2306,6 +2361,32 @@ export default function App() {
               )}
             </div>
 
+            {/* "Avatars" — placé juste sous la carte d'identité, avant le
+                compteur d'estimations restantes (demandé par Dylan). */}
+            <button
+              onClick={() => {
+                setShowProfilePanel(false);
+                setShowAvatarPanel(true);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                width: "100%",
+                textAlign: "left",
+                background: "none",
+                border: "none",
+                borderBottom: pt.dashedBorder,
+                marginTop: 10,
+                padding: "10px 2px",
+                cursor: "pointer",
+              }}
+            >
+              <Smile size={16} color={accent} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: pt.rowText }}>Avatars</span>
+              <ChevronRight size={14} color={pt.chevronColor} />
+            </button>
+
             {profile && (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10, padding: "0 2px" }}>
                 <span className="mono" style={{ fontSize: 11, color: pt.subText }}>
@@ -2341,31 +2422,6 @@ export default function App() {
                 chevron ou contrôle), pour un panneau plus lisible d'un
                 coup d'œil qu'une succession de blocs bordés hétérogènes. */}
             <div style={{ borderTop: pt.dashedBorder, marginTop: 12, paddingTop: 4 }}>
-              <button
-                onClick={() => {
-                  setShowProfilePanel(false);
-                  setShowAvatarPanel(true);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  width: "100%",
-                  textAlign: "left",
-                  background: "none",
-                  border: "none",
-                  borderBottom: pt.dashedBorder,
-                  padding: "10px 2px",
-                  cursor: "pointer",
-                }}
-              >
-                <Smile size={16} color={accent} style={{ flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: pt.rowText }}>
-                  {profile && profile.avatar_character ? "Changer mon personnage" : "Choisir mon personnage"}
-                </span>
-                <ChevronRight size={14} color={pt.chevronColor} />
-              </button>
-
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 2px", borderBottom: pt.dashedBorder }}>
                 <Gift size={16} color={accent} style={{ flexShrink: 0 }} />
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: pt.rowText }}>Parrainer un ami</span>
@@ -3965,6 +4021,34 @@ export default function App() {
           <span style={{ fontSize: 18 }}>{bgSkinUnlockToast.emoji}</span>
           <span className="mono" style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
             Fond {bgSkinUnlockToast.label} débloqué !
+          </span>
+        </div>
+      )}
+
+      {avatarUnlockToast && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            top: 14 + (gradeUnlockToast ? 46 : 0) + (bgSkinUnlockToast ? 46 : 0),
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 60,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
+            color: "#152238",
+            borderRadius: 30,
+            padding: "10px 16px",
+            boxShadow: "0 8px 24px rgba(4, 6, 12, 0.4)",
+            maxWidth: "90vw",
+          }}
+        >
+          <span style={{ fontSize: 18 }}>🎉</span>
+          <span className="mono" style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
+            Félicitations, tu viens de débloquer {avatarUnlockToast.names.length > 1 ? "des avatars" : "un avatar"} :{" "}
+            {avatarUnlockToast.names.join(", ")} !
           </span>
         </div>
       )}
@@ -6830,10 +6914,17 @@ export default function App() {
                     personnage (demandé explicitement par Dylan). */}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
                   {CHARACTERS_META.map((meta) => {
-                    const unlocked = meta.free || meta.test();
+                    const unlocked = isCharacterUnlocked(meta.id);
                     const selected = avatarCharacterInput === meta.id;
+                    const revealArt = unlocked || isOwnerPreview;
                     const clickable = unlocked || isOwnerPreview;
-                    const isHiddenSecret = meta.secret && !unlocked && !isOwnerPreview;
+                    const isHiddenSecret = meta.secret && !revealArt;
+                    // Un perso verrouillé (non secret) affiche désormais une
+                    // silhouette grisée générique à la place de son
+                    // illustration réelle — seul le seuil requis reste lisible
+                    // en dessous (demandé par Dylan) — sauf en mode
+                    // propriétaire (aperçu autorisé, voir isOwnerPreview).
+                    const isLockedHidden = !meta.secret && !revealArt;
                     return (
                       <button
                         key={meta.id}
@@ -6877,6 +6968,21 @@ export default function App() {
                           >
                             <span style={{ fontSize: 20 }}>❓</span>
                           </span>
+                        ) : isLockedHidden ? (
+                          <span
+                            style={{
+                              width: 42,
+                              height: 42,
+                              borderRadius: "50%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: "rgba(0,0,0,0.35)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <User size={20} color={pt.chevronColor} />
+                          </span>
                         ) : (
                           <CharacterAvatar id={meta.id} size={42} />
                         )}
@@ -6894,6 +7000,63 @@ export default function App() {
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Choix proposé dès qu'un personnage est sélectionné : mascotte
+                    plein cadre sur l'écran photo, ou juste l'icône (haut à
+                    droite / classement) en gardant l'interface de base pour
+                    prendre une photo (demandé par Dylan). */}
+                <div style={{ marginBottom: 20 }}>
+                  <div
+                    className="mono"
+                    style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.subText, marginBottom: 8 }}
+                  >
+                    Où afficher {characterMeta(avatarCharacterInput).name} ?
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => setAvatarDisplayModeInput("fond")}
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: 2,
+                        background: avatarDisplayModeInput === "fond" ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
+                        border: avatarDisplayModeInput === "fond" ? `2px solid ${accent}` : pt.rowBorder,
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>Arrière-plan de l'appli</span>
+                      <span className="mono" style={{ fontSize: 10, color: pt.subText, lineHeight: 1.3 }}>
+                        mascotte en entier sur l'écran photo
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setAvatarDisplayModeInput("icone")}
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: 2,
+                        background: avatarDisplayModeInput === "icone" ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
+                        border: avatarDisplayModeInput === "icone" ? `2px solid ${accent}` : pt.rowBorder,
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>Icône seulement</span>
+                      <span className="mono" style={{ fontSize: 10, color: pt.subText, lineHeight: 1.3 }}>
+                        garde l'interface de base pour prendre une photo
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
                 <button
