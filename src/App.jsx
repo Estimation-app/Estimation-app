@@ -116,7 +116,7 @@ const CHARACTER_ACTION_IMAGES = {
   alienCurieux: { src: charAlienCurieuxAction, aimX: 0.56, aimY: 0.39, scale: 0.75 },
   sorciereFutee: { src: charSorciereFuteeAction, aimX: 0.48, aimY: 0.41, scale: 0.88 },
   tigreStyle: { src: charTigreStyleAction, aimX: 0.51, aimY: 0.41, scale: 0.75 },
-  loupDetective: { src: charLoupDetectiveAction, aimX: 0.62, aimY: 0.305, scale: 0.75 },
+  loupDetective: { src: charLoupDetectiveAction, aimX: 0.62, aimY: 0.325, scale: 0.75 },
   astroDebutant: { src: charAstroDebutantAction, aimX: 0.33, aimY: 0.33, scale: 0.78 },
   cowboyEncheres: { src: charCowboyEncheresAction, aimX: 0.36, aimY: 0.35, scale: 0.75 },
   hiboo: { src: charHibooAction, aimX: 0.48, aimY: 0.415, scale: 0.75 },
