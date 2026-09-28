@@ -2134,6 +2134,18 @@ export default function App() {
   // IMPORTANT : seuls les personnages qui ont déjà un vrai portrait
   // (CHARACTER_IMAGES) figurent ici.
   const DEFAULT_CHARACTER_ID = "chineur";
+  // Sentinelle pour l'option "Aucun avatar" du panneau de sélection — ne
+  // fait volontairement pas partie de CHARACTERS_META (jamais envoyée telle
+  // quelle au serveur, voir saveAvatar) ni des ids valides côté Supabase.
+  const NO_AVATAR_ID = "aucun";
+  // Ces 3 personnages ne se débloquent QUE par abonnement (aucun seuil
+  // d'estimations, contrairement au Hibou qui a les deux voies) — tant
+  // qu'ils ne sont PAS débloqués, ils n'apparaissent pas du tout dans la
+  // grille de sélection (un utilisateur qui n'a pas le pack ne doit même
+  // pas savoir qu'ils existent, demandé par Dylan). Une fois débloqués via
+  // le pack correspondant, ils réapparaissent normalement, mélangés aux
+  // autres selon l'ordre de rareté — voir le filtre plus bas.
+  const PACK_ONLY_HIDDEN_IDS = ["ratonMasque", "spectreElegant", "griffonCeleste"];
   // Vrai uniquement si l'utilisateur a explicitement choisi un avatar au
   // moins une fois — SANS repli sur DEFAULT_CHARACTER_ID. Un nouvel
   // utilisateur n'a aucun avatar sélectionné (même pas "chineur") et doit
@@ -2229,7 +2241,10 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userPlanRank, profile]);
-  const [avatarCharacterInput, setAvatarCharacterInput] = useState(DEFAULT_CHARACTER_ID);
+  // Repli sur NO_AVATAR_ID (pas DEFAULT_CHARACTER_ID) : un profil sans
+  // avatar_character doit s'afficher comme "Aucun avatar" sélectionné dans
+  // le panneau, pas comme si Le Chineur avait été choisi.
+  const [avatarCharacterInput, setAvatarCharacterInput] = useState(NO_AVATAR_ID);
   // "fond" = mascotte plein cadre sur l'écran photo (comportement historique)
   // "icone" = avatar utilisé seulement comme icône (haut à droite / classement),
   // l'écran photo garde son interface de base. Proposé à l'utilisateur juste
@@ -2240,7 +2255,7 @@ export default function App() {
   const [avatarSavedFlash, setAvatarSavedFlash] = useState(false);
   useEffect(() => {
     if (showAvatarPanel) {
-      setAvatarCharacterInput((profile && profile.avatar_character) || DEFAULT_CHARACTER_ID);
+      setAvatarCharacterInput((profile && profile.avatar_character) || NO_AVATAR_ID);
       setAvatarDisplayModeInput((profile && profile.avatar_display_mode) || "fond");
       setAvatarError(null);
     }
@@ -2249,14 +2264,15 @@ export default function App() {
   // isOwnerPreview (défini plus haut, pour l'habillage/les fonds) permet
   // aussi à ce compte d'essayer — sans réellement les débloquer pour de
   // vrai — tous les personnages de l'avatar, à titre exceptionnel,
-  // exactement comme pour l'habillage et les fonds.
+  // exactement comme pour l'habillage et les fonds. "Aucun avatar" est
+  // toujours sélectionnable, par tout le monde.
   function pickCharacter(id) {
-    if (!isCharacterUnlocked(id) && !isOwnerPreview) return;
+    if (id !== NO_AVATAR_ID && !isCharacterUnlocked(id) && !isOwnerPreview) return;
     setAvatarCharacterInput(id);
   }
   const avatarDirty =
     !!profile &&
-    (avatarCharacterInput !== (profile.avatar_character || DEFAULT_CHARACTER_ID) ||
+    (avatarCharacterInput !== ((profile.avatar_character || NO_AVATAR_ID)) ||
       avatarDisplayModeInput !== (profile.avatar_display_mode || "fond"));
   async function saveAvatar() {
     if (!user || avatarSaving) return;
@@ -2264,7 +2280,11 @@ export default function App() {
     setAvatarError(null);
     try {
       const { data, error } = await supabase.rpc("set_avatar", {
-        p_character_id: avatarCharacterInput,
+        // "aucun" est le mot-clé reconnu côté serveur pour effacer
+        // avatar_character (voir set_avatar dans supabase_schema.sql) —
+        // NO_AVATAR_ID a la même valeur ici, mais on le passe explicitement
+        // pour ne pas dépendre de cette coïncidence si l'un des deux change.
+        p_character_id: avatarCharacterInput === NO_AVATAR_ID ? "aucun" : avatarCharacterInput,
         p_display_mode: avatarDisplayModeInput,
       });
       if (error) throw new Error(error.message);
@@ -6903,23 +6923,81 @@ export default function App() {
                     padding: "16px 0 10px",
                   }}
                 >
-                  <CharacterAvatar id={avatarCharacterInput} size={150} />
+                  {avatarCharacterInput === NO_AVATAR_ID ? (
+                    <span
+                      style={{
+                        width: 150,
+                        height: 150,
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "rgba(0,0,0,0.2)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <X size={64} color={pt.chevronColor} />
+                    </span>
+                  ) : (
+                    <CharacterAvatar id={avatarCharacterInput} size={150} />
+                  )}
                   <span style={{ fontSize: 14, fontWeight: 700, color: pt.strongColor, marginTop: 6 }}>
-                    {characterMeta(avatarCharacterInput).name}
+                    {avatarCharacterInput === NO_AVATAR_ID ? "Aucun avatar" : characterMeta(avatarCharacterInput).name}
                   </span>
                   <span
                     className="mono"
                     style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: pt.subText, marginTop: 4 }}
                   >
-                    c'est cette vignette qui s'affiche dans le classement et en haut à droite
+                    {avatarCharacterInput === NO_AVATAR_ID
+                      ? "aucune mascotte, interface de base partout"
+                      : "c'est cette vignette qui s'affiche dans le classement et en haut à droite"}
                   </span>
                 </div>
 
-                {/* Liste unique à la suite, sans regroupement par palier :
-                    juste le seuil d'estimations requis pour débloquer chaque
-                    personnage (demandé explicitement par Dylan). */}
+                {/* Liste unique à la suite : "Aucun avatar" en premier, puis
+                    tous les persos débloqués (estimations ou pack) triés par
+                    rareté, puis les verrouillés dans le même ordre — les 3
+                    persos 100% pack (Raton/Spectre/Griffon) sont masqués ici
+                    (demandé par Dylan). */}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-                  {CHARACTERS_META.map((meta) => {
+                  <button
+                    onClick={() => pickCharacter(NO_AVATAR_ID)}
+                    title="Aucun avatar"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 4,
+                      width: 76,
+                      background: avatarCharacterInput === NO_AVATAR_ID ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
+                      border: avatarCharacterInput === NO_AVATAR_ID ? `2px solid ${accent}` : pt.rowBorder,
+                      borderRadius: 10,
+                      padding: "8px 4px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "rgba(0,0,0,0.2)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <X size={20} color={pt.chevronColor} />
+                    </span>
+                    <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center", lineHeight: 1.2 }}>
+                      Aucun avatar
+                    </span>
+                  </button>
+                  {[
+                    ...CHARACTERS_META.filter((m) => isCharacterUnlocked(m.id)),
+                    ...CHARACTERS_META.filter((m) => !isCharacterUnlocked(m.id) && !PACK_ONLY_HIDDEN_IDS.includes(m.id)),
+                  ].map((meta) => {
                     const unlocked = isCharacterUnlocked(meta.id);
                     const selected = avatarCharacterInput === meta.id;
                     const revealArt = unlocked || isOwnerPreview;
