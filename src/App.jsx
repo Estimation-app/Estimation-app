@@ -225,27 +225,17 @@ const PLANS = [
 const CREDIT_UNIT_PRICE = 0.3;
 const CREDIT_BONUS_PER_HUNDRED = 10;
 
-// "Habillages" débloqués selon le PLAN D'ABONNEMENT souscrit (et non plus
-// au fil des estimations) — change carrément l'accent visuel de toute
-// l'appli à la place de l'orange, en plus du choix fond clair/sombre. Le
-// premier ("defaut") correspond à l'orange de marque habituel — il n'est
-// jamais verrouillé. Chaque palier a sa propre teinte + une variante plus
-// foncée (dégradés type bouton) et plus claire (surbrillance). `planRank`
-// est comparé à PLAN_GRADE_RANK[profile.plan] : un plan plus élevé
-// débloque automatiquement tous les paliers en dessous du sien (Premium
-// débloque aussi Argent et Bronze, etc.) — voir userPlanRank plus bas.
+// Rang de plan d'abonnement, partagé par le déblocage des avatars
+// (CHARACTERS_META plus bas) — voir userPlanRank plus bas. L'ancien système
+// d'"habillages" bronze/argent/or/diamant lié au plan (indépendant du thème
+// visuel) a été retiré à la demande de Dylan : l'accent visuel suit
+// désormais simplement le thème choisi (AFFICHAGES, plus haut), voir
+// `accent`/`accentDark`/`accentLight`/`glow` sur chaque affichage.
 const PLAN_GRADE_RANK = { gratuit: 0, debutant: 1, pro: 2, premium: 3, elite: 4 };
-const GRADES = [
-  { key: "defaut", planRank: 0, planLabel: null, label: "Estim' classique", emoji: "🟠", accent: "#F2662E", accentDark: "#E0501D", accentLight: "#FF8A52", glow: 0 },
-  { key: "bronze", planRank: 1, planLabel: "Starter", label: "Bronze", emoji: "🥉", accent: "#C97A3D", accentDark: "#8C5225", accentLight: "#E7A876", glow: 0.16 },
-  { key: "argent", planRank: 2, planLabel: "Pro", label: "Argent", emoji: "🥈", accent: "#8B98A6", accentDark: "#5C6773", accentLight: "#F1F5F9", glow: 0.22 },
-  { key: "or", planRank: 3, planLabel: "Premium", label: "Or", emoji: "🥇", accent: "#D4A017", accentDark: "#96700D", accentLight: "#F6D978", glow: 0.3 },
-  { key: "diamant", planRank: 4, planLabel: "Elite", label: "Diamant", emoji: "💎", accent: "#4FC3E8", accentDark: "#1E7FA3", accentLight: "#D6F6FF", glow: 0.4 },
-];
 
 // Convertit un hex ("#RRGGBB") en triplet "r, g, b" pour construire des
 // rgba(...) dynamiques (bordures/fonds translucides) à partir de l'accent
-// actif, quel que soit le palier débloqué.
+// de l'affichage actif.
 function hexToRgbString(hex) {
   const clean = (hex || "").replace("#", "");
   const r = parseInt(clean.substring(0, 2), 16) || 0;
@@ -311,9 +301,57 @@ function hexToRgbString(hex) {
 // contenu) pour rester groupés près du header/de l'accroche quelle que
 // soit la longueur de la page. Purement décoratif, n'affecte ni la
 // disposition ni aucune taille.
+// `accent`/`accentDark`/`accentLight` (obligatoires) : la couleur de mise
+// en avant de CET affichage (boutons, prix, liens, titre "vraiment ?"...) —
+// remplace l'ancien système de paliers d'abonnement (bronze/argent/or/
+// diamant, indépendant du thème visuel) : Dylan voulait que l'accent suive
+// simplement le thème choisi, de façon cohérente/esthétique, plutôt qu'un
+// habillage lié au plan souscrit. Reprend en général la teinte `high` du
+// thème (accent = high) avec une variante plus foncée/plus claire adaptée.
+// `glow` (obligatoire, 0 à ~0.4) : intensité de la lueur autour des
+// boutons/cartes/prix — feutrée pour les thèmes discrets (Classique,
+// Vintage), plus marquée pour les thèmes "néon" (Rétro, Robotique,
+// Futuriste).
 function svgBg(svg) {
   return `url('data:image/svg+xml,${encodeURIComponent(svg)}')`;
 }
+
+// Grain "vieux papier" pour Vintage : bruit fractal (feTurbulence) teinté
+// sépia, mosaïqué en petite tuile répétée sur tout le fond, pour casser le
+// blanc/crème trop neutre et donner un aspect papier journal qui a un peu
+// mal vieilli. Combiné dans `texture` avec des taches de vieillissement
+// (foxing) de teintes variées — voir plus bas.
+const vintagePaperGrain = `<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90">
+  <filter id="g"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0.16  0 0 0 0 0.12  0 0 0 0 0.08  0 0 0 0.5 0"/></filter>
+  <rect width="90" height="90" filter="url(#g)"/>
+</svg>`;
+
+// Petit champ d'étoiles pour Futuriste : mosaïque de points blancs/cyan
+// répétée sur tout le fond (posée au-dessus de la photo générée par IA),
+// pour renforcer l'ambiance "espace" que Dylan trouvait trop discrète.
+const futuristeStars = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180">
+  <g fill="#EAF7FF">
+    <circle cx="14" cy="22" r="1.1" opacity="0.55"/>
+    <circle cx="52" cy="8" r="0.8" opacity="0.4"/>
+    <circle cx="88" cy="46" r="1.3" opacity="0.55"/>
+    <circle cx="126" cy="18" r="0.9" opacity="0.45"/>
+    <circle cx="30" cy="70" r="0.9" opacity="0.4"/>
+    <circle cx="70" cy="98" r="1.2" opacity="0.5"/>
+    <circle cx="146" cy="110" r="1.1" opacity="0.5"/>
+    <circle cx="20" cy="128" r="1.0" opacity="0.45"/>
+    <circle cx="60" cy="140" r="0.8" opacity="0.35"/>
+    <circle cx="100" cy="150" r="1.3" opacity="0.5"/>
+    <circle cx="160" cy="60" r="0.9" opacity="0.4"/>
+    <circle cx="170" cy="140" r="0.8" opacity="0.35"/>
+  </g>
+  <g fill="#33C9FF">
+    <circle cx="110" cy="80" r="0.9" opacity="0.4"/>
+    <circle cx="40" cy="160" r="1.0" opacity="0.4"/>
+    <circle cx="140" cy="150" r="0.8" opacity="0.35"/>
+    <circle cx="6" cy="100" r="0.9" opacity="0.4"/>
+  </g>
+</svg>`;
+
 const AFFICHAGES = [
   {
     key: "classique",
@@ -325,6 +363,31 @@ const AFFICHAGES = [
     fontBody: "'Inter', sans-serif",
     decor:
       "radial-gradient(circle at 10% 20px, rgba(240, 200, 120, 0.10) 0, transparent 46%), radial-gradient(circle at 94% -40px, rgba(240, 200, 120, 0.09) 0, transparent 40%)",
+    // Orange de marque d'origine — voir la note juste au-dessus d'AFFICHAGES
+    // sur `accent`/`accentDark`/`accentLight`/`glow` (remplace l'ancien
+    // système de paliers bronze/argent/or/diamant, supprimé).
+    accent: "#F2662E",
+    accentDark: "#E0501D",
+    accentLight: "#FF8A52",
+    glow: 0,
+  },
+  {
+    // Variante claire de "Classique", demandée par Dylan : même typo/mise en
+    // page, juste un fond blanc avec le texte courant en bleu nuit très
+    // foncé (quasi noir) au lieu du navy sombre d'origine — l'orange de
+    // marque reste identique. Aucun base/mid/high ici (comme "Classique") :
+    // reprend PANEL_THEMES.blanc tel quel, voir plus bas.
+    key: "blanc",
+    threshold: 0,
+    label: "Classique blanc",
+    emoji: "⚪",
+    mode: "blanc",
+    fontDisplay: "'Fraunces', Georgia, serif",
+    fontBody: "'Inter', sans-serif",
+    accent: "#F2662E",
+    accentDark: "#E0501D",
+    accentLight: "#FF8A52",
+    glow: 0,
   },
   {
     // Repris de la proposition "brocante & tampon" (maquette validée par
@@ -356,8 +419,27 @@ const AFFICHAGES = [
     textStrong: "#2B241C",
     textSoft: "#6B5D48",
     radiusScale: 0.25,
-    texture:
-      "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.09) 0, transparent 38%), radial-gradient(circle at 84% 10%, rgba(43,36,28,0.08) 0, transparent 34%), radial-gradient(circle at 62% 66%, rgba(43,36,28,0.09) 0, transparent 42%), radial-gradient(circle at 8% 86%, rgba(43,36,28,0.08) 0, transparent 38%), repeating-linear-gradient(45deg, rgba(43,36,28,0.045) 0px, rgba(43,36,28,0.045) 1px, transparent 1px, transparent 3px)",
+    // Ambre/brun cuivré assorti au "high" ci-dessus (au lieu de l'ancien
+    // accent de palier d'abonnement, indépendant du thème) — glow très
+    // discret, cohérent avec l'esprit papier/brocante feutré.
+    accent: "#B8791E",
+    accentDark: "#8C5225",
+    accentLight: "#E7A876",
+    glow: 0.12,
+    // Dylan trouvait le fond "très blanc neutre" : grain papier (bruit
+    // fractal tuilé, voir vintagePaperGrain) + taches de vieillissement
+    // (foxing) de teintes ambrées/grises variées, en plus des smudges et du
+    // hachurage carton d'origine — pour un effet papier journal qui a mal
+    // vieilli, sans nuire à la lisibilité du texte.
+    texture: [
+      `${svgBg(vintagePaperGrain)} 0 0 / 90px 90px repeat`,
+      "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.10) 0, transparent 38%)",
+      "radial-gradient(circle at 84% 10%, rgba(184,121,30,0.08) 0, transparent 34%)",
+      "radial-gradient(circle at 62% 66%, rgba(43,36,28,0.10) 0, transparent 42%)",
+      "radial-gradient(circle at 8% 86%, rgba(107,93,72,0.09) 0, transparent 38%)",
+      "radial-gradient(circle at 46% 40%, rgba(184,121,30,0.05) 0, transparent 46%)",
+      "repeating-linear-gradient(45deg, rgba(43,36,28,0.05) 0px, rgba(43,36,28,0.05) 1px, transparent 1px, transparent 3px)",
+    ].join(", "),
     // Fond généré par IA (Google Flow — Nano Banana Pro) à partir d'une
     // capture de l'appli + prompt dédié : dimensionné sur la largeur du
     // conteneur, hauteur proportionnelle (jamais "cover" plein cadre) et
@@ -368,8 +450,15 @@ const AFFICHAGES = [
     // versions précédentes trop chargées) : quasiment du papier uni, avec
     // juste un timbre et une étiquette tout en haut des coins — plus
     // besoin du décalage vertical de la v2 (qui servait à éviter
-    // l'appareil photo, absent ici).
-    decor: `url(${decorVintage}) top center / 100% auto no-repeat`,
+    // l'appareil photo, absent ici). Grain papier (vintagePaperGrain)
+    // ajouté PAR-DESSUS l'image (pas seulement dans `texture`, masqué sous
+    // l'image sinon) pour que la texture "vieux papier" reste visible même
+    // dans la zone couverte par la photo, là où Dylan trouvait le fond trop
+    // neutre au premier coup d'œil.
+    decor: [
+      `${svgBg(vintagePaperGrain)} 0 0 / 90px 90px repeat`,
+      `url(${decorVintage}) top center / 100% auto no-repeat`,
+    ].join(", "),
   },
   {
     key: "retro",
@@ -389,6 +478,12 @@ const AFFICHAGES = [
     high: "#FF2E92",
     borderRgb: "255, 90, 190",
     radiusScale: 1.4,
+    // Rose néon assorti au "high" ci-dessus — glow marqué, cohérent avec
+    // l'ambiance rétro-gaming/synthwave.
+    accent: "#FF2E92",
+    accentDark: "#B0186B",
+    accentLight: "#FF7FC0",
+    glow: 0.32,
     texture:
       "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px), radial-gradient(circle at 18% 14%, rgba(255,46,146,0.14) 0, transparent 40%), radial-gradient(circle at 86% 82%, rgba(110,30,230,0.16) 0, transparent 46%)",
     // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
@@ -414,6 +509,12 @@ const AFFICHAGES = [
     high: "#3FE0A5",
     borderRgb: "63, 224, 165",
     radiusScale: 0,
+    // Vert circuit assorti au "high" ci-dessus — glow moyen, façon lueur de
+    // LED/plaquette électronique.
+    accent: "#3FE0A5",
+    accentDark: "#1F9A70",
+    accentLight: "#A8F5D6",
+    glow: 0.26,
     texture:
       "repeating-linear-gradient(0deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px), repeating-linear-gradient(90deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px)",
     // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
@@ -441,11 +542,22 @@ const AFFICHAGES = [
     high: "#33C9FF",
     borderRgb: "51, 201, 255",
     radiusScale: 1.8,
+    // Cyan assorti au "high" ci-dessus — glow le plus marqué des 5, pour un
+    // rendu néon/sci-fi assumé.
+    accent: "#33C9FF",
+    accentDark: "#1E7FA3",
+    accentLight: "#D6F6FF",
+    glow: 0.36,
     texture:
       "radial-gradient(circle at 80% 8%, rgba(51,201,255,0.16) 0, transparent 38%), radial-gradient(circle at 10% 88%, rgba(51,201,255,0.10) 0, transparent 42%), repeating-linear-gradient(115deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px)",
     // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
-    // "Vintage" ci-dessus.
-    decor: `url(${decorFuturiste}) top center / 100% auto no-repeat`,
+    // "Vintage" ci-dessus. Petit champ d'étoiles (futuristeStars) ajouté
+    // par-dessus, tuilé sur tout le fond : Dylan trouvait l'ambiance
+    // "espace" pas assez présente.
+    decor: [
+      `${svgBg(futuristeStars)} 0 0 / 180px 180px repeat`,
+      `url(${decorFuturiste}) top center / 100% auto no-repeat`,
+    ].join(", "),
   },
 ];
 
@@ -640,6 +752,55 @@ const PANEL_THEMES = {
     ghostBg: "transparent",
     strongColor: "#152238",
   },
+  // Variante "Classique blanc" demandée par Dylan : fond blanc pur (au lieu
+  // du gris-bleuté de `light`) avec le texte courant en bleu nuit très
+  // foncé, quasi noir (#0A1220 — repris tel quel du fond de "Classique"
+  // sombre, ici utilisé comme couleur de texte plutôt que de fond).
+  // L'orange de marque (accent) reste inchangé.
+  blanc: {
+    pageBg: "#FFFFFF",
+    topBarGradient: "linear-gradient(90deg, #E4E7EC 0%, #B9C3D1 35%, #F2662E 100%)",
+    headerBg: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 55%, #F2F4F7 100%)",
+    menuBtnBorder: "rgba(10, 18, 32, 0.16)",
+    menuBtnBg: "rgba(10, 18, 32, 0.04)",
+    menuBtnColor: "#0A1220",
+    dropZoneBg: "radial-gradient(circle at 50% 32%, #FAFBFC 0%, #F2F4F7 72%)",
+    dropZoneText: "#0A1220",
+    loadingBg: "linear-gradient(160deg, #FFFFFF 0%, #FAFBFC 100%)",
+    loadingBorder: "#E4E7EC",
+    loadingText: "#0A1220",
+    resultCardBg: "linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 55%, #F2F4F7 100%)",
+    formCardBg: "#FAFBFC",
+    formCardBorder: "1px solid #E4E7EC",
+    sheetBg: "#FFFFFF",
+    grabBg: "linear-gradient(90deg, #0A1220 0%, #F2662E 100%)",
+    titleColor: "#0A1220",
+    closeColor: "#3A4658",
+    rowBg: "#FAFBFC",
+    rowBorder: "1px solid #E4E7EC",
+    rowText: "#111B2E",
+    chevronColor: "#8B96A6",
+    subText: "#4C5A6E",
+    errorColor: "#F2662E",
+    inputBg: "#FFFFFF",
+    inputBorder: "1px solid #C7CFD9",
+    inputText: "#0A1220",
+    cardBg: "#FAFBFC",
+    cardBorder: "1px solid #E4E7EC",
+    cardImgBg: "#F2F4F7",
+    cardImgIcon: "#8B96A6",
+    cardTitleColor: "#0A1220",
+    chipBorder: "1px solid #E4E7EC",
+    chipBg: "#F2F4F7",
+    chipText: "#3A4658",
+    dashedBorder: "1px dashed #D7DDE5",
+    langUnselectedBorder: "1px solid #E4E7EC",
+    langUnselectedBg: "#FAFBFC",
+    ghostBorder: "rgba(10, 18, 32, 0.22)",
+    ghostColor: "#0A1220",
+    ghostBg: "rgba(10, 18, 32, 0.04)",
+    strongColor: "#0A1220",
+  },
 };
 
 const TRANSLATIONS = {
@@ -768,8 +929,6 @@ const TRANSLATIONS = {
     dictation_start_title: "Dicter à l'oral",
     aria_hide_password: "masquer le mot de passe",
     aria_show_password: "afficher le mot de passe",
-    toast_grade_unlocked_prefix: "Palier ",
-    toast_grade_unlocked_suffix: " débloqué !",
     avatar_unlock_toast_prefix: "Félicitations, tu viens de débloquer ",
     avatar_unlock_toast_plural: "des avatars",
     avatar_unlock_toast_singular: "un avatar",
@@ -881,9 +1040,6 @@ const TRANSLATIONS = {
 
     // Ma collection / objets scannés
     collection_title: "Ma collection",
-    collection_grade_prefix: "Habillage ",
-    collection_next_grade_prefix: "",
-    collection_next_grade_middle: " avec l'abonnement ",
     collection_empty: "Fais ta première estimation pour commencer à remplir ta collection.",
     collection_stat_value_label: "Valeur estimée",
     collection_stat_objects_label: "Objets scannés",
@@ -942,17 +1098,6 @@ const TRANSLATIONS = {
     account_signup_button: "créer un compte",
     account_or_divider: "ou",
     account_magic_link_button: "recevoir un lien de connexion (sans mot de passe)",
-    display_grade_prefix: "Habillage (plan actuel : ",
-    display_grade_suffix: ")",
-    display_grade_tooltip_locked_prefix: " — débloqué avec l'abonnement ",
-    display_grade_tooltip_locked_suffix: "",
-    display_grade_tooltip_preview_prefix: " — aperçu (verrouillé pour les autres comptes, débloqué avec l'abonnement ",
-    display_grade_tooltip_preview_suffix: ")",
-    display_grade_always: "toujours",
-    display_grade_unlocked: "débloqué",
-    display_next_grade_prefix: "Prochain palier : ",
-    display_next_grade_middle: " avec l'abonnement ",
-    display_next_grade_suffix: "",
     display_theme_title: "Thème (polices, couleurs et contours de toute l'appli)",
     profile_title: "Mon profil",
     credits_unit_singular: "estimation",
@@ -1153,8 +1298,6 @@ const TRANSLATIONS = {
     dictation_start_title: "Dictate aloud",
     aria_hide_password: "hide password",
     aria_show_password: "show password",
-    toast_grade_unlocked_prefix: "Tier ",
-    toast_grade_unlocked_suffix: " unlocked!",
     avatar_unlock_toast_prefix: "Congrats, you just unlocked ",
     avatar_unlock_toast_plural: "avatars",
     avatar_unlock_toast_singular: "an avatar",
@@ -1266,9 +1409,6 @@ const TRANSLATIONS = {
 
     // My collection / scanned objects
     collection_title: "My collection",
-    collection_grade_prefix: "Look ",
-    collection_next_grade_prefix: "",
-    collection_next_grade_middle: " with the ",
     collection_empty: "Make your first estimate to start filling your collection.",
     collection_stat_value_label: "Estimated value",
     collection_stat_objects_label: "Scanned items",
@@ -1327,17 +1467,6 @@ const TRANSLATIONS = {
     account_signup_button: "create an account",
     account_or_divider: "or",
     account_magic_link_button: "get a sign-in link (no password)",
-    display_grade_prefix: "Look (current plan: ",
-    display_grade_suffix: ")",
-    display_grade_tooltip_locked_prefix: " — unlocked with the ",
-    display_grade_tooltip_locked_suffix: " subscription",
-    display_grade_tooltip_preview_prefix: " — preview (locked for other accounts, unlocked with the ",
-    display_grade_tooltip_preview_suffix: " subscription)",
-    display_grade_always: "always",
-    display_grade_unlocked: "unlocked",
-    display_next_grade_prefix: "Next tier: ",
-    display_next_grade_middle: " with the ",
-    display_next_grade_suffix: " subscription",
     display_theme_title: "Theme (fonts, colors and outlines across the whole app)",
     profile_title: "My profile",
     credits_unit_singular: "estimate",
@@ -1538,8 +1667,6 @@ const TRANSLATIONS = {
     dictation_start_title: "Dictar en voz alta",
     aria_hide_password: "ocultar contraseña",
     aria_show_password: "mostrar contraseña",
-    toast_grade_unlocked_prefix: "¡Nivel ",
-    toast_grade_unlocked_suffix: " desbloqueado!",
     avatar_unlock_toast_prefix: "Enhorabuena, acabas de desbloquear ",
     avatar_unlock_toast_plural: "avatares",
     avatar_unlock_toast_singular: "un avatar",
@@ -1651,9 +1778,6 @@ const TRANSLATIONS = {
 
     // Mi colección / objetos escaneados
     collection_title: "Mi colección",
-    collection_grade_prefix: "Estilo ",
-    collection_next_grade_prefix: "",
-    collection_next_grade_middle: " con la suscripción ",
     collection_empty: "Haz tu primera estimación para empezar a llenar tu colección.",
     collection_stat_value_label: "Valor estimado",
     collection_stat_objects_label: "Objetos escaneados",
@@ -1712,17 +1836,6 @@ const TRANSLATIONS = {
     account_signup_button: "crear una cuenta",
     account_or_divider: "o",
     account_magic_link_button: "recibir un enlace de acceso (sin contraseña)",
-    display_grade_prefix: "Estilo (plan actual: ",
-    display_grade_suffix: ")",
-    display_grade_tooltip_locked_prefix: " — desbloqueado con la suscripción ",
-    display_grade_tooltip_locked_suffix: "",
-    display_grade_tooltip_preview_prefix: " — vista previa (bloqueado para otras cuentas, desbloqueado con la suscripción ",
-    display_grade_tooltip_preview_suffix: ")",
-    display_grade_always: "siempre",
-    display_grade_unlocked: "desbloqueado",
-    display_next_grade_prefix: "Próximo nivel: ",
-    display_next_grade_middle: " con la suscripción ",
-    display_next_grade_suffix: "",
     display_theme_title: "Tema (fuentes, colores y contornos de toda la app)",
     profile_title: "Mi perfil",
     credits_unit_singular: "estimación",
@@ -2871,82 +2984,20 @@ export default function App() {
     })();
   }, [user]);
 
-  // Rang du plan d'abonnement actif (voir PLAN_GRADE_RANK et GRADES plus
-  // haut) — 0 si non connecté, plan gratuit, ou abonnement non actif
-  // (résilié, impayé, etc. — même vérification que isPremiumPlan ailleurs
-  // dans le fichier).
+  // Rang du plan d'abonnement actif (voir PLAN_GRADE_RANK plus haut) — 0 si
+  // non connecté, plan gratuit, ou abonnement non actif (résilié, impayé,
+  // etc. — même vérification que isPremiumPlan ailleurs dans le fichier).
+  // Sert au déblocage des avatars (CHARACTERS_META plus bas) — l'ancien
+  // système d'"habillages" bronze/argent/or/diamant qui l'utilisait aussi a
+  // été retiré (voir plus bas, `accent`/`accentDark`/`accentLight` viennent
+  // maintenant de l'affichage choisi, pas du plan).
   const userPlanRank = profile && profile.subscription_status === "active" ? PLAN_GRADE_RANK[profile.plan] || 0 : 0;
 
-  function gradeForPlanRank(rank) {
-    let g = GRADES[0];
-    for (const gr of GRADES) {
-      if (rank >= gr.planRank) g = gr;
-    }
-    return g;
-  }
-  const highestUnlockedGrade = gradeForPlanRank(userPlanRank);
-  const nextGrade = GRADES.find((g) => g.planRank > userPlanRank) || null;
-
-  // Palier choisi par l'utilisateur (peut revenir à un palier déjà débloqué
-  // moins "haut" s'il préfère ce style) — bascule automatiquement sur le
-  // tout dernier palier débloqué dès qu'un nouveau seuil est franchi, avec
-  // un petit message de félicitations.
-  const [selectedGradeKey, setSelectedGradeKey] = useState(() => {
-    try {
-      return localStorage.getItem("estim_grade") || null;
-    } catch (e) {
-      return null;
-    }
-  });
-  useEffect(() => {
-    try {
-      if (selectedGradeKey) localStorage.setItem("estim_grade", selectedGradeKey);
-    } catch (e) {}
-  }, [selectedGradeKey]);
-  const prevGradeKeyRef = useRef(highestUnlockedGrade.key);
-  // `profile` vaut null le temps du tout premier chargement (avant la
-  // réponse Supabase), donc userPlanRank/highestUnlockedGrade démarrent
-  // TOUJOURS à "defaut" puis sautent au vrai palier dès que le profil
-  // arrive — même si rien n'a été débloqué à l'instant. Sans ce garde-fou,
-  // ce saut était pris pour un "nouveau déblocage" à CHAQUE rechargement
-  // de page et écrasait le palier choisi par l'utilisateur (ex: revenu
-  // volontairement à "classique") en le remettant sur le palier du plan.
-  // On ignore donc le tout premier calcul une fois le profil chargé (simple
-  // synchronisation silencieuse), et seul un changement RÉEL par la suite
-  // (upgrade d'abonnement en cours de session) déclenche le bascule + toast.
-  const gradeProfileSyncedRef = useRef(false);
-  const [gradeUnlockToast, setGradeUnlockToast] = useState(null);
-  useEffect(() => {
-    if (!profile) return;
-    if (!gradeProfileSyncedRef.current) {
-      gradeProfileSyncedRef.current = true;
-      prevGradeKeyRef.current = highestUnlockedGrade.key;
-      return;
-    }
-    if (highestUnlockedGrade.key !== prevGradeKeyRef.current) {
-      prevGradeKeyRef.current = highestUnlockedGrade.key;
-      if (highestUnlockedGrade.key !== "defaut") {
-        setSelectedGradeKey(highestUnlockedGrade.key);
-        setGradeUnlockToast(highestUnlockedGrade);
-        setTimeout(() => setGradeUnlockToast(null), 5000);
-      }
-    }
-  }, [highestUnlockedGrade.key, profile]);
-
   // Exception personnelle (compte de Dylan uniquement) : peut sélectionner
-  // n'importe quel habillage pour l'aperçu, même non débloqué. N'affecte que
-  // le style affiché sur SON compte — le vrai compteur/seuils de déblocage
+  // n'importe quel avatar pour l'aperçu, même non débloqué. N'affecte que le
+  // style affiché sur SON compte — le vrai compteur/seuils de déblocage
   // restent inchangés pour tout le monde (y compris pour lui).
   const isOwnerPreview = !!(user && user.email && user.email.toLowerCase() === "dyloo999@gmail.com");
-
-  const activeGrade =
-    (selectedGradeKey &&
-      GRADES.find((g) => g.key === selectedGradeKey && (g.planRank <= userPlanRank || isOwnerPreview))) ||
-    highestUnlockedGrade;
-  const accent = activeGrade.accent;
-  const accentDark = activeGrade.accentDark;
-  const accentLight = activeGrade.accentLight;
-  const accentRgb = hexToRgbString(activeGrade.accent);
 
   // Nombre total de générations (et régénérations) d'annonce jamais
   // demandées — sert à débloquer les "fonds" de couleur (même principe que
@@ -3043,7 +3094,22 @@ export default function App() {
   // simple (pas de notion de "plus haut débloqué"/toast/progression).
   const activeAffichage = AFFICHAGES.find((a) => a.key === selectedAffichageKey) || AFFICHAGES[0];
 
+  // Couleur de mise en avant (boutons, prix, liens, lueurs...) : vient
+  // maintenant de l'affichage choisi (voir `accent`/`accentDark`/
+  // `accentLight`/`glow` sur chaque entrée d'AFFICHAGES) plutôt que d'un
+  // palier d'abonnement bronze/argent/or/diamant, retiré à la demande de
+  // Dylan — l'accent reste ainsi toujours cohérent avec le thème affiché.
+  const accent = activeAffichage.accent;
+  const accentDark = activeAffichage.accentDark;
+  const accentLight = activeAffichage.accentLight;
+  const accentRgb = hexToRgbString(activeAffichage.accent);
+  const accentGlow = activeAffichage.glow || 0;
+
   const menuTheme = activeAffichage.mode;
+  // "blanc" (variante claire de Classique) se comporte comme "light" pour
+  // tout ce qui dépend juste de "fond clair vs fond sombre" (logo, sens des
+  // dégradés...) — seules les couleurs PANEL_THEMES.blanc changent.
+  const lightSurface = menuTheme === "light" || menuTheme === "blanc";
   const pt = { ...(PANEL_THEMES[menuTheme] || PANEL_THEMES.dark) };
   // Arrière-plans : on ne retouche que les grandes surfaces (page,
   // panneaux, header, carte résultat, écran de chargement, zone photo) —
@@ -3147,11 +3213,11 @@ export default function App() {
     ? menuTheme === "light"
       ? `linear-gradient(90deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 55%, ${activeAffichage.base} 100%)`
       : `linear-gradient(90deg, ${activeAffichage.base} 0%, ${activeAffichage.mid} 45%, ${activeAffichage.high} 100%)`
-    : menuTheme === "light"
+    : lightSurface
       ? `linear-gradient(90deg, #D7DEE6 0%, #93A4BC 35%, ${accent} 100%)`
       : `linear-gradient(90deg, #152238 0%, #29394F 35%, ${accent} 100%)`;
   pt.grabBg =
-    menuTheme === "light"
+    lightSurface
       ? `linear-gradient(90deg, #152238 0%, ${accent} 100%)`
       : `linear-gradient(90deg, rgba(255,255,255,0.4) 0%, ${accent} 100%)`;
 
@@ -3529,8 +3595,8 @@ export default function App() {
   // Nouvelle progression (demandée par Dylan, septembre 2026) : seuils
   // d'estimations entièrement revus, et 4 personnages passent en
   // déblocage par ABONNEMENT plutôt que par nombre d'estimations (voir
-  // planRank, comparé à userPlanRank — même mécanique que GRADES plus
-  // haut : un plan plus élevé débloque aussi tous les paliers en dessous).
+  // planRank, comparé à userPlanRank — un plan plus élevé débloque aussi
+  // tous les paliers en dessous, voir PLAN_GRADE_RANK plus haut).
   // Hibou Sage garde en plus son seuil d'estimations : il se débloque par
   // L'UN OU L'AUTRE des deux chemins (voir isCharacterUnlocked).
   // Les noms de personnages restent identiques dans les 3 langues (comme
@@ -3605,11 +3671,10 @@ export default function App() {
     return { label: labelKey ? t(labelKey) : key, dot: CONFIDENCE_DOTS[key] || "muted" };
   }
   // Message "félicitations, tu viens de débloquer un avatar" au moment où
-  // l'abonnement est validé (demandé par Dylan) — même mécanique que
-  // gradeUnlockToast plus haut : on ignore le tout premier calcul après le
-  // chargement du profil (pas un vrai déblocage, juste la synchronisation
-  // initiale), et seule une VRAIE montée de palier d'abonnement en cours de
-  // session déclenche le toast.
+  // l'abonnement est validé (demandé par Dylan) : on ignore le tout premier
+  // calcul après le chargement du profil (pas un vrai déblocage, juste la
+  // synchronisation initiale), et seule une VRAIE montée de palier
+  // d'abonnement en cours de session déclenche le toast.
   const prevAvatarPlanRankRef = useRef(userPlanRank);
   const avatarPlanRankSyncedRef = useRef(false);
   const [avatarUnlockToast, setAvatarUnlockToast] = useState(null);
@@ -5570,41 +5635,12 @@ export default function App() {
         }}
       />
 
-      {gradeUnlockToast && (
-        <div
-          role="status"
-          style={{
-            position: "fixed",
-            top: 14,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 60,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: `linear-gradient(135deg, ${gradeUnlockToast.accentLight} 0%, ${gradeUnlockToast.accent} 55%, ${gradeUnlockToast.accentDark} 100%)`,
-            color: "#152238",
-            borderRadius: 30,
-            padding: "10px 16px",
-            boxShadow: "0 8px 24px rgba(4, 6, 12, 0.4)",
-            maxWidth: "90vw",
-          }}
-        >
-          <span style={{ fontSize: 18 }}>{gradeUnlockToast.emoji}</span>
-          <span className="mono" style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
-            {t("toast_grade_unlocked_prefix")}
-            {gradeUnlockToast.label}
-            {t("toast_grade_unlocked_suffix")}
-          </span>
-        </div>
-      )}
-
       {avatarUnlockToast && (
         <div
           role="status"
           style={{
             position: "fixed",
-            top: 14 + (gradeUnlockToast ? 46 : 0),
+            top: 14,
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 60,
@@ -5670,7 +5706,7 @@ export default function App() {
           justify-content: center;
           gap: 8px;
           width: 100%;
-          box-shadow: 0 6px 16px rgba(${accentRgb}, ${0.32 + activeGrade.glow * 0.3});
+          box-shadow: 0 6px 16px rgba(${accentRgb}, ${0.32 + accentGlow * 0.3});
           transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
         .btn-primary:active { transform: scale(0.98); box-shadow: 0 3px 10px rgba(${accentRgb}, 0.28); }
@@ -5791,8 +5827,8 @@ export default function App() {
         }
         .tag-card-result {
           background: ${pt.resultCardBg};
-          border-color: rgba(${accentRgb}, ${0.4 + activeGrade.glow * 0.4});
-          box-shadow: 0 14px 32px rgba(4, 6, 12, 0.35)${activeGrade.glow ? `, 0 0 26px rgba(${accentRgb}, ${activeGrade.glow * 0.55})` : ""};
+          border-color: rgba(${accentRgb}, ${0.4 + accentGlow * 0.4});
+          box-shadow: 0 14px 32px rgba(4, 6, 12, 0.35)${accentGlow ? `, 0 0 26px rgba(${accentRgb}, ${accentGlow * 0.55})` : ""};
           overflow: hidden;
         }
         .tag-card-result::before {
@@ -5812,7 +5848,7 @@ export default function App() {
           align-items: baseline;
           gap: 6px;
           background: linear-gradient(135deg, ${accentDark} 0%, ${accent} 45%, ${accentLight} 100%);
-          box-shadow: ${activeGrade.glow ? `0 0 14px rgba(${accentRgb}, ${activeGrade.glow})` : "none"};
+          box-shadow: ${accentGlow ? `0 0 14px rgba(${accentRgb}, ${accentGlow})` : "none"};
           color: #152238;
           border-radius: 12px;
           padding: 10px 16px;
@@ -5845,12 +5881,12 @@ export default function App() {
             borderRadius: 22,
             padding: "22px 20px 24px",
             background: pt.headerBg,
-            boxShadow: activeGrade.glow
-              ? `0 0 0 1px rgba(${accentRgb}, ${activeGrade.glow * 0.6}), 0 18px 40px rgba(${accentRgb}, ${activeGrade.glow * 0.5})`
+            boxShadow: accentGlow
+              ? `0 0 0 1px rgba(${accentRgb}, ${accentGlow * 0.6}), 0 18px 40px rgba(${accentRgb}, ${accentGlow * 0.5})`
               : "none",
           }}
         >
-          {activeGrade.key === "diamant" && (
+          {activeAffichage.key === "futuriste" && (
             <>
               {[
                 { top: "14%", left: "82%", size: 12, delay: "0s" },
@@ -5927,13 +5963,13 @@ export default function App() {
               <Menu size={16} />
             </button>
             <img
-              src={menuTheme === "light" ? logoWordmarkDark : logoWordmarkLight}
+              src={lightSurface ? logoWordmarkDark : logoWordmarkLight}
               alt="estim'"
               style={{ height: 26, width: "auto", display: "block" }}
             />
-            {activeGrade.key !== "defaut" && (
+            {activeAffichage.key !== "classique" && (
               <span
-                title={`Habillage ${activeGrade.label}`}
+                title={`Affichage ${activeAffichage.label}`}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -5947,7 +5983,7 @@ export default function App() {
                   boxShadow: `0 0 10px rgba(${accentRgb}, 0.65)`,
                 }}
               >
-                {activeGrade.emoji}
+                {activeAffichage.emoji}
               </span>
             )}
             <span
@@ -7768,27 +7804,6 @@ export default function App() {
               </button>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                background: `linear-gradient(135deg, ${activeGrade.accentLight} 0%, ${activeGrade.accent} 55%, ${activeGrade.accentDark} 100%)`,
-                borderRadius: 10,
-                padding: "10px 14px",
-                marginBottom: 16,
-              }}
-            >
-              <span className="mono" style={{ fontSize: 12, fontWeight: 800, color: "#152238" }}>
-                {activeGrade.emoji} {t("collection_grade_prefix")}{activeGrade.label}
-              </span>
-              {nextGrade && (
-                <span className="mono" style={{ fontSize: 10, color: "#152238", opacity: 0.85 }}>
-                  {nextGrade.label}{t("collection_next_grade_middle")}{nextGrade.planLabel}
-                </span>
-              )}
-            </div>
-
             {history.length === 0 ? (
               <p className="mono" style={{ fontSize: 13, color: pt.subText }}>
                 {t("collection_empty")}
@@ -8266,94 +8281,14 @@ export default function App() {
 
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
-                {t("display_grade_prefix")}
-                {profile && profile.plan !== "gratuit" && profile.subscription_status === "active"
-                  ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
-                  : t("account_plan_free")}
-                {t("display_grade_suffix")}
-              </div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {GRADES.map((g) => {
-                  const unlocked = g.planRank <= userPlanRank;
-                  const canSelect = unlocked || isOwnerPreview;
-                  const isActive = activeGrade.key === g.key;
-                  return (
-                    <button
-                      key={g.key}
-                      onClick={() => canSelect && setSelectedGradeKey(g.key)}
-                      title={
-                        unlocked
-                          ? g.label
-                          : isOwnerPreview
-                          ? `${g.label}${t("display_grade_tooltip_preview_prefix")}${g.planLabel}${t("display_grade_tooltip_preview_suffix")}`
-                          : `${g.label}${t("display_grade_tooltip_locked_prefix")}${g.planLabel}${t("display_grade_tooltip_locked_suffix")}`
-                      }
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 4,
-                        background: "none",
-                        border: "none",
-                        padding: 0,
-                        cursor: canSelect ? "pointer" : "default",
-                        opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: "50%",
-                          background: `linear-gradient(135deg, ${g.accentLight} 0%, ${g.accent} 55%, ${g.accentDark} 100%)`,
-                          border: isActive ? "3px solid #FFFFFF" : "2px solid rgba(255, 255, 255, 0.25)",
-                          boxShadow: isActive ? `0 0 0 2px ${g.accent}` : "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {!unlocked && <Lock size={12} color="#FFFFFF" />}
-                      </div>
-                      <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
-                        {g.emoji} {g.label}
-                      </span>
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: 8,
-                          fontWeight: g.planRank === 0 ? 400 : 700,
-                          color: unlocked ? "#4ADE80" : g.accent,
-                          textAlign: "center",
-                        }}
-                      >
-                        {g.planRank === 0 ? t("display_grade_always") : unlocked ? t("display_grade_unlocked") : g.planLabel}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {nextGrade && (
-                <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
-                  {t("display_next_grade_prefix")}
-                  {nextGrade.label}
-                  {t("display_next_grade_middle")}
-                  {nextGrade.planLabel}
-                  {t("display_next_grade_suffix")}
-                </div>
-              )}
-            </div>
-
-            <div style={{ borderTop: pt.dashedBorder, marginTop: 16, paddingTop: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
                 {t("display_theme_title")}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {AFFICHAGES.map((aff) => {
                   const isActive = activeAffichage.key === aff.key;
                   const swatchHigh = aff.high || "#F2662E";
-                  const swatchMid = aff.mid || "#152238";
-                  const swatchBase = aff.base || "#0A1220";
+                  const swatchMid = aff.mid || (aff.key === "blanc" ? "#FFFFFF" : "#152238");
+                  const swatchBase = aff.base || (aff.key === "blanc" ? "#FFFFFF" : "#0A1220");
                   return (
                     <button
                       key={aff.key}
