@@ -363,13 +363,12 @@ const AFFICHAGES = [
     // ancré en haut — comme les anciens décors SVG, pour ne pas s'étirer
     // de façon disproportionnée sur une page longue (le conteneur grandit
     // avec le contenu). texture/pageBg restent dessous, visibles une fois
-    // l'image terminée plus bas dans la page. Décalage vertical de 230px :
-    // cette image (v2, fournie par Dylan) a l'appareil photo/la longue-vue
-    // tout en haut du cadre, ce qui recouvrait le titre/le compteur —
-    // décalée vers le bas pour laisser ce bandeau du haut passer sous le
-    // texte, sur du papier crème uni (identique à pt.pageBg, donc sans
-    // rupture visible) avant que l'appareil photo n'apparaisse.
-    decor: `url(${decorVintage}) top 230px center / 100% auto no-repeat`,
+    // l'image terminée plus bas dans la page. v3 (Dylan trouvait les
+    // versions précédentes trop chargées) : quasiment du papier uni, avec
+    // juste un timbre et une étiquette tout en haut des coins — plus
+    // besoin du décalage vertical de la v2 (qui servait à éviter
+    // l'appareil photo, absent ici).
+    decor: `url(${decorVintage}) top center / 100% auto no-repeat`,
   },
   {
     key: "retro",
@@ -6015,96 +6014,6 @@ export default function App() {
           >
             {t("hero_subtitle")}
           </p>
-
-          {user && profile && (
-            <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
-              <div
-                onClick={() => setShowHistory(true)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 9,
-                  cursor: "pointer",
-                  position: "relative",
-                  background: `linear-gradient(135deg, rgba(${accentRgb}, 0.16) 0%, rgba(${accentRgb}, 0.05) 100%)`,
-                  border: `1.5px solid rgba(${accentRgb}, 0.35)`,
-                  borderRadius: 999,
-                  padding: "5px 13px 5px 5px",
-                }}
-              >
-                <span
-                  aria-hidden="true"
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: "50%",
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
-                    boxShadow: `0 2px 6px rgba(${accentRgb}, 0.45)`,
-                  }}
-                >
-                  <Sparkles size={13} color="#FFFFFF" className="sparkle" />
-                </span>
-                <span style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
-                  <span className="brand" style={{ fontSize: brandSize(17), fontWeight: 600, color: pt.heroEmphasisColor }}>
-                    {profile.plan !== "gratuit" && profile.subscription_status === "active"
-                      ? Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)
-                      : Math.max(0, 3 - profile.gratuit_utilisees)}
-                  </span>
-                  <span className="mono" style={{ fontSize: 11, fontWeight: 500, color: pt.subText }}>
-                    {profile.plan !== "gratuit" && profile.subscription_status === "active"
-                      ? `/${profile.quota_mensuel} estim' restantes`
-                      : "estim' gratuite(s) restante(s)"}
-                  </span>
-                </span>
-                {profile.credits_achetes > 0 && (
-                  <span
-                    className="mono"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 3,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      color: "#7A5300",
-                      background: "linear-gradient(135deg, #FFE9A8 0%, #FFD056 60%, #F2B33D 100%)",
-                      borderRadius: 999,
-                      padding: "3px 9px",
-                      boxShadow: "0 2px 6px rgba(178, 129, 22, 0.35)",
-                    }}
-                  >
-                    <Tag size={11} strokeWidth={2.5} style={{ transform: "rotate(-8deg)" }} />+{profile.credits_achetes}
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  setPaywallInfo(null);
-                  setShowSubscriptionPanel(true);
-                }}
-                className="mono btn-cta-pill"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
-                  border: "none",
-                  borderRadius: 999,
-                  padding: "9px 16px",
-                  fontSize: 12.5,
-                  fontWeight: 800,
-                  letterSpacing: "0.01em",
-                  color: "#FFFFFF",
-                  boxShadow: `0 6px 16px rgba(${accentRgb}, 0.35)`,
-                }}
-              >
-                <span style={{ fontSize: 14, lineHeight: 1 }}>⚡</span> Obtenir plus d'estim'
-              </button>
-            </div>
-          )}
         </header>
 
         {!image && (
@@ -6190,6 +6099,110 @@ export default function App() {
               style={{ display: "none" }}
             />
           </label>
+        )}
+
+        {/* Compteur d'estimations restantes + CTA "Obtenir plus d'estim'" —
+            déplacés sous la zone photo (demandé par Dylan, initialement
+            juste sous l'accroche) et recomposés en colonne centrée plutôt
+            qu'en ligne à gauche, plus soigné visuellement. Reste masqué une
+            fois une photo choisie (résultat/chargement prennent le relais),
+            comme avant. */}
+        {!image && user && profile && (
+          <div
+            style={{
+              marginTop: 16,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <div
+              onClick={() => setShowHistory(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 9,
+                cursor: "pointer",
+                position: "relative",
+                background: `linear-gradient(135deg, rgba(${accentRgb}, 0.16) 0%, rgba(${accentRgb}, 0.05) 100%)`,
+                border: `1.5px solid rgba(${accentRgb}, 0.35)`,
+                borderRadius: 999,
+                padding: "5px 13px 5px 5px",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: "50%",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
+                  boxShadow: `0 2px 6px rgba(${accentRgb}, 0.45)`,
+                }}
+              >
+                <Sparkles size={13} color="#FFFFFF" className="sparkle" />
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
+                <span className="brand" style={{ fontSize: brandSize(17), fontWeight: 600, color: pt.heroEmphasisColor }}>
+                  {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                    ? Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)
+                    : Math.max(0, 3 - profile.gratuit_utilisees)}
+                </span>
+                <span className="mono" style={{ fontSize: 11, fontWeight: 500, color: pt.subText }}>
+                  {profile.plan !== "gratuit" && profile.subscription_status === "active"
+                    ? `/${profile.quota_mensuel} estim' restantes`
+                    : "estim' gratuite(s) restante(s)"}
+                </span>
+              </span>
+              {profile.credits_achetes > 0 && (
+                <span
+                  className="mono"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 3,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "#7A5300",
+                    background: "linear-gradient(135deg, #FFE9A8 0%, #FFD056 60%, #F2B33D 100%)",
+                    borderRadius: 999,
+                    padding: "3px 9px",
+                    boxShadow: "0 2px 6px rgba(178, 129, 22, 0.35)",
+                  }}
+                >
+                  <Tag size={11} strokeWidth={2.5} style={{ transform: "rotate(-8deg)" }} />+{profile.credits_achetes}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setPaywallInfo(null);
+                setShowSubscriptionPanel(true);
+              }}
+              className="mono btn-cta-pill"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                background: `linear-gradient(135deg, ${accentLight} 0%, ${accent} 55%, ${accentDark} 100%)`,
+                border: "none",
+                borderRadius: 999,
+                padding: "9px 16px",
+                fontSize: 12.5,
+                fontWeight: 800,
+                letterSpacing: "0.01em",
+                color: "#FFFFFF",
+                boxShadow: `0 6px 16px rgba(${accentRgb}, 0.35)`,
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>⚡</span> Obtenir plus d'estim'
+            </button>
+          </div>
         )}
 
         {error && !image && (
