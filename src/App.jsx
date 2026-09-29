@@ -4667,7 +4667,11 @@ export default function App() {
               d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
               fill={accent}
             />
-            <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
+            {/* Trou de l'étiquette : vraiment transparent (laisse voir ce
+                qu'il y a derrière) plutôt qu'une couleur fixe — sur fond
+                navy ça ne se voyait pas, mais sur un affichage clair (ex:
+                Vintage) un rond plein bleu/noir tranchait fort. */}
+            <circle cx="7.5" cy="7.5" r="1.6" fill="none" />
           </svg>
 
           {/* Le bouton menu est un élément normal du flux (pas absolu) juste
@@ -4997,7 +5001,7 @@ export default function App() {
                         d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
                         fill={accent}
                       />
-                      <circle cx="7.5" cy="7.5" r="1.7" fill="#152238" />
+                      <circle cx="7.5" cy="7.5" r="1.7" fill="none" />
                     </svg>
                   </div>
                 </div>
@@ -5299,7 +5303,7 @@ export default function App() {
                     d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
                     fill={accent}
                   />
-                  <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
+                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   🎭 mode "estimer tout, même n'importe quoi"
@@ -5338,7 +5342,7 @@ export default function App() {
                     d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
                     fill={accent}
                   />
-                  <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
+                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
@@ -5382,7 +5386,7 @@ export default function App() {
                     d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
                     fill={accent}
                   />
-                  <circle cx="7.5" cy="7.5" r="1.6" fill="#152238" />
+                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.categorie}
