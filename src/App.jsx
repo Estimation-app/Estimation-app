@@ -264,6 +264,20 @@ function hexToRgbString(hex) {
 // conservant exactement les mêmes épaisseurs/styles ("1px solid",
 // "1px dashed"...) qu'aujourd'hui — absent pour "Classique" (contours
 // d'origine inchangés).
+// `displayLetterSpacing`/`displayTransform` (titres `.brand`) et
+// `bodyLetterSpacing`/`bodyTransform` (texte `.mono`, y compris certaines
+// phrases entières — voir plus bas) : accentuent encore le caractère de la
+// police choisie (ex : tout en capitales et très espacé pour un rendu
+// "terminal"/"panneau lumineux") sans changer la taille du texte.
+// `radiusScale` (optionnel, défaut 1) : multiplie l'arrondi des coins des
+// éléments réutilisables (boutons, zone photo, "ticket" de résultat) —
+// PAS celui des grands panneaux/en-têtes, qui gardent leur taille/forme
+// d'origine — pour faire ressentir l'ambiance jusque dans les formes
+// (ex : coins nets et anguleux pour "Robotique", très arrondis/capsule
+// pour "Futuriste") sans jamais changer une dimension.
+// `texture` (optionnel) : calques `background-image` décoratifs (grain,
+// vignette, trame, lignes de scan...), posés sous la couleur de fond de la
+// page uniquement — n'affecte ni la disposition ni aucune taille.
 const AFFICHAGES = [
   {
     key: "classique",
@@ -282,10 +296,14 @@ const AFFICHAGES = [
     mode: "dark",
     fontDisplay: "'Playfair Display', Georgia, serif",
     fontBody: "'Courier Prime', monospace",
-    base: "#1C140B",
-    mid: "#3A2A17",
-    high: "#8A6A3A",
-    borderRgb: "184, 142, 84",
+    bodyLetterSpacing: "0.05em",
+    base: "#221909",
+    mid: "#4A331A",
+    high: "#C99A4E",
+    borderRgb: "201, 154, 78",
+    radiusScale: 0.45,
+    texture:
+      "radial-gradient(circle at 15% 20%, rgba(0,0,0,0.14) 0, transparent 42%), radial-gradient(circle at 85% 12%, rgba(0,0,0,0.12) 0, transparent 38%), radial-gradient(circle at 60% 78%, rgba(0,0,0,0.13) 0, transparent 46%), repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 1px, transparent 1px, transparent 4px)",
   },
   {
     key: "retro",
@@ -295,10 +313,17 @@ const AFFICHAGES = [
     mode: "dark",
     fontDisplay: "'Bungee', cursive",
     fontBody: "'Space Mono', monospace",
+    displayLetterSpacing: "0.02em",
+    displayTransform: "uppercase",
+    bodyLetterSpacing: "0.05em",
+    bodyTransform: "uppercase",
     base: "#170B2E",
     mid: "#3A1268",
-    high: "#E6247A",
+    high: "#FF2E92",
     borderRgb: "255, 90, 190",
+    radiusScale: 1.4,
+    texture:
+      "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px), radial-gradient(circle at 18% 14%, rgba(255,46,146,0.14) 0, transparent 40%), radial-gradient(circle at 86% 82%, rgba(110,30,230,0.16) 0, transparent 46%)",
   },
   {
     key: "robotique",
@@ -308,10 +333,17 @@ const AFFICHAGES = [
     mode: "dark",
     fontDisplay: "'Orbitron', sans-serif",
     fontBody: "'Share Tech Mono', monospace",
-    base: "#0D1210",
+    displayLetterSpacing: "0.14em",
+    displayTransform: "uppercase",
+    bodyLetterSpacing: "0.06em",
+    bodyTransform: "uppercase",
+    base: "#0B0F0D",
     mid: "#1E2E28",
     high: "#3FE0A5",
     borderRgb: "63, 224, 165",
+    radiusScale: 0,
+    texture:
+      "repeating-linear-gradient(0deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px), repeating-linear-gradient(90deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px)",
   },
   {
     key: "futuriste",
@@ -321,10 +353,17 @@ const AFFICHAGES = [
     mode: "dark",
     fontDisplay: "'Michroma', sans-serif",
     fontBody: "'Chakra Petch', sans-serif",
-    base: "#050B14",
+    displayLetterSpacing: "0.18em",
+    displayTransform: "uppercase",
+    bodyLetterSpacing: "0.06em",
+    bodyTransform: "uppercase",
+    base: "#040912",
     mid: "#0E2A44",
     high: "#33C9FF",
     borderRgb: "51, 201, 255",
+    radiusScale: 1.8,
+    texture:
+      "radial-gradient(circle at 80% 8%, rgba(51,201,255,0.16) 0, transparent 38%), radial-gradient(circle at 10% 88%, rgba(51,201,255,0.10) 0, transparent 42%), repeating-linear-gradient(115deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px)",
   },
 ];
 
@@ -4218,9 +4257,16 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        background: pt.pageBg,
-        fontFamily:
-          "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        // Le calque de texture (grain/vignette/trame/scanlines) de
+        // l'affichage actif est posé SOUS la couleur de fond (pt.pageBg,
+        // réutilisée ailleurs comme couleur unie — ex: contour SVG des
+        // graphiques — donc jamais modifiée elle-même) : purement
+        // décoratif, n'affecte ni la disposition ni aucune taille.
+        background: activeAffichage.texture ? `${activeAffichage.texture}, ${pt.pageBg}` : pt.pageBg,
+        // La police de corps par défaut (héritée par tout texte sans
+        // classe .brand/.mono, ex: le sous-titre de l'accroche) suit
+        // désormais l'affichage sélectionné.
+        fontFamily: `${activeAffichage.fontBody}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
         color: pt.strongColor,
         display: "flex",
         flexDirection: "column",
@@ -4306,8 +4352,16 @@ export default function App() {
            AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
            l'écriture de TOUTE l'appli sans toucher aux tailles/dispositions,
            qui restent fixées dans chaque style inline. */
-        .brand { font-family: ${activeAffichage.fontDisplay}; }
-        .mono { font-family: ${activeAffichage.fontBody}; }
+        .brand {
+          font-family: ${activeAffichage.fontDisplay};
+          letter-spacing: ${activeAffichage.displayLetterSpacing || "normal"};
+          text-transform: ${activeAffichage.displayTransform || "none"};
+        }
+        .mono {
+          font-family: ${activeAffichage.fontBody};
+          letter-spacing: ${activeAffichage.bodyLetterSpacing || "normal"};
+          text-transform: ${activeAffichage.bodyTransform || "none"};
+        }
         button { font-family: inherit; cursor: pointer; }
         @keyframes sparkle-pulse {
           0%, 100% { opacity: 0.15; transform: scale(0.8); }
@@ -4322,7 +4376,7 @@ export default function App() {
           font-size: 15px;
           font-weight: 700;
           letter-spacing: 0.02em;
-          border-radius: 14px;
+          border-radius: ${Math.round(14 * (activeAffichage.radiusScale ?? 1))}px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -4340,7 +4394,7 @@ export default function App() {
           color: ${pt.ghostColor};
           border: 1px solid ${pt.ghostBorder};
           padding: 10px 16px;
-          border-radius: 12px;
+          border-radius: ${Math.round(12 * (activeAffichage.radiusScale ?? 1))}px;
           font-size: 13px;
           display: flex;
           align-items: center;
@@ -4350,7 +4404,7 @@ export default function App() {
           background: transparent;
           color: ${pt.ghostColor};
           border: 1px solid ${pt.ghostBorder};
-          border-radius: 12px;
+          border-radius: ${Math.round(12 * (activeAffichage.radiusScale ?? 1))}px;
           width: 38px;
           height: 38px;
           display: flex;
@@ -4394,7 +4448,7 @@ export default function App() {
         }
         .drop-zone {
           border: 2px dashed ${accent};
-          border-radius: 18px;
+          border-radius: ${Math.round(18 * (activeAffichage.radiusScale ?? 1))}px;
           width: 100%;
           aspect-ratio: 4/3;
           display: flex;
@@ -4414,7 +4468,7 @@ export default function App() {
           position: absolute;
           inset: 8px;
           border: 1px solid rgba(${accentRgb}, 0.35);
-          border-radius: 12px;
+          border-radius: ${Math.round(12 * (activeAffichage.radiusScale ?? 1))}px;
           pointer-events: none;
         }
         .drop-zone:active { transform: scale(0.99); }
@@ -4430,7 +4484,7 @@ export default function App() {
           background: ${pt.formCardBg};
           border: 1px solid ${pt.rowBorder.replace("1px solid ", "")};
           border-top: 3px solid ${accent};
-          border-radius: 16px;
+          border-radius: ${Math.round(16 * (activeAffichage.radiusScale ?? 1))}px;
           position: relative;
           padding: 26px 22px 22px;
           width: 100%;
