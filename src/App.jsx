@@ -14,7 +14,6 @@ import decorFuturiste from "./assets/decor-futuriste.jpg";
 import decorLuxe from "./assets/decor-luxe.jpg";
 import decorNoir from "./assets/decor-noir.jpg";
 import decorIndustriel from "./assets/decor-industriel.jpg";
-import decorBotanique from "./assets/decor-botanique.jpg";
 import decorZen from "./assets/decor-zen.jpg";
 
 // Portraits réels (générés avec Google Flow — Nano Banana Pro, cf. doc de
@@ -610,13 +609,15 @@ const AFFICHAGES = [
     accentDark: "#701412",
     accentLight: "#D65C57",
     glow: 0.1,
-    // Vignettage marqué (bords assombris, centre plus lumineux façon
-    // projecteur) plutôt qu'un grain de pellicule (retenue de l'épisode
-    // Vintage : trop de "petits points").
+    // Vignettage (bords assombris, centre plus lumineux façon projecteur)
+    // plutôt qu'un grain de pellicule (retenue de l'épisode Vintage : trop
+    // de "petits points") — adouci (Dylan : "ton dégradé est trop
+    // important") : opacité divisée par ~2 et la zone assombrie repoussée
+    // plus loin du centre (45% au lieu de 35%) pour un effet plus discret.
     texture:
-      "radial-gradient(circle at 50% 30%, rgba(255,255,255,0.06) 0, transparent 55%), radial-gradient(circle at 50% 50%, transparent 35%, rgba(0,0,0,0.4) 100%)",
+      "radial-gradient(circle at 50% 30%, rgba(255,255,255,0.05) 0, transparent 55%), radial-gradient(circle at 50% 50%, transparent 45%, rgba(0,0,0,0.2) 100%)",
     decor: [
-      "linear-gradient(90deg, rgba(0,0,0,0.4) 0%, transparent 9%, transparent 91%, rgba(0,0,0,0.4) 100%)",
+      "linear-gradient(90deg, rgba(0,0,0,0.2) 0%, transparent 9%, transparent 91%, rgba(0,0,0,0.2) 100%)",
       `url(${decorNoir}) top center / 100% auto no-repeat`,
     ].join(", "),
   },
@@ -639,48 +640,54 @@ const AFFICHAGES = [
     heroScale: 0.85,
     base: "#1C1C1A",
     mid: "#3A362E",
-    high: "#B5502A",
-    borderRgb: "181, 80, 42",
+    // "high" pilote les grands aplats (sheetBg/headerBg/topBar...) : passé
+    // d'un orange rouille vif (#B5502A) à un gris acier chaud, plus fidèle
+    // à la photo de tôle ajoutée par Dylan ("je me serais plus fié à la
+    // couleur du fond qui est grise, enlève un peu d'orange"). La rouille
+    // reste seulement en touche d'accent (boutons, prix...), et nettement
+    // moins saturée qu'avant.
+    high: "#8C887E",
+    borderRgb: "150, 143, 130",
     radiusScale: 0,
-    accent: "#B5502A",
-    accentDark: "#7A3419",
-    accentLight: "#E08F5E",
-    glow: 0.1,
+    accent: "#A9663D",
+    accentDark: "#734526",
+    accentLight: "#D9A97C",
+    glow: 0.07,
     texture:
-      "radial-gradient(circle at 20% 20%, rgba(181,80,42,0.08) 0, transparent 42%), radial-gradient(circle at 80% 75%, rgba(0,0,0,0.28) 0, transparent 50%), repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, transparent 2px, transparent 14px)",
+      "radial-gradient(circle at 20% 20%, rgba(150,143,130,0.08) 0, transparent 42%), radial-gradient(circle at 80% 75%, rgba(0,0,0,0.28) 0, transparent 50%), repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, transparent 2px, transparent 14px)",
     decor: [
-      "linear-gradient(90deg, rgba(181,80,42,0.20) 0%, rgba(181,80,42,0.08) 3%, transparent 9%, transparent 91%, rgba(181,80,42,0.08) 97%, rgba(181,80,42,0.20) 100%)",
+      "linear-gradient(90deg, rgba(150,143,130,0.18) 0%, rgba(150,143,130,0.06) 3%, transparent 9%, transparent 91%, rgba(169,102,61,0.06) 97%, rgba(169,102,61,0.16) 100%)",
       `url(${decorIndustriel}) top center / 100% auto no-repeat`,
     ].join(", "),
   },
   {
-    key: "botanique",
+    // Remplace "Botanique" (clair, herbier délicat) à la demande de Dylan :
+    // plutôt une ambiance forêt tropicale, vert foncé, dense. Pas encore de
+    // photo IA (le prompt est fourni à part) — `decor` en CSS pur pour
+    // l'instant, même principe que les autres affichages avant leur image.
+    key: "foret",
     threshold: 0,
-    label: "Botanique",
-    emoji: "🌿",
-    mode: "light",
-    // Cormorant Garamond : serif fine et délicate façon herbier ancien.
-    // Karla en corps de texte pour rester lisible sans casser la douceur.
-    fontDisplay: "'Cormorant Garamond', serif",
-    fontBody: "'Karla', sans-serif",
+    label: "Forêt",
+    emoji: "🌴",
+    mode: "dark",
+    // Bevan : serif slab épaisse, esprit affiche d'expédition/exploration.
+    // Mulish en corps de texte, sobre et très lisible.
+    fontDisplay: "'Bevan', serif",
+    fontBody: "'Mulish', sans-serif",
     heroScale: 0.85,
-    base: "#F3F1E7",
-    mid: "#D9E0C7",
-    high: "#5B7A52",
-    borderRgb: "91, 122, 82",
-    textStrong: "#2E3A24",
-    textSoft: "#5F6F52",
-    radiusScale: 0.6,
-    accent: "#5B7A52",
-    accentDark: "#3B5233",
-    accentLight: "#A8C79A",
-    glow: 0.08,
+    base: "#081410",
+    mid: "#173D2A",
+    high: "#3FAE66",
+    borderRgb: "63, 174, 102",
+    radiusScale: 0.5,
+    accent: "#3FAE66",
+    accentDark: "#227A44",
+    accentLight: "#9EE6B8",
+    glow: 0.15,
     texture:
-      "radial-gradient(circle at 15% 15%, rgba(91,122,82,0.10) 0, transparent 45%), radial-gradient(circle at 85% 20%, rgba(169,199,154,0.14) 0, transparent 42%), radial-gradient(circle at 70% 80%, rgba(91,122,82,0.09) 0, transparent 48%), radial-gradient(circle at 20% 85%, rgba(139,163,110,0.10) 0, transparent 46%)",
-    decor: [
-      "linear-gradient(90deg, rgba(91,122,82,0.18) 0%, rgba(91,122,82,0.07) 3%, transparent 9%, transparent 91%, rgba(91,122,82,0.07) 97%, rgba(91,122,82,0.18) 100%)",
-      `url(${decorBotanique}) top center / 100% auto no-repeat`,
-    ].join(", "),
+      "radial-gradient(circle at 12% 10%, rgba(63,174,102,0.14) 0, transparent 42%), radial-gradient(circle at 88% 18%, rgba(20,60,38,0.35) 0, transparent 46%), radial-gradient(circle at 80% 85%, rgba(63,174,102,0.10) 0, transparent 48%), radial-gradient(circle at 15% 88%, rgba(15,45,28,0.4) 0, transparent 50%)",
+    decor:
+      "linear-gradient(90deg, rgba(63,174,102,0.22) 0%, rgba(63,174,102,0.08) 3%, transparent 9%, transparent 91%, rgba(63,174,102,0.08) 97%, rgba(63,174,102,0.22) 100%)",
   },
   {
     key: "zen",
@@ -3281,6 +3288,17 @@ export default function App() {
       menuTheme === "light"
         ? `linear-gradient(135deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 55%, ${activeAffichage.base} 100%)`
         : `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 52%, ${activeAffichage.high} 100%)`;
+    // Zen : Dylan trouvait le passage rouge -> blanc "trop net" sur la carte
+    // résultat (mid et base y sont deux crèmes très proches, donc l'essentiel
+    // du dégradé générique ci-dessus se joue en fait entre "high" (rouge) et
+    // "mid" sur seulement 55% du dégradé — trop rapide). Une étape
+    // intermédiaire (mélange rouge/crème) étale la transition sur un
+    // parcours plus long et plus progressif, sans toucher aux autres
+    // affichages clairs (Vintage, Botanique) qui gardent la formule
+    // générique ci-dessus.
+    if (activeAffichage.key === "zen") {
+      pt.headerBg = `linear-gradient(135deg, ${activeAffichage.high} 0%, #B98078 32%, ${activeAffichage.mid} 68%, ${activeAffichage.base} 100%)`;
+    }
     pt.resultCardBg = pt.headerBg;
     pt.loadingBg = `linear-gradient(160deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 100%)`;
     pt.loadingBorder = activeAffichage.high;
@@ -5871,7 +5889,7 @@ export default function App() {
         /* Toutes les polices des 5 affichages sont chargées d'un coup (une
            seule requête) pour permettre un changement d'affichage instantané,
            sans "flash" le temps qu'une police se télécharge. */
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Karla:wght@400;500;600;700&family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Bevan&family=Mulish:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; }
         /* Les deux polices dépendent de l'affichage sélectionné (voir
            AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
