@@ -349,18 +349,23 @@ const AFFICHAGES = [
     radiusScale: 0.25,
     texture:
       "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.09) 0, transparent 38%), radial-gradient(circle at 84% 10%, rgba(43,36,28,0.08) 0, transparent 34%), radial-gradient(circle at 62% 66%, rgba(43,36,28,0.09) 0, transparent 42%), radial-gradient(circle at 8% 86%, rgba(43,36,28,0.08) 0, transparent 38%), repeating-linear-gradient(45deg, rgba(43,36,28,0.045) 0px, rgba(43,36,28,0.045) 1px, transparent 1px, transparent 3px)",
-    // Tampon postal (grand cercle pointillé + étoile) en haut à droite,
-    // petit cercle pointillé isolé en haut à gauche — même encre foncée que
-    // le texte (#2B241C), très discret (opacité 0.12-0.16).
+    // v2 (le tampon postal "faisait un peu spirale sans utilité" selon
+    // Dylan) : silhouettes de cartons de déménagement/brocante — un grand
+    // en haut à droite, un petit incliné en haut à gauche, sous le bloc de
+    // texte pour ne pas le traverser — même encre que le texte (#2B241C),
+    // toujours très discret (opacité 0.07-0.16).
     decor: [
-      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">
-  <circle cx="80" cy="80" r="64" fill="none" stroke="#2B241C" stroke-width="2" stroke-dasharray="5 7" opacity="0.16"/>
-  <circle cx="80" cy="80" r="50" fill="none" stroke="#2B241C" stroke-width="1.4" opacity="0.12"/>
-  <path d="M80 44 L85 62 L104 62 L88 73 L94 91 L80 80 L66 91 L72 73 L56 62 L75 62 Z" fill="#2B241C" opacity="0.12"/>
-</svg>`)} top -20px right -20px / 190px 190px no-repeat`,
-      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90">
-  <circle cx="45" cy="45" r="36" fill="none" stroke="#2B241C" stroke-width="1.6" stroke-dasharray="3 6" opacity="0.13"/>
-</svg>`)} top 70px left -25px / 100px 100px no-repeat`,
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="170">
+  <rect x="14" y="36" width="150" height="112" fill="none" stroke="#2B241C" stroke-width="2.4" opacity="0.16"/>
+  <path d="M14 36 L46 10 L132 10 L164 36" fill="none" stroke="#2B241C" stroke-width="1.8" opacity="0.13"/>
+  <path d="M14 36 L132 10 M164 36 L46 10" fill="none" stroke="#2B241C" stroke-width="1.3" opacity="0.10"/>
+  <line x1="89" y1="10" x2="89" y2="148" stroke="#2B241C" stroke-width="3" opacity="0.08"/>
+</svg>`)} top -16px right -18px / 200px 170px no-repeat`,
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="110" height="95">
+  <rect x="10" y="24" width="82" height="62" fill="none" stroke="#2B241C" stroke-width="2" opacity="0.13" transform="rotate(-5 51 55)"/>
+  <path d="M10 24 L28 8 L74 8 L92 24" fill="none" stroke="#2B241C" stroke-width="1.4" opacity="0.1" transform="rotate(-5 51 16)"/>
+  <line x1="51" y1="8" x2="51" y2="86" stroke="#2B241C" stroke-width="2.4" opacity="0.07" transform="rotate(-5 51 47)"/>
+</svg>`)} top 110px left -20px / 110px 95px no-repeat`,
     ].join(", "),
   },
   {
@@ -383,16 +388,26 @@ const AFFICHAGES = [
     radiusScale: 1.4,
     texture:
       "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px), radial-gradient(circle at 18% 14%, rgba(255,46,146,0.14) 0, transparent 40%), radial-gradient(circle at 86% 82%, rgba(110,30,230,0.16) 0, transparent 46%)",
-    // Soleil synthwave (demi-cercle + bandes horizontales façon "gap") en
-    // haut à droite, un peu plus bas que les autres décors pour rester
-    // sous l'accroche plutôt que la traverser.
-    decor: `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="150">
-  <path d="M20 140 A100 100 0 0 1 220 140 Z" fill="#FF2E92" opacity="0.16"/>
-  <rect x="20" y="92" width="200" height="5" fill="#170B2E" opacity="0.6"/>
-  <rect x="20" y="106" width="200" height="5" fill="#170B2E" opacity="0.6"/>
-  <rect x="20" y="120" width="200" height="6" fill="#170B2E" opacity="0.6"/>
-  <rect x="20" y="134" width="200" height="7" fill="#170B2E" opacity="0.6"/>
-</svg>`)} top 150px right -30px / 250px 155px no-repeat`,
+    // v2 : remonté tout en haut (comme les autres affichages) — placé plus
+    // bas, il finissait caché derrière la zone photo/le sous-titre et
+    // Dylan n'en voyait "qu'un petit bout". Soleil synthwave + grille en
+    // perspective façon jeu d'arcade 80s (plus "retro gaming"), plus
+    // présent (opacités augmentées).
+    decor: `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="230" height="210">
+  <path d="M25 95 A85 85 0 0 1 205 95 Z" fill="#FF2E92" opacity="0.30"/>
+  <rect x="25" y="64" width="180" height="4.5" fill="#170B2E" opacity="0.75"/>
+  <rect x="25" y="76" width="180" height="4.5" fill="#170B2E" opacity="0.75"/>
+  <rect x="25" y="88" width="180" height="5.5" fill="#170B2E" opacity="0.75"/>
+  <g stroke="#33F0FF" stroke-width="1.3" opacity="0.4">
+    <line x1="115" y1="95" x2="10" y2="210"/>
+    <line x1="115" y1="95" x2="63" y2="210"/>
+    <line x1="115" y1="95" x2="115" y2="210"/>
+    <line x1="115" y1="95" x2="167" y2="210"/>
+    <line x1="115" y1="95" x2="220" y2="210"/>
+    <line x1="45" y1="130" x2="185" y2="130"/>
+    <line x1="25" y1="165" x2="205" y2="165"/>
+  </g>
+</svg>`)} top -18px right -20px / 230px 210px no-repeat`,
   },
   {
     key: "robotique",
@@ -416,30 +431,32 @@ const AFFICHAGES = [
     texture:
       "repeating-linear-gradient(0deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px), repeating-linear-gradient(90deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px)",
     // Traces de circuit imprimé (traits à angle droit + nœuds), tracées à
-    // l'écart de la colonne de texte pour ne jamais la traverser.
+    // l'écart de la colonne de texte pour ne jamais la traverser. v2 :
+    // Dylan aimait le principe mais le trouvait trop discret — traits plus
+    // épais, nœuds plus gros, opacités et tailles augmentées.
     decor: [
-      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="170" height="170">
-  <g fill="none" stroke="#3FE0A5" stroke-width="1.6" opacity="0.22">
-    <path d="M90 6 H140 V38"/>
-    <path d="M120 170 H150 V60 H100"/>
-    <path d="M160 6 V52 H130"/>
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <g fill="none" stroke="#3FE0A5" stroke-width="2" opacity="0.34">
+    <path d="M105 6 H165 V44"/>
+    <path d="M140 200 H175 V70 H115"/>
+    <path d="M188 6 V60 H152"/>
   </g>
-  <g fill="#3FE0A5" opacity="0.3">
-    <circle cx="140" cy="6" r="3"/>
-    <circle cx="140" cy="38" r="3"/>
-    <circle cx="100" cy="60" r="3"/>
-    <circle cx="160" cy="52" r="3"/>
+  <g fill="#3FE0A5" opacity="0.45">
+    <circle cx="165" cy="6" r="3.6"/>
+    <circle cx="165" cy="44" r="3.6"/>
+    <circle cx="115" cy="70" r="3.6"/>
+    <circle cx="188" cy="60" r="3.6"/>
   </g>
-</svg>`)} top -10px right -10px / 180px 180px no-repeat`,
-      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
-  <g fill="none" stroke="#3FE0A5" stroke-width="1.4" opacity="0.16">
-    <path d="M0 20 H36 V60 H70"/>
+</svg>`)} top -10px right -10px / 200px 200px no-repeat`,
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+  <g fill="none" stroke="#3FE0A5" stroke-width="1.8" opacity="0.26">
+    <path d="M0 24 H44 V72 H84"/>
   </g>
-  <g fill="#3FE0A5" opacity="0.22">
-    <circle cx="36" cy="20" r="2.4"/>
-    <circle cx="70" cy="60" r="2.4"/>
+  <g fill="#3FE0A5" opacity="0.36">
+    <circle cx="44" cy="24" r="3"/>
+    <circle cx="84" cy="72" r="3"/>
   </g>
-</svg>`)} top 90px left -15px / 110px 110px no-repeat`,
+</svg>`)} top 95px left -18px / 120px 120px no-repeat`,
     ].join(", "),
   },
   {
@@ -466,30 +483,32 @@ const AFFICHAGES = [
     texture:
       "radial-gradient(circle at 80% 8%, rgba(51,201,255,0.16) 0, transparent 38%), radial-gradient(circle at 10% 88%, rgba(51,201,255,0.10) 0, transparent 42%), repeating-linear-gradient(115deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px)",
     // Champ d'étoiles éparses + anneau orbital, en haut à droite ; petit
-    // amas d'étoiles isolé en haut à gauche.
+    // amas d'étoiles isolé en haut à gauche. v2 : un peu plus présent
+    // (Dylan le trouvait "pas mal mais trop discret") — étoiles plus
+    // grosses/opaques, anneau plus marqué, zone légèrement agrandie.
     decor: [
-      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240">
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="270" height="270">
   <g fill="#33C9FF">
-    <circle cx="20" cy="30" r="1.7" opacity="0.55"/>
-    <circle cx="60" cy="10" r="1.1" opacity="0.4"/>
-    <circle cx="150" cy="50" r="1.9" opacity="0.55"/>
-    <circle cx="205" cy="22" r="1.3" opacity="0.45"/>
-    <circle cx="110" cy="95" r="1.1" opacity="0.35"/>
-    <circle cx="32" cy="160" r="1.5" opacity="0.45"/>
-    <circle cx="185" cy="195" r="1.7" opacity="0.5"/>
-    <circle cx="215" cy="140" r="1.1" opacity="0.35"/>
-    <circle cx="80" cy="200" r="1.3" opacity="0.4"/>
+    <circle cx="22" cy="34" r="2.1" opacity="0.7"/>
+    <circle cx="68" cy="12" r="1.4" opacity="0.5"/>
+    <circle cx="168" cy="56" r="2.3" opacity="0.7"/>
+    <circle cx="230" cy="25" r="1.6" opacity="0.55"/>
+    <circle cx="124" cy="106" r="1.4" opacity="0.45"/>
+    <circle cx="36" cy="180" r="1.9" opacity="0.55"/>
+    <circle cx="208" cy="220" r="2.1" opacity="0.6"/>
+    <circle cx="242" cy="157" r="1.4" opacity="0.45"/>
+    <circle cx="90" cy="225" r="1.6" opacity="0.5"/>
   </g>
-  <ellipse cx="120" cy="120" rx="100" ry="42" fill="none" stroke="#33C9FF" stroke-width="1.2" opacity="0.16" transform="rotate(-18 120 120)"/>
-</svg>`)} top -20px right -20px / 260px 260px no-repeat`,
-      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="110" height="150">
+  <ellipse cx="135" cy="135" rx="112" ry="47" fill="none" stroke="#33C9FF" stroke-width="1.5" opacity="0.24" transform="rotate(-18 135 135)"/>
+</svg>`)} top -22px right -22px / 270px 270px no-repeat`,
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="130" height="170">
   <g fill="#33C9FF">
-    <circle cx="10" cy="20" r="1.3" opacity="0.4"/>
-    <circle cx="40" cy="60" r="1" opacity="0.3"/>
-    <circle cx="20" cy="110" r="1.5" opacity="0.4"/>
-    <circle cx="70" cy="30" r="1" opacity="0.3"/>
+    <circle cx="12" cy="22" r="1.6" opacity="0.5"/>
+    <circle cx="46" cy="68" r="1.3" opacity="0.4"/>
+    <circle cx="24" cy="124" r="1.8" opacity="0.5"/>
+    <circle cx="80" cy="34" r="1.3" opacity="0.4"/>
   </g>
-</svg>`)} top 40px left -10px / 120px 160px no-repeat`,
+</svg>`)} top 44px left -12px / 130px 170px no-repeat`,
     ].join(", "),
   },
 ];
@@ -3167,6 +3186,14 @@ export default function App() {
   // ajustement de `displayScale` qui toucherait aussi les autres titres.
   pt.heroTitleSize = Math.round(brandSize(33) * (activeAffichage.heroScale ?? 1));
   pt.heroSubtitleSize = Math.round(14 * (activeAffichage.heroScale ?? 1));
+  // Couleur du titre de l'accroche ("Combien ça vaut, vraiment ?") et du
+  // compteur d'estimations restantes juste en dessous : sur Vintage,
+  // pt.strongColor (textStrong, quasi noir) rendait ces deux éléments trop
+  // "bruts/agressifs" en grand/gras selon Dylan — on utilise alors
+  // textSoft (brun plus doux, déjà utilisé ailleurs dans ce même
+  // affichage) uniquement pour ces deux éléments précis, sans toucher aux
+  // autres titres/panneaux qui gardent pt.strongColor.
+  pt.heroEmphasisColor = activeAffichage.key === "vintage" && activeAffichage.textSoft ? activeAffichage.textSoft : pt.strongColor;
   // Liseré tout en haut de l'appli : pour un affichage avec sa propre
   // palette (Vintage, Rétro, Robotique, Futuriste — tout ce qui a
   // base/mid/high), il reprend désormais ces couleurs plutôt que le
@@ -6029,7 +6056,7 @@ export default function App() {
           </div>
           <h1
             className="brand"
-            style={{ fontSize: pt.heroTitleSize, fontWeight: 600, margin: 0, lineHeight: 1.12, color: pt.strongColor, position: "relative" }}
+            style={{ fontSize: pt.heroTitleSize, fontWeight: 600, margin: 0, lineHeight: 1.12, color: pt.heroEmphasisColor, position: "relative" }}
           >
             {t("hero_title_1")}
             <br />
@@ -6086,7 +6113,7 @@ export default function App() {
                   <Sparkles size={13} color="#FFFFFF" className="sparkle" />
                 </span>
                 <span style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
-                  <span className="brand" style={{ fontSize: brandSize(17), fontWeight: 600, color: pt.strongColor }}>
+                  <span className="brand" style={{ fontSize: brandSize(17), fontWeight: 600, color: pt.heroEmphasisColor }}>
                     {profile.plan !== "gratuit" && profile.subscription_status === "active"
                       ? Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)
                       : Math.max(0, 3 - profile.gratuit_utilisees)}
