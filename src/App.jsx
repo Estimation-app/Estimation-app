@@ -363,8 +363,13 @@ const AFFICHAGES = [
     // ancré en haut — comme les anciens décors SVG, pour ne pas s'étirer
     // de façon disproportionnée sur une page longue (le conteneur grandit
     // avec le contenu). texture/pageBg restent dessous, visibles une fois
-    // l'image terminée plus bas dans la page.
-    decor: `url(${decorVintage}) top center / 100% auto no-repeat`,
+    // l'image terminée plus bas dans la page. Décalage vertical de 230px :
+    // cette image (v2, fournie par Dylan) a l'appareil photo/la longue-vue
+    // tout en haut du cadre, ce qui recouvrait le titre/le compteur —
+    // décalée vers le bas pour laisser ce bandeau du haut passer sous le
+    // texte, sur du papier crème uni (identique à pt.pageBg, donc sans
+    // rupture visible) avant que l'appareil photo n'apparaisse.
+    decor: `url(${decorVintage}) top 230px center / 100% auto no-repeat`,
   },
   {
     key: "retro",
