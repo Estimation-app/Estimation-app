@@ -278,9 +278,9 @@ function hexToRgbString(hex) {
 // `texture` (optionnel) : calques `background-image` décoratifs (grain,
 // vignette, trame, lignes de scan...), posés sous la couleur de fond de la
 // page uniquement — n'affecte ni la disposition ni aucune taille.
-// `headerDark`/`textStrong`/`textSoft` (optionnels) : pour un affichage
-// clair (ex: Vintage) — voir le détail juste avant `function brandSize`
-// plus bas dans le composant.
+// `textStrong`/`textSoft` (optionnels) : pour un affichage clair (ex:
+// Vintage) — voir le détail juste avant `function brandSize` plus bas
+// dans le composant.
 // `displayScale` (optionnel, défaut 1) : voir `brandSize()` plus bas — clé
 // pour les polices très larges (Orbitron, Bungee...) afin qu'une phrase
 // comme l'accroche reste sur une seule ligne comme en "Classique".
@@ -319,7 +319,6 @@ const AFFICHAGES = [
     mid: "#DCC89C",
     high: "#B8791E",
     borderRgb: "43, 36, 28",
-    headerDark: "#2B241C",
     textStrong: "#2B241C",
     textSoft: "#6B5D48",
     radiusScale: 0.25,
@@ -2052,14 +2051,18 @@ export default function App() {
   // panneaux, header, carte résultat, écran de chargement, zone photo) —
   // "Classique" (pas de base/mid/high) reste strictement identique à avant.
   if (activeAffichage.base) {
-    // Point de départ du dégradé du header/carte résultat : quasi-noir par
-    // défaut (fonctionne pour tous les affichages sombres) — surchargeable
-    // via `headerDark` pour un affichage clair (ex: Vintage) où un départ
-    // noir jurerait avec un papier clair.
-    const headerStart = activeAffichage.headerDark || "#04060C";
     pt.pageBg = activeAffichage.base;
     pt.sheetBg = `linear-gradient(160deg, ${activeAffichage.base} 0%, ${activeAffichage.mid} 45%, ${activeAffichage.high} 100%)`;
-    pt.headerBg = `linear-gradient(135deg, ${headerStart} 0%, ${activeAffichage.mid} 52%, ${activeAffichage.high} 100%)`;
+    // Header/carte résultat : pour un affichage sombre, on part d'un
+    // quasi-noir vers la teinte forte (comportement d'origine). Pour un
+    // affichage clair (ex: Vintage), un départ noir jure avec le papier
+    // clair et écrase le texte/logo/menu déjà en noir dessus (remonté par
+    // Dylan) — on part donc de la teinte forte (accent) vers le plus clair,
+    // sans jamais passer par du noir.
+    pt.headerBg =
+      menuTheme === "light"
+        ? `linear-gradient(135deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 55%, ${activeAffichage.base} 100%)`
+        : `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 52%, ${activeAffichage.high} 100%)`;
     pt.resultCardBg = pt.headerBg;
     pt.loadingBg = `linear-gradient(160deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 100%)`;
     pt.loadingBorder = activeAffichage.high;
@@ -2489,8 +2492,11 @@ export default function App() {
   // sur un autre personnage. Egalement absent si l'utilisateur a choisi de
   // n'utiliser son avatar que comme icône (avatar_display_mode = "icone" —
   // voir le choix proposé dans le panneau Avatars) : dans ce cas l'écran
-  // photo garde son interface de base, sans le perso en grand.
-  const avatarDisplayMode = (profile && profile.avatar_display_mode) || "fond";
+  // photo garde son interface de base, sans le perso en grand. "icone" est
+  // le comportement par défaut (demandé par Dylan, septembre 2026) : choisir
+  // un avatar ne change d'abord QUE la petite icône ; la mascotte en fond
+  // est une option secondaire explicite, pas automatique.
+  const avatarDisplayMode = (profile && profile.avatar_display_mode) || "icone";
   const dropZoneMascot =
     hasChosenAvatar && avatarDisplayMode !== "icone" ? CHARACTER_ACTION_IMAGES[profile.avatar_character] || null : null;
   // Nouvelle progression (demandée par Dylan, septembre 2026) : seuils
@@ -2575,18 +2581,20 @@ export default function App() {
   // avatar_character doit s'afficher comme "Aucun avatar" sélectionné dans
   // le panneau, pas comme si Le Chineur avait été choisi.
   const [avatarCharacterInput, setAvatarCharacterInput] = useState(NO_AVATAR_ID);
-  // "fond" = mascotte plein cadre sur l'écran photo (comportement historique)
-  // "icone" = avatar utilisé seulement comme icône (haut à droite / classement),
-  // l'écran photo garde son interface de base. Proposé à l'utilisateur juste
-  // en dessous du choix de personnage (demandé par Dylan).
-  const [avatarDisplayModeInput, setAvatarDisplayModeInput] = useState("fond");
+  // "fond" = mascotte plein cadre sur l'écran photo (option secondaire,
+  // choisie explicitement). "icone" = avatar utilisé seulement comme icône
+  // (haut à droite / classement), l'écran photo garde son interface de
+  // base — c'est le choix par défaut : sélectionner un avatar ne doit
+  // d'abord changer que l'icône, la mascotte en fond restant un second
+  // geste volontaire (demandé par Dylan, septembre 2026).
+  const [avatarDisplayModeInput, setAvatarDisplayModeInput] = useState("icone");
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
   const [avatarSavedFlash, setAvatarSavedFlash] = useState(false);
   useEffect(() => {
     if (showAvatarPanel) {
       setAvatarCharacterInput((profile && profile.avatar_character) || NO_AVATAR_ID);
-      setAvatarDisplayModeInput((profile && profile.avatar_display_mode) || "fond");
+      setAvatarDisplayModeInput((profile && profile.avatar_display_mode) || "icone");
       setAvatarError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2603,7 +2611,7 @@ export default function App() {
   const avatarDirty =
     !!profile &&
     (avatarCharacterInput !== ((profile.avatar_character || NO_AVATAR_ID)) ||
-      avatarDisplayModeInput !== (profile.avatar_display_mode || "fond"));
+      avatarDisplayModeInput !== (profile.avatar_display_mode || "icone"));
   async function saveAvatar() {
     if (!user || avatarSaving) return;
     setAvatarSaving(true);
@@ -7575,27 +7583,10 @@ export default function App() {
                     Où afficher {characterMeta(avatarCharacterInput).name} ?
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => setAvatarDisplayModeInput("fond")}
-                      style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-start",
-                        gap: 2,
-                        background: avatarDisplayModeInput === "fond" ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
-                        border: avatarDisplayModeInput === "fond" ? `2px solid ${accent}` : pt.rowBorder,
-                        borderRadius: 10,
-                        padding: "10px 12px",
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                    >
-                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>Arrière-plan de l'appli</span>
-                      <span className="mono" style={{ fontSize: 10, color: pt.subText, lineHeight: 1.3 }}>
-                        mascotte en entier sur l'écran photo
-                      </span>
-                    </button>
+                    {/* "Icône seulement" est présenté en premier : c'est le
+                        choix par défaut (demandé par Dylan) — l'arrière-plan
+                        avec la mascotte reste possible mais en second temps,
+                        via un geste explicite sur cette seconde carte. */}
                     <button
                       onClick={() => setAvatarDisplayModeInput("icone")}
                       style={{
@@ -7615,6 +7606,27 @@ export default function App() {
                       <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>Icône seulement</span>
                       <span className="mono" style={{ fontSize: 10, color: pt.subText, lineHeight: 1.3 }}>
                         garde l'interface de base pour prendre une photo
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setAvatarDisplayModeInput("fond")}
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: 2,
+                        background: avatarDisplayModeInput === "fond" ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
+                        border: avatarDisplayModeInput === "fond" ? `2px solid ${accent}` : pt.rowBorder,
+                        borderRadius: 10,
+                        padding: "10px 12px",
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>Arrière-plan de l'appli</span>
+                      <span className="mono" style={{ fontSize: 10, color: pt.subText, lineHeight: 1.3 }}>
+                        mascotte en entier sur l'écran photo
                       </span>
                     </button>
                   </div>
