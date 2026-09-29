@@ -635,7 +635,10 @@ const AFFICHAGES = [
     // Mulish en corps de texte, sobre et très lisible.
     fontDisplay: "'Bevan', serif",
     fontBody: "'Mulish', sans-serif",
-    heroScale: 0.85,
+    // heroScale réduit (0.85 -> 0.7) : Dylan trouvait "Combien ça vaut,
+    // vraiment ?" trop gros — Bevan est une slab épaisse, plus large que la
+    // plupart des autres polices d'affiche au même corps.
+    heroScale: 0.7,
     base: "#081410",
     mid: "#173D2A",
     high: "#3FAE66",
@@ -673,7 +676,10 @@ const AFFICHAGES = [
     fontBody: "'Noto Sans JP', sans-serif",
     displayTransform: "uppercase",
     displayLetterSpacing: "0.01em",
-    heroScale: 0.85,
+    // heroScale réduit (0.85 -> 0.7) : Dylan trouvait "Combien ça vaut,
+    // vraiment ?" trop gros — même retour que Forêt, Reggae One est aussi
+    // une police très épaisse/large.
+    heroScale: 0.7,
     base: "#F7F7F4",
     mid: "#D9D9D6",
     high: "#E0202B",
@@ -3260,6 +3266,25 @@ export default function App() {
       menuTheme === "light"
         ? `linear-gradient(135deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 55%, ${activeAffichage.base} 100%)`
         : `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 52%, ${activeAffichage.high} 100%)`;
+    // Ajustements ponctuels demandés par Dylan sur la formule générique
+    // ci-dessus, jugée trop marquée sur certains affichages précis — on ne
+    // touche qu'à eux, les autres gardent la formule générique telle quelle.
+    if (activeAffichage.key === "luxe") {
+      // "le dégradé vers le jaune est trop prononcé" : on étale la montée
+      // vers l'or vif en passant par une teinte dorée plus sourde
+      // (accentDark) avant d'atteindre le "high" plein, réservé au tout
+      // dernier coin du dégradé.
+      pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 60%, ${activeAffichage.accentDark} 85%, ${activeAffichage.high} 100%)`;
+    } else if (activeAffichage.key === "noir") {
+      // "le dégradé vers le blanc est trop prononcé" : même principe, un
+      // gris intermédiaire retarde l'arrivée du gris clair.
+      pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 60%, #6A6A6A 85%, ${activeAffichage.high} 100%)`;
+    } else if (activeAffichage.key === "manga") {
+      // "le dégradé vers le blanc (ou le rouge) est trop prononcé" : les
+      // deux extrémités sont adoucies par une étape intermédiaire
+      // rouge/gris, même principe que ci-dessus mais dans le sens clair.
+      pt.headerBg = `linear-gradient(135deg, ${activeAffichage.high} 0%, #DC7D81 32%, ${activeAffichage.mid} 68%, ${activeAffichage.base} 100%)`;
+    }
     pt.resultCardBg = pt.headerBg;
     pt.loadingBg = `linear-gradient(160deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 100%)`;
     pt.loadingBorder = activeAffichage.high;
