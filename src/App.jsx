@@ -4671,15 +4671,16 @@ export default function App() {
               pointerEvents: "none",
             }}
           >
+            {/* Trou de l'étiquette : un VRAI trou géométrique (le cercle est
+                une seconde sous-tracée du même path, avec fillRule
+                "evenodd") plutôt qu'une forme dessinée par-dessus — on voit
+                donc vraiment le fond de l'appli à travers, comme pour le
+                "e" du logo, quel que soit l'affichage. */}
             <path
-              d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+              d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z M9.1,7.5 A1.6,1.6 0 1,1 5.9,7.5 A1.6,1.6 0 1,1 9.1,7.5 Z"
               fill={accent}
+              fillRule="evenodd"
             />
-            {/* Trou de l'étiquette : vraiment transparent (laisse voir ce
-                qu'il y a derrière) plutôt qu'une couleur fixe — sur fond
-                navy ça ne se voyait pas, mais sur un affichage clair (ex:
-                Vintage) un rond plein bleu/noir tranchait fort. */}
-            <circle cx="7.5" cy="7.5" r="1.6" fill="none" stroke={accentDark} strokeWidth="0.6" />
           </svg>
 
           {/* Le bouton menu est un élément normal du flux (pas absolu) juste
@@ -5006,10 +5007,10 @@ export default function App() {
                   <div className="tag-spin-wrap">
                     <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
                       <path
-                        d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+                        d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z M9.2,7.5 A1.7,1.7 0 1,1 5.8,7.5 A1.7,1.7 0 1,1 9.2,7.5 Z"
                         fill={accent}
+                        fillRule="evenodd"
                       />
-                      <circle cx="7.5" cy="7.5" r="1.7" fill="none" stroke={accentDark} strokeWidth="0.6" />
                     </svg>
                   </div>
                 </div>
@@ -5308,10 +5309,10 @@ export default function App() {
               <div className="tag-card tag-card-result">
                 <svg aria-hidden="true" viewBox="0 0 24 24" width="180" height="180" fill="none" className="tag-card-watermark">
                   <path
-                    d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+                    d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z M9.1,7.5 A1.6,1.6 0 1,1 5.9,7.5 A1.6,1.6 0 1,1 9.1,7.5 Z"
                     fill={accent}
+                    fillRule="evenodd"
                   />
-                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" stroke={accentDark} strokeWidth="0.6" />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   🎭 mode "estimer tout, même n'importe quoi"
@@ -5347,10 +5348,10 @@ export default function App() {
               <div className="tag-card tag-card-result">
                 <svg aria-hidden="true" viewBox="0 0 24 24" width="180" height="180" fill="none" className="tag-card-watermark">
                   <path
-                    d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+                    d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z M9.1,7.5 A1.6,1.6 0 1,1 5.9,7.5 A1.6,1.6 0 1,1 9.1,7.5 Z"
                     fill={accent}
+                    fillRule="evenodd"
                   />
-                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" stroke={accentDark} strokeWidth="0.6" />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
@@ -5391,10 +5392,10 @@ export default function App() {
               <div className="tag-card tag-card-result">
                 <svg aria-hidden="true" viewBox="0 0 24 24" width="180" height="180" fill="none" className="tag-card-watermark">
                   <path
-                    d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
+                    d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z M9.1,7.5 A1.6,1.6 0 1,1 5.9,7.5 A1.6,1.6 0 1,1 9.1,7.5 Z"
                     fill={accent}
+                    fillRule="evenodd"
                   />
-                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" stroke={accentDark} strokeWidth="0.6" />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.categorie}
