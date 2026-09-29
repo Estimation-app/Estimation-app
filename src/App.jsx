@@ -4935,7 +4935,11 @@ export default function App() {
                 "Même s'il s'agit globalement du même type de produit, un écart de gamme ou de marque trop important fausse l'estimation et doit être exclu. " +
                 'Réponds UNIQUEMENT en JSON: {"indices_pertinents": [0, 2]} (liste vide si rien ne correspond vraiment).',
             },
-          ], "claude-haiku-4-5-20251001");
+          ], "claude-haiku-4-5-20251001", 0.1);
+          // temperature basse (0.1): ce filtre décide QUELLES annonces entrent
+          // dans le calcul du prix — une sélection qui varie d'un essai à
+          // l'autre sur les mêmes annonces trouvées rendrait l'estimation
+          // finale incohérente pour un même objet (signalé par Dylan).
           const filterResult = extractJson(filterText);
           const relevantIndices = Array.isArray(filterResult.indices_pertinents)
             ? filterResult.indices_pertinents
@@ -5074,7 +5078,13 @@ export default function App() {
                 'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}' +
                 aiLangInstruction(),
             },
-          ], "claude-haiku-4-5-20251001");
+          ], "claude-haiku-4-5-20251001", 0.2);
+          // temperature basse (0.2): c'est cet appel qui fixe prix_bas/prix_haut
+          // à partir des mêmes annonces réelles — au défaut (température ~1),
+          // un même objet pouvait ressortir avec des prix assez différents
+          // d'une estimation à l'autre, y compris depuis un autre appareil
+          // (signalé par Dylan). Voir aussi la température basse déjà en
+          // place sur l'étape d'identification, pour la même raison.
           const extra = extractJson(conseilText);
 
           const prix_bas =
@@ -5134,7 +5144,10 @@ export default function App() {
               'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}' +
               aiLangInstruction(),
           },
-        ], "claude-haiku-4-5-20251001");
+        ], "claude-haiku-4-5-20251001", 0.2);
+        // temperature basse (0.2), même raison que ci-dessus: un même objet
+        // sans annonces trouvées doit renvoyer un prix stable d'une fois sur
+        // l'autre plutôt que de varier à chaque appel.
         const fallback = extractJson(priceText);
         const fbBas = typeof fallback.prix_bas === "number" ? fallback.prix_bas : 0;
         const fbHaut =
@@ -5240,7 +5253,10 @@ export default function App() {
               aiLangInstruction(),
           },
         ],
-        "claude-haiku-4-5-20251001"
+        "claude-haiku-4-5-20251001",
+        0.2
+        // temperature basse: même véhicule (mêmes caractéristiques) → même
+        // fourchette de prix d'une estimation à l'autre.
       );
       const data = extractJson(text);
       const finalResult = {
@@ -5296,7 +5312,10 @@ export default function App() {
               aiLangInstruction(),
           },
         ],
-        "claude-haiku-4-5-20251001"
+        "claude-haiku-4-5-20251001",
+        0.2
+        // temperature basse: même bien (mêmes caractéristiques) → même
+        // fourchette de prix d'une estimation à l'autre.
       );
       const data = extractJson(text);
       const finalResult = {
