@@ -161,11 +161,16 @@ const SOURCE_LABELS = {
 // déjà utilisés ailleurs dans l'appli pour signaler respectivement une
 // donnée fiable et une donnée standard — on réutilise ces mêmes couleurs
 // ici plutôt que d'en introduire de nouvelles.
-const CONFIDENCE_LABELS = {
-  haute: { label: "Confiance élevée", dot: "#4ADE80" },
-  moyenne: { label: "Confiance moyenne", dot: null }, // null = utilise l'accent de marque (variable selon le thème de l'utilisateur)
-  basse: { label: "Confiance limitée", dot: "muted" },
-  indicative: { label: "Estimation indicative", dot: "muted" },
+// Couleurs seulement (langue-agnostique) — le libellé traduit est calculé à
+// la volée par confidenceInfo() à l'intérieur du composant App, via les clés
+// confidence_haute/moyenne/basse/indicative de TRANSLATIONS (le texte ne
+// peut plus être figé ici : ce tableau est en dehors du composant, donc en
+// dehors de t()/lang).
+const CONFIDENCE_DOTS = {
+  haute: "#4ADE80",
+  moyenne: null, // null = utilise l'accent de marque (variable selon le thème de l'utilisateur)
+  basse: "muted",
+  indicative: "muted",
 };
 
 // Plateformes vers lesquelles on renvoie pour créer une annonce (bouton
@@ -587,10 +592,10 @@ const PANEL_THEMES = {
 
 const TRANSLATIONS = {
   fr: {
-    hero_title_1: "Tout a un prix.",
-    hero_title_2: "Même ça.",
+    hero_title_1: "Combien ça vaut,",
+    hero_title_2: "vraiment ?",
     hero_subtitle:
-      "Meuble, bijou, vieux jouet, gadget bizarre... Prends-le en photo, Estim' te dit ce qu'il vaut vraiment, en quelques secondes.",
+      "Meuble, bijou, vieux jouet, gadget bizarre...\nEstim' identifie l'objet par IA, puis vérifie son prix sur Leboncoin, Vinted et eBay, en quelques secondes.",
     drop_zone_title: "Ajouter une photo",
     drop_zone_sub: "appareil photo ou galerie",
     loading_analyzing: "Identification de l'objet…",
@@ -670,12 +675,312 @@ const TRANSLATIONS = {
     listing_seed_badge: "Estimation basée sur une annonce en ligne",
     listing_seed_link: "Voir l'annonce d'origine",
     reestimate_badge: "Réestimation à partir de ton historique — pour voir si le prix a bougé",
+    close_label: "Fermer",
+    avatar_choose_intro:
+      "Choisis ton personnage : il s'affiche à côté de ton pseudo dans le classement. Le Chineur et La Chineuse sont débloqués dès le départ ; les autres se débloquent au fil de tes estimations générées — plus il en faut, plus le perso est stylé. D'autres personnages arriveront progressivement.",
+    avatar_owner_preview_note:
+      "Mode propriétaire : tu peux essayer tous les personnages ci-dessous, même verrouillés (aperçu uniquement — les autres comptes doivent toujours remplir le défi).",
+    avatar_none_label: "Aucun avatar",
+    avatar_none_sub: "aucune mascotte, interface de base partout",
+    avatar_current_sub: "c'est cette vignette qui s'affiche dans le classement et en haut à droite",
+    avatar_secret_title: "Personnage secret",
+    avatar_secret_placeholder: "???",
+    avatar_secret_hint: "secret",
+    avatar_owner_preview_template: "aperçu (verrouillé pour les autres comptes, {hint})",
+    avatar_hint_secret: "??? (secret)",
+    avatar_hint_pack_prefix: "avec le pack ",
+    avatar_hint_pack_suffix: "",
+    avatar_hint_from_prefix: "dès ",
+    avatar_hint_estimations_suffix: " estimations",
+    avatar_where_show_prefix: "Où afficher ",
+    avatar_where_show_suffix: " ?",
+    avatar_icon_only_label: "Icône seulement",
+    avatar_icon_only_desc: "garde l'interface de base pour prendre une photo",
+    avatar_background_label: "Arrière-plan de l'appli",
+    avatar_background_desc: "mascotte en entier sur l'écran photo",
+    avatar_save_button: "Enregistrer mon avatar",
+    avatar_saved_flash: "Avatar enregistré !",
+    aria_share_link: "partager mon lien",
+    aria_copy_link: "copier le lien",
+    aria_minus: "moins",
+    aria_plus: "plus",
+    aria_my_profile: "Mon profil",
+    aria_change_photo: "changer de photo",
+    aria_download_photo: "télécharger cette photo",
+    aria_reestimate: "réestimer",
+    aria_delete: "supprimer",
+    aria_next: "suivant",
+    aria_stop_dictation: "arrêter la dictée vocale",
+    aria_start_dictation: "dicter les précisions",
+    dictation_stop_title: "Arrêter",
+    dictation_start_title: "Dicter à l'oral",
+    aria_hide_password: "masquer le mot de passe",
+    aria_show_password: "afficher le mot de passe",
+    toast_grade_unlocked_prefix: "Palier ",
+    toast_grade_unlocked_suffix: " débloqué !",
+    avatar_unlock_toast_prefix: "Félicitations, tu viens de débloquer ",
+    avatar_unlock_toast_plural: "des avatars",
+    avatar_unlock_toast_singular: "un avatar",
+    avatar_unlock_toast_colon: " : ",
+    avatar_unlock_toast_suffix: " !",
+    beta_badge: "bêta",
+    drop_zone_choose_file: "choisir un fichier",
+    alt_object_to_estimate: "objet à estimer",
+    details_label: "Précisions (optionnel) — contenance, état, modèle exact...",
+    listening_indicator: "● écoute…",
+    details_placeholder: "ex: flacon de 100ml, léger éclat sur le bord",
+    btn_identifying: "Identification…",
+    btn_pricing: "Estimation du prix…",
+    btn_estimate_value: "Estimer sa valeur",
+    vehicle_form_title: "🚗 quelques précisions sur le véhicule",
+    vehicle_year_label: "Année",
+    vehicle_year_placeholder: "ex: 2018",
+    vehicle_mileage_label: "Kilométrage",
+    vehicle_mileage_placeholder: "ex: 85000",
+    vehicle_condition_label: "État général",
+    vehicle_condition_excellent: "excellent état",
+    vehicle_condition_good: "bon état",
+    vehicle_condition_average: "état moyen",
+    vehicle_condition_poor: "à réviser / défauts visibles",
+    btn_estimate: "Estimer",
+    realestate_form_title: "🏠 quelques précisions sur le bien",
+    realestate_city_label: "Ville ou secteur",
+    realestate_city_placeholder: "ex: Rennes centre",
+    realestate_surface_label: "Surface (m²)",
+    realestate_surface_placeholder: "ex: 65",
+    realestate_rooms_label: "Nombre de pièces (optionnel)",
+    realestate_rooms_placeholder: "ex: 3",
+    humor_mode_badge: '🎭 mode "estimer tout, même n\'importe quoi"',
+    vehicle_estimate_badge: "🚗 estimation véhicule",
+    realestate_estimate_badge: "🏠 estimation immobilière",
+    indicative_suffix: " · indicative",
+    hypothesis_prefix: "Hypothèse : ",
+    confidence_haute: "Confiance élevée",
+    confidence_moyenne: "Confiance moyenne",
+    confidence_basse: "Confiance limitée",
+    confidence_indicative: "Estimation indicative",
+    tab_estimation: "Estimation",
+    tab_statistiques: "Statistiques",
+    gauge_sell_ease_label: "Facilité à vendre",
+    gauge_sell_ease_low: "Difficile",
+    gauge_sell_ease_high: "Facile",
+    gauge_rarity_label: "Rareté",
+    gauge_rarity_low: "Pas rare",
+    gauge_rarity_high: "Rare",
+    trend_title: "Tendance de cote",
+    trend_disclaimer:
+      "Tendance de cote estimée par l'IA pour ce type de produit à partir de sa courbe sur 10 ans (pas une donnée de marché vérifiée) — à prendre comme un repère indicatif, pas une valeur garantie.",
+    trend_short_range_note:
+      " Sur une période aussi courte, le prix de revente d'un objet d'occasion ne bouge en réalité presque jamais : cette vue sert surtout à zoomer dans la tendance de fond.",
+    trend_ai_evaluation_note:
+      "Évaluation par l'IA à partir de la demande observée sur Leboncoin, Vinted et eBay pour ce produit précis.",
+    share_generating: "génération…",
+    share_downloaded: "Image enregistrée !",
+    share_button: "Partager",
+    breakdown_title: "Détail par plateforme",
+    breakdown_sale_unit: "vente",
+    breakdown_listing_unit: "annonce",
+    breakdown_unavailable: "indisponible",
+    listings_collapse: "Réduire",
+    listings_expand_prefix: "Voir le détail des ",
+    listings_expand_middle_singular: "annonce retenue",
+    listings_expand_middle_plural: "annonces retenues",
+    brocante_label: "En brocante :",
+    conseil_label: "Conseil :",
+    correction_prompt: "Un détail est faux ? Corriger et recalculer",
+    correction_instructions:
+      'Précise ce qui ne va pas (ex : "en fait c\'est une petite taille"), l\'estimation sera relancée avec cette info :',
+    correction_placeholder: "ex : petite taille, pas grande",
+    recalculate_button: "Recalculer l'estimation",
+    cancel_button: "Annuler",
+    generate_ad_button: "Générer une annonce à publier",
+    ad_limit_reached: "Limite de 3 générations atteinte pour cette estimation.",
+    ad_generating: "Génération de l'annonce…",
+    ad_ready_label: "Annonce prête à coller (modifiable) :",
+    ad_copied: "Copié !",
+    ad_copy_button: "Copier le texte",
+    ad_regenerate_prefix: "Régénérer (",
+    ad_regenerate_suffix_singular: " restante)",
+    ad_regenerate_suffix_plural: " restantes)",
+    ad_limit_reached_edit_note:
+      "Limite de 3 générations atteinte pour cette estimation — tu peux encore modifier le texte à la main juste au-dessus.",
+    ad_paste_instructions:
+      "Copie le texte ci-dessus, puis clique sur une plateforme pour créer ton annonce (colle le texte une fois sur la page) :",
+    extra_angles_title: "Photos IA sous d'autres angles",
+    extra_angles_premium_note:
+      "Fonctionnalité premium — génère jusqu'à 2 photos IA de cet objet sous d'autres angles pour ton annonce",
+    extra_angles_generate_button: "Générer 2 photos sous d'autres angles",
+    extra_angles_generating: "Génération en cours (10 à 20 secondes)…",
+    extra_angles_retry_button: "Réessayer",
+    extra_angles_download_note: "Télécharge-les puis ajoute-les à ta photo d'origine sur Leboncoin, Vinted ou eBay.",
+
+    // Historique / confirmation suppression
+    history_title: "Historique",
+    history_clear_all: "tout effacer",
+    history_login_note:
+      "Connecte-toi depuis ton profil (icône en haut à droite) pour un historique illimité, synchronisé entre appareils. Sans compte, l'historique reste local à cet appareil.",
+    history_empty: "Aucune estimation pour l'instant.",
+    history_reestimate_title: "Réestimer (voir si le prix a bougé)",
+    history_clear_confirm_title: "Tout effacer ?",
+    history_clear_confirm_body_prefix: "Cette action supprimera définitivement ",
+    history_clear_confirm_body_middle_singular: " estimation de ton historique. Impossible de revenir en arrière.",
+    history_clear_confirm_body_middle_plural: " estimations de ton historique. Impossible de revenir en arrière.",
+    history_clear_confirm_button: "Effacer tout",
+
+    // Ma collection / objets scannés
+    collection_title: "Ma collection",
+    collection_grade_prefix: "Habillage ",
+    collection_next_grade_prefix: "",
+    collection_next_grade_middle: " avec l'abonnement ",
+    collection_empty: "Fais ta première estimation pour commencer à remplir ta collection.",
+    collection_stat_value_label: "Valeur estimée",
+    collection_stat_objects_label: "Objets scannés",
+    collection_streak_prefix: "",
+    collection_streak_suffix: " de suite à checker des prix — continue comme ça !",
+    collection_streak_days_singular: "jour",
+    collection_streak_days_plural: "jours",
+    collection_chart_title: "Valeur de ta collection dans le temps",
+    collection_chart_premium_prefix: "Passe premium pour voir tes ",
+    collection_chart_premium_suffix_singular: " point d'historique en plus",
+    collection_chart_premium_suffix_plural: " points d'historique en plus",
+    collection_badges_title: "Badges",
+    badge_first: "Premier scan",
+    badge_five: "5 estimations",
+    badge_ten: "10 estimations",
+    badge_fifty: "50 estimations",
+    badge_streak3: "3 jours de suite",
+    badge_streak7: "7 jours de suite",
+    badge_streak30: "30 jours de suite",
+    badge_powerday5: "5 estimations en 1 jour",
+    badge_bigfind: "Trouvaille à +200 €",
+    badge_collector500: "Collection à 500 €",
+    badge_collector2000: "Collection à 2000 €",
+    badge_adgen10: "10 annonces générées",
+    badge_adgen50: "50 annonces générées",
+    scanned_objects_title: "Objets scannés",
+    scanned_objects_subtitle_prefix: "Du plus cher au moins cher — prix moyen de chaque objet, dont la somme fait ta ",
+    scanned_objects_subtitle_strong: "valeur estimée",
+    object_fallback_label: "Objet",
+
+    // Profil / compte / affichage / crédits
+    account_synced_history: "historique synchronisé",
+    account_plan_free: "Gratuit",
+    account_avatars_row: "Avatars",
+    account_quota_paid_suffix: " estimations restantes ce mois",
+    account_quota_free_suffix: " estimation(s) gratuite(s) restante(s) ce mois",
+    account_manage_button: "gérer",
+    account_subscribe_button: "s'abonner",
+    account_refer_friend: "Parrainer un ami",
+    account_link_copied: "copié !",
+    account_password_set: "Mot de passe défini",
+    account_password_set_note: "définir un mot de passe (se reconnecter sans lien par email)",
+    account_new_password_placeholder: "nouveau mot de passe",
+    account_set_password_button: "définir",
+    account_sign_out: "déconnexion",
+    account_magic_link_sent_prefix: "Lien envoyé ! Vérifie ta boîte mail (",
+    account_magic_link_sent_suffix: ") et clique dessus pour te connecter.",
+    account_signup_sent_prefix: "Compte créé ! Vérifie ta boîte mail (",
+    account_signup_sent_suffix:
+      ") et clique sur le lien de confirmation pour activer ton compte, puis reviens te connecter avec ton mot de passe.",
+    account_login_intro:
+      "Connecte-toi pour sauvegarder ton historique, débloquer ton avatar personnalisable et apparaître au classement (optionnel).",
+    account_email_placeholder: "ton@email.com",
+    account_password_placeholder: "mot de passe",
+    account_signin_button: "se connecter",
+    account_signup_button: "créer un compte",
+    account_or_divider: "ou",
+    account_magic_link_button: "recevoir un lien de connexion (sans mot de passe)",
+    display_grade_prefix: "Habillage (plan actuel : ",
+    display_grade_suffix: ")",
+    display_grade_tooltip_locked_prefix: " — débloqué avec l'abonnement ",
+    display_grade_tooltip_locked_suffix: "",
+    display_grade_tooltip_preview_prefix: " — aperçu (verrouillé pour les autres comptes, débloqué avec l'abonnement ",
+    display_grade_tooltip_preview_suffix: ")",
+    display_grade_always: "toujours",
+    display_grade_unlocked: "débloqué",
+    display_next_grade_prefix: "Prochain palier : ",
+    display_next_grade_middle: " avec l'abonnement ",
+    display_next_grade_suffix: "",
+    display_theme_title: "Thème (polices, couleurs et contours de toute l'appli)",
+    profile_title: "Mon profil",
+    credits_unit_singular: "estimation",
+    credits_unit_plural: "estimations",
+
+    // Abonnement / paywall
+    paywall_title: "Quota atteint",
+    paywall_reason_quota_epuise: "Tu as utilisé toutes les estimations comprises dans ton abonnement ce mois-ci.",
+    paywall_reason_gratuit_epuise: "Tu as utilisé tes estimations gratuites de ce mois-ci.",
+    paywall_reason_default: "Impossible de continuer l'estimation pour l'instant.",
+    paywall_watching_ad: "visionnage en cours…",
+    paywall_watch_ad_button: "regarder une pub pour 1 estimation gratuite",
+    paywall_or_subscribe: "ou passe à un abonnement pour beaucoup plus d'estimations :",
+    plan_per_month_suffix: "/mois",
+    trend_range_1j: "1J",
+    trend_range_1s: "1S",
+    trend_range_1m: "1M",
+    trend_range_1a: "1A",
+    trend_range_5a: "5A",
+    trend_range_10a: "10A",
+    trend_range_total: "Total",
+
+    // Messages d'erreur / toasts (logique métier)
+    err_payment_creation: "Erreur lors de la création du paiement.",
+    err_portal_open: "Erreur lors de l'ouverture du portail.",
+    err_portal_open_subscription: "Erreur lors de l'ouverture du portail d'abonnement.",
+    err_password_min_length: "6 caractères minimum.",
+    err_search: "Erreur de recherche.",
+    err_loading: "Erreur de chargement.",
+    pseudo_err_length: "3 à 20 caractères.",
+    pseudo_err_chars: "Lettres, chiffres, espaces, apostrophes et tirets uniquement.",
+    pseudo_err_taken: "Ce pseudo est déjà pris.",
+    pseudo_err_no_profile: "Connecte-toi pour choisir un pseudo.",
+    err_retry: "Erreur, réessaie.",
+    err_heic_format:
+      "Ce fichier est au format HEIC (photos iPhone), pas encore géré par ce prototype de test. " +
+      "Solution rapide : Réglages → Appareil photo → Formats → \"Le plus compatible\" sur ton iPhone, " +
+      "puis reprends la photo. La vraie app pourra lire le HEIC nativement.",
+    err_file_read: "Impossible de lire le fichier sélectionné.",
+    err_api_network_prefix: "Impossible de contacter l'API (réseau). ",
+    err_api_prefix: "Erreur API: ",
+    err_api_truncated: "Réponse coupée (max_tokens atteint).",
+    err_api_unreadable_prefix: "Réponse illisible/tronquée de l'API (statut ",
+    err_api_unreadable_middle: "). Contenu brut: ",
+    err_json_not_found_prefix: "Pas de JSON trouvé dans la réponse: ",
+    err_json_invalid_prefix: "JSON invalide: ",
+    err_relay_unreachable_prefix: "Impossible de contacter le serveur relais: ",
+    err_relay_unreadable_prefix: "Réponse du serveur relais illisible (statut ",
+    err_relay_unreadable_suffix: ").",
+    err_relay_error_prefix: "Erreur serveur relais: ",
+    err_login_required_estimate: "Connecte-toi pour lancer une estimation (3 gratuites par mois, sans carte bancaire).",
+    err_ad_generation_failed: "Impossible de générer l'annonce, réessaie.",
+    err_ad_copy_failed: "Impossible de copier automatiquement, sélectionne le texte à la main.",
+    err_extra_angles_generation: "Erreur lors de la génération.",
+    err_extra_angles_none: "Aucune photo n'a pu être générée, réessaie.",
+    err_extra_angles_failed: "Impossible de générer les photos, réessaie.",
+    err_listings_no_match:
+      "Des annonces ont été trouvées mais aucune ne correspond précisément au même produit (même format/modèle).",
+    err_listings_not_enough: "Pas assez d'annonces trouvées pour cet objet.",
+    err_estimation_failed: "L'estimation a échoué. Réessaie avec une autre photo.",
+    err_vehicle_estimation_failed: "L'estimation du véhicule a échoué.",
+    err_realestate_estimation_failed: "L'estimation du bien immobilier a échoué.",
+    referral_share_text: "Estime la valeur de revente de tes objets en une photo avec estim' !",
+    src_used_prefix: "estimation basée sur ",
+    src_used_middle: " annonce(s) d'occasion réelle(s) (Leboncoin/Vinted/eBay)",
+    src_used_sold_prefix: ", dont ",
+    src_used_sold_suffix: " vente(s) eBay confirmée(s)",
+    src_humor_mode: "estim' mode 'estimer tout, même n'importe quoi' 🎭",
+    src_ai_no_listings_prefix: "estimation IA (annonces réelles indisponibles: ",
+    src_ai_no_listings_suffix: ")",
+    src_ai_vehicle: "estimation IA véhicule — indicative, pas d'annonces réelles comparées",
+    src_ai_realestate: "estimation IA immobilier — très approximative, sans données de marché local",
+    seed_etat_unverifiable: "État non vérifiable à distance : estimation basée sur une annonce en ligne, pas sur une photo.",
+    seed_etat_note: "occasion (état non vérifié)",
   },
   en: {
-    hero_title_1: "Everything has a price.",
-    hero_title_2: "Even that.",
+    hero_title_1: "How much is it",
+    hero_title_2: "really worth?",
     hero_subtitle:
-      "Furniture, jewelry, an old toy, some weird gadget... snap a photo and Estim' tells you what it's really worth, in seconds.",
+      "Furniture, jewelry, an old toy, some weird gadget...\nEstim' identifies the item with AI, then checks its price on Leboncoin, Vinted and eBay, in seconds.",
     drop_zone_title: "Add a photo",
     drop_zone_sub: "camera or gallery",
     loading_analyzing: "Identifying the item…",
@@ -755,12 +1060,312 @@ const TRANSLATIONS = {
     listing_seed_badge: "Estimate based on an online listing",
     listing_seed_link: "View the original listing",
     reestimate_badge: "Re-checked from your history — to see if the price has moved",
+    close_label: "Close",
+    avatar_choose_intro:
+      "Choose your character: it's shown next to your username on the leaderboard. Le Chineur and La Chineuse are unlocked from the start; the others unlock as you generate estimations — the more it takes, the cooler the character. More characters are coming soon.",
+    avatar_owner_preview_note:
+      "Owner mode: you can try every character below, even locked ones (preview only — other accounts still need to complete the challenge).",
+    avatar_none_label: "No avatar",
+    avatar_none_sub: "no mascot, base interface everywhere",
+    avatar_current_sub: "this is the thumbnail shown on the leaderboard and top right",
+    avatar_secret_title: "Secret character",
+    avatar_secret_placeholder: "???",
+    avatar_secret_hint: "secret",
+    avatar_owner_preview_template: "preview (locked for other accounts, {hint})",
+    avatar_hint_secret: "??? (secret)",
+    avatar_hint_pack_prefix: "with the ",
+    avatar_hint_pack_suffix: " plan",
+    avatar_hint_from_prefix: "from ",
+    avatar_hint_estimations_suffix: " estimations",
+    avatar_where_show_prefix: "Where to show ",
+    avatar_where_show_suffix: "?",
+    avatar_icon_only_label: "Icon only",
+    avatar_icon_only_desc: "keeps the standard camera screen",
+    avatar_background_label: "App background",
+    avatar_background_desc: "full mascot on the camera screen",
+    avatar_save_button: "Save my avatar",
+    avatar_saved_flash: "Avatar saved!",
+    aria_share_link: "share my link",
+    aria_copy_link: "copy the link",
+    aria_minus: "minus",
+    aria_plus: "plus",
+    aria_my_profile: "My profile",
+    aria_change_photo: "change photo",
+    aria_download_photo: "download this photo",
+    aria_reestimate: "re-estimate",
+    aria_delete: "delete",
+    aria_next: "next",
+    aria_stop_dictation: "stop voice dictation",
+    aria_start_dictation: "dictate details",
+    dictation_stop_title: "Stop",
+    dictation_start_title: "Dictate aloud",
+    aria_hide_password: "hide password",
+    aria_show_password: "show password",
+    toast_grade_unlocked_prefix: "Tier ",
+    toast_grade_unlocked_suffix: " unlocked!",
+    avatar_unlock_toast_prefix: "Congrats, you just unlocked ",
+    avatar_unlock_toast_plural: "avatars",
+    avatar_unlock_toast_singular: "an avatar",
+    avatar_unlock_toast_colon: ": ",
+    avatar_unlock_toast_suffix: "!",
+    beta_badge: "beta",
+    drop_zone_choose_file: "choose a file",
+    alt_object_to_estimate: "item to estimate",
+    details_label: "Details (optional) — capacity, condition, exact model...",
+    listening_indicator: "● listening…",
+    details_placeholder: "e.g.: 100ml bottle, slight chip on the edge",
+    btn_identifying: "Identifying…",
+    btn_pricing: "Estimating price…",
+    btn_estimate_value: "Estimate its value",
+    vehicle_form_title: "🚗 a few details about the vehicle",
+    vehicle_year_label: "Year",
+    vehicle_year_placeholder: "e.g.: 2018",
+    vehicle_mileage_label: "Mileage",
+    vehicle_mileage_placeholder: "e.g.: 85000",
+    vehicle_condition_label: "Overall condition",
+    vehicle_condition_excellent: "excellent condition",
+    vehicle_condition_good: "good condition",
+    vehicle_condition_average: "average condition",
+    vehicle_condition_poor: "needs work / visible flaws",
+    btn_estimate: "Estimate",
+    realestate_form_title: "🏠 a few details about the property",
+    realestate_city_label: "City or area",
+    realestate_city_placeholder: "e.g.: downtown Rennes",
+    realestate_surface_label: "Surface area (m²)",
+    realestate_surface_placeholder: "e.g.: 65",
+    realestate_rooms_label: "Number of rooms (optional)",
+    realestate_rooms_placeholder: "e.g.: 3",
+    humor_mode_badge: '🎭 "estimate anything, even that" mode',
+    vehicle_estimate_badge: "🚗 vehicle estimate",
+    realestate_estimate_badge: "🏠 real estate estimate",
+    indicative_suffix: " · indicative",
+    hypothesis_prefix: "Assumption: ",
+    confidence_haute: "High confidence",
+    confidence_moyenne: "Medium confidence",
+    confidence_basse: "Limited confidence",
+    confidence_indicative: "Indicative estimate",
+    tab_estimation: "Estimate",
+    tab_statistiques: "Stats",
+    gauge_sell_ease_label: "Ease of selling",
+    gauge_sell_ease_low: "Hard",
+    gauge_sell_ease_high: "Easy",
+    gauge_rarity_label: "Rarity",
+    gauge_rarity_low: "Not rare",
+    gauge_rarity_high: "Rare",
+    trend_title: "Price trend",
+    trend_disclaimer:
+      "Price trend estimated by AI for this type of product from its 10-year curve (not verified market data) — treat it as an indicative guide, not a guaranteed value.",
+    trend_short_range_note:
+      " Over such a short period, the resale price of a second-hand item barely moves in practice: this view is mainly useful to zoom into the underlying trend.",
+    trend_ai_evaluation_note:
+      "AI assessment based on observed demand on Leboncoin, Vinted and eBay for this exact product.",
+    share_generating: "generating…",
+    share_downloaded: "Image saved!",
+    share_button: "Share",
+    breakdown_title: "Breakdown by platform",
+    breakdown_sale_unit: "sale",
+    breakdown_listing_unit: "listing",
+    breakdown_unavailable: "unavailable",
+    listings_collapse: "Collapse",
+    listings_expand_prefix: "See the ",
+    listings_expand_middle_singular: "listing used",
+    listings_expand_middle_plural: "listings used",
+    brocante_label: "At a flea market:",
+    conseil_label: "Tip:",
+    correction_prompt: "Something's wrong? Fix it and recalculate",
+    correction_instructions:
+      'Tell us what\'s off (e.g.: "actually it\'s a small size"), the estimate will be redone with this info:',
+    correction_placeholder: "e.g.: small size, not large",
+    recalculate_button: "Recalculate the estimate",
+    cancel_button: "Cancel",
+    generate_ad_button: "Generate a listing to post",
+    ad_limit_reached: "Limit of 3 generations reached for this estimate.",
+    ad_generating: "Generating the listing…",
+    ad_ready_label: "Listing ready to paste (editable):",
+    ad_copied: "Copied!",
+    ad_copy_button: "Copy the text",
+    ad_regenerate_prefix: "Regenerate (",
+    ad_regenerate_suffix_singular: " left)",
+    ad_regenerate_suffix_plural: " left)",
+    ad_limit_reached_edit_note:
+      "Limit of 3 generations reached for this estimate — you can still edit the text by hand just above.",
+    ad_paste_instructions:
+      "Copy the text above, then click a platform to create your listing (paste the text once on the page):",
+    extra_angles_title: "AI photos from other angles",
+    extra_angles_premium_note:
+      "Premium feature — generates up to 2 AI photos of this item from other angles for your listing",
+    extra_angles_generate_button: "Generate 2 photos from other angles",
+    extra_angles_generating: "Generating (10 to 20 seconds)…",
+    extra_angles_retry_button: "Retry",
+    extra_angles_download_note: "Download them, then add them to your original photo on Leboncoin, Vinted or eBay.",
+
+    // History / clear confirmation
+    history_title: "History",
+    history_clear_all: "clear all",
+    history_login_note:
+      "Sign in from your profile (icon top right) for unlimited history, synced across devices. Without an account, history stays local to this device.",
+    history_empty: "No estimates yet.",
+    history_reestimate_title: "Re-estimate (see if the price has moved)",
+    history_clear_confirm_title: "Clear everything?",
+    history_clear_confirm_body_prefix: "This will permanently delete ",
+    history_clear_confirm_body_middle_singular: " estimate from your history. This cannot be undone.",
+    history_clear_confirm_body_middle_plural: " estimates from your history. This cannot be undone.",
+    history_clear_confirm_button: "Clear all",
+
+    // My collection / scanned objects
+    collection_title: "My collection",
+    collection_grade_prefix: "Look ",
+    collection_next_grade_prefix: "",
+    collection_next_grade_middle: " with the ",
+    collection_empty: "Make your first estimate to start filling your collection.",
+    collection_stat_value_label: "Estimated value",
+    collection_stat_objects_label: "Scanned items",
+    collection_streak_prefix: "",
+    collection_streak_suffix: " in a row checking prices — keep it up!",
+    collection_streak_days_singular: "day",
+    collection_streak_days_plural: "days",
+    collection_chart_title: "Your collection's value over time",
+    collection_chart_premium_prefix: "Go premium to see your ",
+    collection_chart_premium_suffix_singular: " extra history point",
+    collection_chart_premium_suffix_plural: " extra history points",
+    collection_badges_title: "Badges",
+    badge_first: "First scan",
+    badge_five: "5 estimates",
+    badge_ten: "10 estimates",
+    badge_fifty: "50 estimates",
+    badge_streak3: "3 days in a row",
+    badge_streak7: "7 days in a row",
+    badge_streak30: "30 days in a row",
+    badge_powerday5: "5 estimates in 1 day",
+    badge_bigfind: "Find worth +200 €",
+    badge_collector500: "Collection at 500 €",
+    badge_collector2000: "Collection at 2000 €",
+    badge_adgen10: "10 listings generated",
+    badge_adgen50: "50 listings generated",
+    scanned_objects_title: "Scanned items",
+    scanned_objects_subtitle_prefix: "From most to least expensive — average price of each item, which together make up your ",
+    scanned_objects_subtitle_strong: "estimated value",
+    object_fallback_label: "Item",
+
+    // Profile / account / display / credits
+    account_synced_history: "synced history",
+    account_plan_free: "Free",
+    account_avatars_row: "Avatars",
+    account_quota_paid_suffix: " estimates left this month",
+    account_quota_free_suffix: " free estimate(s) left this month",
+    account_manage_button: "manage",
+    account_subscribe_button: "subscribe",
+    account_refer_friend: "Refer a friend",
+    account_link_copied: "copied!",
+    account_password_set: "Password set",
+    account_password_set_note: "set a password (sign in again without an email link)",
+    account_new_password_placeholder: "new password",
+    account_set_password_button: "set",
+    account_sign_out: "sign out",
+    account_magic_link_sent_prefix: "Link sent! Check your inbox (",
+    account_magic_link_sent_suffix: ") and click it to sign in.",
+    account_signup_sent_prefix: "Account created! Check your inbox (",
+    account_signup_sent_suffix:
+      ") and click the confirmation link to activate your account, then come back and sign in with your password.",
+    account_login_intro:
+      "Sign in to save your history, unlock your customizable avatar and appear on the leaderboard (optional).",
+    account_email_placeholder: "your@email.com",
+    account_password_placeholder: "password",
+    account_signin_button: "sign in",
+    account_signup_button: "create an account",
+    account_or_divider: "or",
+    account_magic_link_button: "get a sign-in link (no password)",
+    display_grade_prefix: "Look (current plan: ",
+    display_grade_suffix: ")",
+    display_grade_tooltip_locked_prefix: " — unlocked with the ",
+    display_grade_tooltip_locked_suffix: " subscription",
+    display_grade_tooltip_preview_prefix: " — preview (locked for other accounts, unlocked with the ",
+    display_grade_tooltip_preview_suffix: " subscription)",
+    display_grade_always: "always",
+    display_grade_unlocked: "unlocked",
+    display_next_grade_prefix: "Next tier: ",
+    display_next_grade_middle: " with the ",
+    display_next_grade_suffix: " subscription",
+    display_theme_title: "Theme (fonts, colors and outlines across the whole app)",
+    profile_title: "My profile",
+    credits_unit_singular: "estimate",
+    credits_unit_plural: "estimates",
+
+    // Subscription / paywall
+    paywall_title: "Quota reached",
+    paywall_reason_quota_epuise: "You've used all the estimates included in your subscription this month.",
+    paywall_reason_gratuit_epuise: "You've used your free estimates for this month.",
+    paywall_reason_default: "Can't continue the estimate right now.",
+    paywall_watching_ad: "watching ad…",
+    paywall_watch_ad_button: "watch an ad for 1 free estimate",
+    paywall_or_subscribe: "or upgrade to a subscription for a lot more estimates:",
+    plan_per_month_suffix: "/mo",
+    trend_range_1j: "1D",
+    trend_range_1s: "1W",
+    trend_range_1m: "1M",
+    trend_range_1a: "1Y",
+    trend_range_5a: "5Y",
+    trend_range_10a: "10Y",
+    trend_range_total: "All",
+
+    // Error messages / toasts (business logic)
+    err_payment_creation: "Error creating the payment.",
+    err_portal_open: "Error opening the portal.",
+    err_portal_open_subscription: "Error opening the subscription portal.",
+    err_password_min_length: "6 characters minimum.",
+    err_search: "Search error.",
+    err_loading: "Loading error.",
+    pseudo_err_length: "3 to 20 characters.",
+    pseudo_err_chars: "Letters, numbers, spaces, apostrophes and hyphens only.",
+    pseudo_err_taken: "This username is already taken.",
+    pseudo_err_no_profile: "Sign in to choose a username.",
+    err_retry: "Error, try again.",
+    err_heic_format:
+      "This file is in HEIC format (iPhone photos), not yet supported by this test prototype. " +
+      "Quick fix: Settings → Camera → Formats → \"Most Compatible\" on your iPhone, " +
+      "then retake the photo. The real app will be able to read HEIC natively.",
+    err_file_read: "Unable to read the selected file.",
+    err_api_network_prefix: "Unable to reach the API (network). ",
+    err_api_prefix: "API error: ",
+    err_api_truncated: "Response cut off (max_tokens reached).",
+    err_api_unreadable_prefix: "Unreadable API response (status ",
+    err_api_unreadable_middle: "). Raw content: ",
+    err_json_not_found_prefix: "No JSON found in the response: ",
+    err_json_invalid_prefix: "Invalid JSON: ",
+    err_relay_unreachable_prefix: "Unable to reach the relay server: ",
+    err_relay_unreadable_prefix: "Unreadable relay server response (status ",
+    err_relay_unreadable_suffix: ").",
+    err_relay_error_prefix: "Relay server error: ",
+    err_login_required_estimate: "Sign in to start an estimate (3 free per month, no credit card required).",
+    err_ad_generation_failed: "Unable to generate the listing, try again.",
+    err_ad_copy_failed: "Unable to copy automatically, select the text manually.",
+    err_extra_angles_generation: "Error during generation.",
+    err_extra_angles_none: "No photo could be generated, try again.",
+    err_extra_angles_failed: "Unable to generate the photos, try again.",
+    err_listings_no_match:
+      "Listings were found but none precisely matches the same product (same format/model).",
+    err_listings_not_enough: "Not enough listings found for this item.",
+    err_estimation_failed: "The estimate failed. Try again with another photo.",
+    err_vehicle_estimation_failed: "The vehicle estimate failed.",
+    err_realestate_estimation_failed: "The real estate estimate failed.",
+    referral_share_text: "Estimate the resale value of your stuff in one photo with estim'!",
+    src_used_prefix: "estimate based on ",
+    src_used_middle: " real second-hand listing(s) (Leboncoin/Vinted/eBay)",
+    src_used_sold_prefix: ", including ",
+    src_used_sold_suffix: " confirmed eBay sale(s)",
+    src_humor_mode: "estim' 'estimate anything, even nonsense' mode 🎭",
+    src_ai_no_listings_prefix: "AI estimate (real listings unavailable: ",
+    src_ai_no_listings_suffix: ")",
+    src_ai_vehicle: "AI vehicle estimate — indicative, no real listings compared",
+    src_ai_realestate: "AI real estate estimate — very approximate, no local market data",
+    seed_etat_unverifiable: "Condition not verifiable remotely: estimate based on an online listing, not a photo.",
+    seed_etat_note: "used (condition not verified)",
   },
   es: {
-    hero_title_1: "Todo tiene un precio.",
-    hero_title_2: "Hasta eso.",
+    hero_title_1: "¿Cuánto vale,",
+    hero_title_2: "de verdad?",
     hero_subtitle:
-      "Un mueble, una joya, un juguete viejo, un cacharro raro... Haz una foto y Estim' te dice cuánto vale de verdad, en segundos.",
+      "Un mueble, una joya, un juguete viejo, un cacharro raro...\nEstim' identifica el objeto con IA y comprueba su precio en Leboncoin, Vinted y eBay, en segundos.",
     drop_zone_title: "Añadir una foto",
     drop_zone_sub: "cámara o galería",
     loading_analyzing: "Identificando el objeto…",
@@ -840,6 +1445,306 @@ const TRANSLATIONS = {
     listing_seed_badge: "Estimación basada en un anuncio en línea",
     listing_seed_link: "Ver el anuncio original",
     reestimate_badge: "Reestimación desde tu historial — para ver si el precio cambió",
+    close_label: "Cerrar",
+    avatar_choose_intro:
+      "Elige tu personaje: se muestra junto a tu nombre en la clasificación. Le Chineur y La Chineuse están desbloqueados desde el principio; los demás se desbloquean a medida que generas estimaciones — cuantas más hacen falta, más chulo es el personaje. Llegarán más personajes poco a poco.",
+    avatar_owner_preview_note:
+      "Modo propietario: puedes probar todos los personajes de abajo, incluso los bloqueados (solo vista previa — las demás cuentas siguen teniendo que cumplir el reto).",
+    avatar_none_label: "Sin avatar",
+    avatar_none_sub: "sin mascota, interfaz básica en todas partes",
+    avatar_current_sub: "esta es la miniatura que se muestra en la clasificación y arriba a la derecha",
+    avatar_secret_title: "Personaje secreto",
+    avatar_secret_placeholder: "???",
+    avatar_secret_hint: "secreto",
+    avatar_owner_preview_template: "vista previa (bloqueado para otras cuentas, {hint})",
+    avatar_hint_secret: "??? (secreto)",
+    avatar_hint_pack_prefix: "con el pack ",
+    avatar_hint_pack_suffix: "",
+    avatar_hint_from_prefix: "a partir de ",
+    avatar_hint_estimations_suffix: " estimaciones",
+    avatar_where_show_prefix: "¿Dónde mostrar ",
+    avatar_where_show_suffix: "?",
+    avatar_icon_only_label: "Solo icono",
+    avatar_icon_only_desc: "mantiene la pantalla básica para hacer la foto",
+    avatar_background_label: "Fondo de la app",
+    avatar_background_desc: "mascota completa en la pantalla de la foto",
+    avatar_save_button: "Guardar mi avatar",
+    avatar_saved_flash: "¡Avatar guardado!",
+    aria_share_link: "compartir mi enlace",
+    aria_copy_link: "copiar el enlace",
+    aria_minus: "menos",
+    aria_plus: "más",
+    aria_my_profile: "Mi perfil",
+    aria_change_photo: "cambiar foto",
+    aria_download_photo: "descargar esta foto",
+    aria_reestimate: "reestimar",
+    aria_delete: "eliminar",
+    aria_next: "siguiente",
+    aria_stop_dictation: "detener el dictado por voz",
+    aria_start_dictation: "dictar los detalles",
+    dictation_stop_title: "Detener",
+    dictation_start_title: "Dictar en voz alta",
+    aria_hide_password: "ocultar contraseña",
+    aria_show_password: "mostrar contraseña",
+    toast_grade_unlocked_prefix: "¡Nivel ",
+    toast_grade_unlocked_suffix: " desbloqueado!",
+    avatar_unlock_toast_prefix: "Enhorabuena, acabas de desbloquear ",
+    avatar_unlock_toast_plural: "avatares",
+    avatar_unlock_toast_singular: "un avatar",
+    avatar_unlock_toast_colon: ": ",
+    avatar_unlock_toast_suffix: "!",
+    beta_badge: "beta",
+    drop_zone_choose_file: "elegir un archivo",
+    alt_object_to_estimate: "objeto a estimar",
+    details_label: "Detalles (opcional) — capacidad, estado, modelo exacto...",
+    listening_indicator: "● escuchando…",
+    details_placeholder: "ej.: frasco de 100ml, pequeña mella en el borde",
+    btn_identifying: "Identificando…",
+    btn_pricing: "Calculando el precio…",
+    btn_estimate_value: "Estimar su valor",
+    vehicle_form_title: "🚗 unos detalles sobre el vehículo",
+    vehicle_year_label: "Año",
+    vehicle_year_placeholder: "ej.: 2018",
+    vehicle_mileage_label: "Kilometraje",
+    vehicle_mileage_placeholder: "ej.: 85000",
+    vehicle_condition_label: "Estado general",
+    vehicle_condition_excellent: "estado excelente",
+    vehicle_condition_good: "buen estado",
+    vehicle_condition_average: "estado medio",
+    vehicle_condition_poor: "por revisar / defectos visibles",
+    btn_estimate: "Estimar",
+    realestate_form_title: "🏠 unos detalles sobre el inmueble",
+    realestate_city_label: "Ciudad o zona",
+    realestate_city_placeholder: "ej.: centro de Rennes",
+    realestate_surface_label: "Superficie (m²)",
+    realestate_surface_placeholder: "ej.: 65",
+    realestate_rooms_label: "Número de habitaciones (opcional)",
+    realestate_rooms_placeholder: "ej.: 3",
+    humor_mode_badge: '🎭 modo "estimar cualquier cosa, hasta eso"',
+    vehicle_estimate_badge: "🚗 estimación de vehículo",
+    realestate_estimate_badge: "🏠 estimación inmobiliaria",
+    indicative_suffix: " · orientativa",
+    hypothesis_prefix: "Hipótesis: ",
+    confidence_haute: "Confianza alta",
+    confidence_moyenne: "Confianza media",
+    confidence_basse: "Confianza limitada",
+    confidence_indicative: "Estimación orientativa",
+    tab_estimation: "Estimación",
+    tab_statistiques: "Estadísticas",
+    gauge_sell_ease_label: "Facilidad de venta",
+    gauge_sell_ease_low: "Difícil",
+    gauge_sell_ease_high: "Fácil",
+    gauge_rarity_label: "Rareza",
+    gauge_rarity_low: "No es raro",
+    gauge_rarity_high: "Raro",
+    trend_title: "Tendencia de precio",
+    trend_disclaimer:
+      "Tendencia de precio estimada por IA para este tipo de producto a partir de su curva de 10 años (no son datos de mercado verificados) — tómalo como una referencia orientativa, no como un valor garantizado.",
+    trend_short_range_note:
+      " En un período tan corto, el precio de reventa de un objeto de segunda mano casi nunca se mueve en la práctica: esta vista sirve sobre todo para hacer zoom en la tendencia de fondo.",
+    trend_ai_evaluation_note:
+      "Evaluación por IA a partir de la demanda observada en Leboncoin, Vinted y eBay para este producto concreto.",
+    share_generating: "generando…",
+    share_downloaded: "¡Imagen guardada!",
+    share_button: "Compartir",
+    breakdown_title: "Detalle por plataforma",
+    breakdown_sale_unit: "venta",
+    breakdown_listing_unit: "anuncio",
+    breakdown_unavailable: "no disponible",
+    listings_collapse: "Reducir",
+    listings_expand_prefix: "Ver el detalle de los ",
+    listings_expand_middle_singular: "anuncio utilizado",
+    listings_expand_middle_plural: "anuncios utilizados",
+    brocante_label: "En mercadillo:",
+    conseil_label: "Consejo:",
+    correction_prompt: "¿Algo está mal? Corregir y recalcular",
+    correction_instructions:
+      'Indica qué está mal (ej.: "en realidad es una talla pequeña"), la estimación se rehará con esta información:',
+    correction_placeholder: "ej.: talla pequeña, no grande",
+    recalculate_button: "Recalcular la estimación",
+    cancel_button: "Cancelar",
+    generate_ad_button: "Generar un anuncio para publicar",
+    ad_limit_reached: "Límite de 3 generaciones alcanzado para esta estimación.",
+    ad_generating: "Generando el anuncio…",
+    ad_ready_label: "Anuncio listo para pegar (editable):",
+    ad_copied: "¡Copiado!",
+    ad_copy_button: "Copiar el texto",
+    ad_regenerate_prefix: "Regenerar (",
+    ad_regenerate_suffix_singular: " restante)",
+    ad_regenerate_suffix_plural: " restantes)",
+    ad_limit_reached_edit_note:
+      "Límite de 3 generaciones alcanzado para esta estimación — todavía puedes editar el texto a mano justo arriba.",
+    ad_paste_instructions:
+      "Copia el texto de arriba y luego haz clic en una plataforma para crear tu anuncio (pega el texto una vez en la página):",
+    extra_angles_title: "Fotos con IA desde otros ángulos",
+    extra_angles_premium_note:
+      "Función premium — genera hasta 2 fotos con IA de este objeto desde otros ángulos para tu anuncio",
+    extra_angles_generate_button: "Generar 2 fotos desde otros ángulos",
+    extra_angles_generating: "Generando (10 a 20 segundos)…",
+    extra_angles_retry_button: "Reintentar",
+    extra_angles_download_note: "Descárgalas y añádelas a tu foto original en Leboncoin, Vinted o eBay.",
+
+    // Historial / confirmación de borrado
+    history_title: "Historial",
+    history_clear_all: "borrar todo",
+    history_login_note:
+      "Inicia sesión desde tu perfil (icono arriba a la derecha) para un historial ilimitado, sincronizado entre dispositivos. Sin cuenta, el historial se queda local en este dispositivo.",
+    history_empty: "Todavía no hay estimaciones.",
+    history_reestimate_title: "Reestimar (ver si el precio ha cambiado)",
+    history_clear_confirm_title: "¿Borrar todo?",
+    history_clear_confirm_body_prefix: "Esta acción eliminará definitivamente ",
+    history_clear_confirm_body_middle_singular: " estimación de tu historial. No se puede deshacer.",
+    history_clear_confirm_body_middle_plural: " estimaciones de tu historial. No se puede deshacer.",
+    history_clear_confirm_button: "Borrar todo",
+
+    // Mi colección / objetos escaneados
+    collection_title: "Mi colección",
+    collection_grade_prefix: "Estilo ",
+    collection_next_grade_prefix: "",
+    collection_next_grade_middle: " con la suscripción ",
+    collection_empty: "Haz tu primera estimación para empezar a llenar tu colección.",
+    collection_stat_value_label: "Valor estimado",
+    collection_stat_objects_label: "Objetos escaneados",
+    collection_streak_prefix: "",
+    collection_streak_suffix: " seguidos consultando precios — ¡sigue así!",
+    collection_streak_days_singular: "día",
+    collection_streak_days_plural: "días",
+    collection_chart_title: "El valor de tu colección a lo largo del tiempo",
+    collection_chart_premium_prefix: "Pásate a premium para ver tus ",
+    collection_chart_premium_suffix_singular: " punto de historial adicional",
+    collection_chart_premium_suffix_plural: " puntos de historial adicionales",
+    collection_badges_title: "Insignias",
+    badge_first: "Primer escaneo",
+    badge_five: "5 estimaciones",
+    badge_ten: "10 estimaciones",
+    badge_fifty: "50 estimaciones",
+    badge_streak3: "3 días seguidos",
+    badge_streak7: "7 días seguidos",
+    badge_streak30: "30 días seguidos",
+    badge_powerday5: "5 estimaciones en 1 día",
+    badge_bigfind: "Hallazgo de +200 €",
+    badge_collector500: "Colección de 500 €",
+    badge_collector2000: "Colección de 2000 €",
+    badge_adgen10: "10 anuncios generados",
+    badge_adgen50: "50 anuncios generados",
+    scanned_objects_title: "Objetos escaneados",
+    scanned_objects_subtitle_prefix: "Del más caro al más barato — precio medio de cada objeto, cuya suma forma tu ",
+    scanned_objects_subtitle_strong: "valor estimado",
+    object_fallback_label: "Objeto",
+
+    // Perfil / cuenta / apariencia / créditos
+    account_synced_history: "historial sincronizado",
+    account_plan_free: "Gratis",
+    account_avatars_row: "Avatares",
+    account_quota_paid_suffix: " estimaciones restantes este mes",
+    account_quota_free_suffix: " estimación(es) gratuita(s) restante(s) este mes",
+    account_manage_button: "gestionar",
+    account_subscribe_button: "suscribirse",
+    account_refer_friend: "Invitar a un amigo",
+    account_link_copied: "¡copiado!",
+    account_password_set: "Contraseña definida",
+    account_password_set_note: "define una contraseña (inicia sesión sin enlace por email)",
+    account_new_password_placeholder: "nueva contraseña",
+    account_set_password_button: "definir",
+    account_sign_out: "cerrar sesión",
+    account_magic_link_sent_prefix: "¡Enlace enviado! Revisa tu correo (",
+    account_magic_link_sent_suffix: ") y haz clic en él para iniciar sesión.",
+    account_signup_sent_prefix: "¡Cuenta creada! Revisa tu correo (",
+    account_signup_sent_suffix:
+      ") y haz clic en el enlace de confirmación para activar tu cuenta, luego vuelve e inicia sesión con tu contraseña.",
+    account_login_intro:
+      "Inicia sesión para guardar tu historial, desbloquear tu avatar personalizable y aparecer en la clasificación (opcional).",
+    account_email_placeholder: "tu@email.com",
+    account_password_placeholder: "contraseña",
+    account_signin_button: "iniciar sesión",
+    account_signup_button: "crear una cuenta",
+    account_or_divider: "o",
+    account_magic_link_button: "recibir un enlace de acceso (sin contraseña)",
+    display_grade_prefix: "Estilo (plan actual: ",
+    display_grade_suffix: ")",
+    display_grade_tooltip_locked_prefix: " — desbloqueado con la suscripción ",
+    display_grade_tooltip_locked_suffix: "",
+    display_grade_tooltip_preview_prefix: " — vista previa (bloqueado para otras cuentas, desbloqueado con la suscripción ",
+    display_grade_tooltip_preview_suffix: ")",
+    display_grade_always: "siempre",
+    display_grade_unlocked: "desbloqueado",
+    display_next_grade_prefix: "Próximo nivel: ",
+    display_next_grade_middle: " con la suscripción ",
+    display_next_grade_suffix: "",
+    display_theme_title: "Tema (fuentes, colores y contornos de toda la app)",
+    profile_title: "Mi perfil",
+    credits_unit_singular: "estimación",
+    credits_unit_plural: "estimaciones",
+
+    // Suscripción / paywall
+    paywall_title: "Cuota alcanzada",
+    paywall_reason_quota_epuise: "Has usado todas las estimaciones incluidas en tu suscripción este mes.",
+    paywall_reason_gratuit_epuise: "Has usado tus estimaciones gratuitas de este mes.",
+    paywall_reason_default: "No se puede continuar con la estimación por ahora.",
+    paywall_watching_ad: "reproduciendo anuncio…",
+    paywall_watch_ad_button: "ver un anuncio para 1 estimación gratis",
+    paywall_or_subscribe: "o pásate a una suscripción para muchas más estimaciones:",
+    plan_per_month_suffix: "/mes",
+    trend_range_1j: "1D",
+    trend_range_1s: "1S",
+    trend_range_1m: "1M",
+    trend_range_1a: "1A",
+    trend_range_5a: "5A",
+    trend_range_10a: "10A",
+    trend_range_total: "Total",
+
+    // Mensajes de error / avisos (lógica de negocio)
+    err_payment_creation: "Error al crear el pago.",
+    err_portal_open: "Error al abrir el portal.",
+    err_portal_open_subscription: "Error al abrir el portal de suscripción.",
+    err_password_min_length: "6 caracteres como mínimo.",
+    err_search: "Error de búsqueda.",
+    err_loading: "Error al cargar.",
+    pseudo_err_length: "de 3 a 20 caracteres.",
+    pseudo_err_chars: "Solo letras, números, espacios, apóstrofos y guiones.",
+    pseudo_err_taken: "Este nombre de usuario ya está en uso.",
+    pseudo_err_no_profile: "Inicia sesión para elegir un nombre de usuario.",
+    err_retry: "Error, inténtalo de nuevo.",
+    err_heic_format:
+      "Este archivo está en formato HEIC (fotos de iPhone), que este prototipo de prueba todavía no gestiona. " +
+      "Solución rápida: Ajustes → Cámara → Formatos → \"El más compatible\" en tu iPhone, " +
+      "y vuelve a tomar la foto. La app real podrá leer HEIC de forma nativa.",
+    err_file_read: "No se ha podido leer el archivo seleccionado.",
+    err_api_network_prefix: "No se ha podido contactar con la API (red). ",
+    err_api_prefix: "Error de la API: ",
+    err_api_truncated: "Respuesta cortada (se alcanzó max_tokens).",
+    err_api_unreadable_prefix: "Respuesta ilegible de la API (estado ",
+    err_api_unreadable_middle: "). Contenido bruto: ",
+    err_json_not_found_prefix: "No se encontró JSON en la respuesta: ",
+    err_json_invalid_prefix: "JSON no válido: ",
+    err_relay_unreachable_prefix: "No se ha podido contactar con el servidor de retransmisión: ",
+    err_relay_unreadable_prefix: "Respuesta ilegible del servidor de retransmisión (estado ",
+    err_relay_unreadable_suffix: ").",
+    err_relay_error_prefix: "Error del servidor de retransmisión: ",
+    err_login_required_estimate: "Inicia sesión para lanzar una estimación (3 gratis al mes, sin tarjeta bancaria).",
+    err_ad_generation_failed: "No se ha podido generar el anuncio, inténtalo de nuevo.",
+    err_ad_copy_failed: "No se ha podido copiar automáticamente, selecciona el texto manualmente.",
+    err_extra_angles_generation: "Error durante la generación.",
+    err_extra_angles_none: "No se ha podido generar ninguna foto, inténtalo de nuevo.",
+    err_extra_angles_failed: "No se han podido generar las fotos, inténtalo de nuevo.",
+    err_listings_no_match:
+      "Se encontraron anuncios, pero ninguno corresponde exactamente al mismo producto (mismo formato/modelo).",
+    err_listings_not_enough: "No se encontraron suficientes anuncios para este objeto.",
+    err_estimation_failed: "La estimación ha fallado. Inténtalo de nuevo con otra foto.",
+    err_vehicle_estimation_failed: "La estimación del vehículo ha fallado.",
+    err_realestate_estimation_failed: "La estimación del inmueble ha fallado.",
+    referral_share_text: "¡Estima el valor de reventa de tus objetos en una foto con estim'!",
+    src_used_prefix: "estimación basada en ",
+    src_used_middle: " anuncio(s) de segunda mano real(es) (Leboncoin/Vinted/eBay)",
+    src_used_sold_prefix: ", de los cuales ",
+    src_used_sold_suffix: " venta(s) confirmada(s) en eBay",
+    src_humor_mode: "modo estim' 'estimar cualquier cosa, hasta disparates' 🎭",
+    src_ai_no_listings_prefix: "estimación IA (anuncios reales no disponibles: ",
+    src_ai_no_listings_suffix: ")",
+    src_ai_vehicle: "estimación IA de vehículo — indicativa, sin anuncios reales comparados",
+    src_ai_realestate: "estimación IA inmobiliaria — muy aproximada, sin datos del mercado local",
+    seed_etat_unverifiable: "Estado no verificable a distancia: estimación basada en un anuncio en línea, no en una foto.",
+    seed_etat_note: "de segunda mano (estado no verificado)",
   },
 };
 
@@ -991,25 +1896,47 @@ function interpolateSegment(v0, v1, count, seedStr) {
   return points;
 }
 
+// Libellés (compacts, façon graphique boursier) des points du graphique de
+// tendance — module-level donc pas d'accès direct à t()/lang (voir
+// buildTrendSeries, appelée avec `lang` explicite depuis le composant App).
+const TREND_TODAY_LABEL = { fr: "auj.", en: "today", es: "hoy" };
+const TREND_NOW_LABEL = { fr: "maint.", en: "now", es: "ahora" };
+function trendYearsAgoLabel(k, lang) {
+  if (k <= 0) return TREND_TODAY_LABEL[lang] || TREND_TODAY_LABEL.fr;
+  if (lang === "en") return `-${k} yr${k > 1 ? "s" : ""}`;
+  if (lang === "es") return `-${k} año${k > 1 ? "s" : ""}`;
+  return `-${k} an${k > 1 ? "s" : ""}`;
+}
+function trendMonthsAgoLabel(k, lang) {
+  if (lang === "en") return `-${k} mo`;
+  if (lang === "es") return `-${k} mes${k > 1 ? "es" : ""}`;
+  return `-${k} mois`;
+}
+function trendDaysAgoLabel(k, lang) {
+  return (lang === "fr" ? "j-" : "d-") + k;
+}
+function trendHoursAgoLabel(k) {
+  return `-${k}h`;
+}
+
 // Construit les points du graphique pour une période donnée ("1j" à
 // "total") à partir des indices annuels renvoyés par l'IA (tendance sur 10
 // ans). Les périodes courtes (1j/1s/1m) "zooment" dans la fin de la courbe
 // longue plutôt que d'inventer une donnée indépendante — comme un vrai
 // graphique boursier qui n'a qu'UNE série de prix, juste regardée à des
 // résolutions différentes.
-function buildTrendSeries(yearlyIndices, rangeKey, seedStr, priceAvg) {
+function buildTrendSeries(yearlyIndices, rangeKey, seedStr, priceAvg, lang) {
   const idx = (yearlyIndices || []).filter((n) => typeof n === "number" && !isNaN(n));
   if (idx.length < 2) return null;
   const n = idx.length;
   const values = idx.map((v) => priceAvg * (v / 100));
-  const yearsAgoLabel = (k) => (k <= 0 ? "auj." : `-${k} an${k > 1 ? "s" : ""}`);
 
   if (rangeKey === "10a" || rangeKey === "total") {
-    return values.map((v, i) => ({ label: yearsAgoLabel(n - 1 - i), value: v }));
+    return values.map((v, i) => ({ label: trendYearsAgoLabel(n - 1 - i, lang), value: v }));
   }
   if (rangeKey === "5a") {
     const start = Math.max(0, n - 6);
-    return values.slice(start).map((v, i) => ({ label: yearsAgoLabel(n - 1 - (start + i)), value: v }));
+    return values.slice(start).map((v, i) => ({ label: trendYearsAgoLabel(n - 1 - (start + i), lang), value: v }));
   }
 
   const last = values[n - 1];
@@ -1018,7 +1945,7 @@ function buildTrendSeries(yearlyIndices, rangeKey, seedStr, priceAvg) {
 
   if (rangeKey === "1a") {
     return monthSeg.map((v, i) => ({
-      label: i === monthSeg.length - 1 ? "auj." : `-${monthSeg.length - 1 - i} mois`,
+      label: i === monthSeg.length - 1 ? (TREND_TODAY_LABEL[lang] || TREND_TODAY_LABEL.fr) : trendMonthsAgoLabel(monthSeg.length - 1 - i, lang),
       value: v,
     }));
   }
@@ -1031,14 +1958,14 @@ function buildTrendSeries(yearlyIndices, rangeKey, seedStr, priceAvg) {
   );
   if (rangeKey === "1m") {
     return daySeg.map((v, i) => ({
-      label: i === daySeg.length - 1 ? "auj." : `j-${daySeg.length - 1 - i}`,
+      label: i === daySeg.length - 1 ? (TREND_TODAY_LABEL[lang] || TREND_TODAY_LABEL.fr) : trendDaysAgoLabel(daySeg.length - 1 - i, lang),
       value: v,
     }));
   }
   if (rangeKey === "1s") {
     const weekSeg = daySeg.slice(-7);
     return weekSeg.map((v, i) => ({
-      label: i === weekSeg.length - 1 ? "auj." : `j-${weekSeg.length - 1 - i}`,
+      label: i === weekSeg.length - 1 ? (TREND_TODAY_LABEL[lang] || TREND_TODAY_LABEL.fr) : trendDaysAgoLabel(weekSeg.length - 1 - i, lang),
       value: v,
     }));
   }
@@ -1049,19 +1976,19 @@ function buildTrendSeries(yearlyIndices, rangeKey, seedStr, priceAvg) {
   const prevDay = daySeg[daySeg.length - 2] !== undefined ? daySeg[daySeg.length - 2] : lastDay;
   const hourSeg = interpolateSegment(prevDay, lastDay, 7, seedStr + "|1j");
   return hourSeg.map((v, i) => ({
-    label: i === hourSeg.length - 1 ? "maint." : `-${(hourSeg.length - 1 - i) * 3}h`,
+    label: i === hourSeg.length - 1 ? (TREND_NOW_LABEL[lang] || TREND_NOW_LABEL.fr) : trendHoursAgoLabel((hourSeg.length - 1 - i) * 3),
     value: v,
   }));
 }
 
 const TREND_RANGES = [
-  { key: "1j", label: "1J" },
-  { key: "1s", label: "1S" },
-  { key: "1m", label: "1M" },
-  { key: "1a", label: "1A" },
-  { key: "5a", label: "5A" },
-  { key: "10a", label: "10A" },
-  { key: "total", label: "Total" },
+  { key: "1j" },
+  { key: "1s" },
+  { key: "1m" },
+  { key: "1a" },
+  { key: "5a" },
+  { key: "10a" },
+  { key: "total" },
 ];
 
 // Petit graphique de tendance façon "trading" (ligne + zone dégradée, vert
@@ -1504,7 +2431,7 @@ export default function App() {
   async function shareReferralLink() {
     const link = referralLink();
     if (!link) return;
-    const text = "Estime la valeur de revente de tes objets en une photo avec estim' !";
+    const text = t("referral_share_text");
     if (navigator.share) {
       try {
         await navigator.share({ title: "estim'", text, url: link });
@@ -1522,6 +2449,43 @@ export default function App() {
   const [extraAnglesAttempted, setExtraAnglesAttempted] = useState(false); // masque le bouton une fois un essai réussi (coût réel par génération)
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
 
+  // Langue de l'interface (persistée localement) — volet de traduction
+  // volontairement limité, voir TRANSLATIONS plus haut. Déclarée ici (avant
+  // la reconnaissance vocale ci-dessous) pour que `lang`/`localeTag` soient
+  // utilisables dans son tableau de dépendances.
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem("estim_lang") || "fr";
+    } catch (e) {
+      return "fr";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("estim_lang", lang);
+    } catch (e) {}
+  }, [lang]);
+  function t(key) {
+    return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.fr[key] || key;
+  }
+  // Tag de locale pour toLocaleDateString/toLocaleString (dates, séparateurs
+  // de milliers) — suit désormais la langue choisie au lieu d'être toujours
+  // en "fr-FR" (demandé par Dylan : toute l'appli doit être traduite).
+  const LANG_LOCALE = { fr: "fr-FR", en: "en-US", es: "es-ES" };
+  function localeTag() {
+    return LANG_LOCALE[lang] || "fr-FR";
+  }
+  // Instruction ajoutée aux prompts IA (voir callClaude) pour que les champs
+  // en langage naturel de la réponse (objet, commentaire, conseil, hypothèse,
+  // etc.) reviennent dans la langue choisie par l'utilisateur, au lieu
+  // d'être toujours en français (demandé par Dylan : toute l'appli doit
+  // être traduite, y compris ce que l'IA renvoie).
+  const AI_LANGUAGE_NAME = { fr: "français", en: "anglais", es: "espagnol" };
+  function aiLangInstruction() {
+    const name = AI_LANGUAGE_NAME[lang] || "français";
+    return ` Réponds en ${name} pour tous les champs de texte en langage naturel de ta réponse JSON (pas les nombres, ni les valeurs fixes/énumérées comme "type_sujet").`;
+  }
+
   // Message vocal pour dicter les précisions (Web Speech API, native au
   // navigateur — pas d'appel serveur, gratuit). Support variable selon les
   // navigateurs (bon sur Chrome/Android, plus limité sur Safari/iOS).
@@ -1538,7 +2502,7 @@ export default function App() {
       return;
     }
     const recognition = new SpeechRecognitionCtor();
-    recognition.lang = "fr-FR";
+    recognition.lang = localeTag();
     recognition.continuous = true;
     recognition.interimResults = true;
 
@@ -1560,7 +2524,7 @@ export default function App() {
     };
 
     recognitionRef.current = recognition;
-  }, []);
+  }, [lang]);
 
   function toggleVoiceInput() {
     if (!recognitionRef.current) return;
@@ -1656,11 +2620,11 @@ export default function App() {
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de la création du paiement.");
+      if (!res.ok || !data.url) throw new Error(data.error || t("err_payment_creation"));
       window.location.href = data.url;
     } catch (e) {
       console.error(e);
-      setPaywallInfo((prev) => ({ ...(prev || {}), message: e.message || "Erreur lors de la création du paiement." }));
+      setPaywallInfo((prev) => ({ ...(prev || {}), message: e.message || t("err_payment_creation") }));
       setCheckoutLoading(null);
     }
   }
@@ -1685,11 +2649,11 @@ export default function App() {
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de la création du paiement.");
+      if (!res.ok || !data.url) throw new Error(data.error || t("err_payment_creation"));
       window.location.href = data.url;
     } catch (e) {
       console.error(e);
-      setCreditError(e.message || "Erreur lors de la création du paiement.");
+      setCreditError(e.message || t("err_payment_creation"));
       setCreditCheckoutLoading(false);
     }
   }
@@ -1704,11 +2668,11 @@ export default function App() {
         body: JSON.stringify({ user_id: user.id, return_url: window.location.origin }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de l'ouverture du portail.");
+      if (!res.ok || !data.url) throw new Error(data.error || t("err_portal_open"));
       window.location.href = data.url;
     } catch (e) {
       console.error(e);
-      setError(e.message || "Erreur lors de l'ouverture du portail d'abonnement.");
+      setError(e.message || t("err_portal_open_subscription"));
       setPortalLoading(false);
     }
   }
@@ -1796,7 +2760,7 @@ export default function App() {
 
   async function setAccountPassword() {
     if (!newPassword || newPassword.length < 6) {
-      setPasswordError("6 caractères minimum.");
+      setPasswordError(t("err_password_min_length"));
       return;
     }
     setPasswordStatus("saving");
@@ -1824,24 +2788,6 @@ export default function App() {
   // Anime l'ouverture/fermeture du panneau + geste de balayage vers le bas
   // pour le refermer (voir useBottomSheet plus haut).
   const menuSheet = useBottomSheet(showMenu, () => setShowMenu(false));
-
-  // Langue de l'interface (persistée localement) — volet de traduction
-  // volontairement limité, voir TRANSLATIONS plus haut.
-  const [lang, setLang] = useState(() => {
-    try {
-      return localStorage.getItem("estim_lang") || "fr";
-    } catch (e) {
-      return "fr";
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem("estim_lang", lang);
-    } catch (e) {}
-  }, [lang]);
-  function t(key) {
-    return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.fr[key] || key;
-  }
 
   // Nombre total d'estimations jamais réalisées (à vie, ne redescend
   // jamais même si l'historique visible est limité ou vidé) — sert à
@@ -2116,11 +3062,19 @@ export default function App() {
   function brandSize(px) {
     return Math.round(px * (activeAffichage.displayScale ?? 1));
   }
-  // Le haut de l'appli (bandeau + poignée des panneaux) se termine toujours
-  // sur l'accent actif: c'est ce qui donne l'impression que "tout change"
-  // visuellement d'un palier à l'autre, sans toucher au fond navy/clair.
-  pt.topBarGradient =
-    menuTheme === "light"
+  // Liseré tout en haut de l'appli : pour un affichage avec sa propre
+  // palette (Vintage, Rétro, Robotique, Futuriste — tout ce qui a
+  // base/mid/high), il reprend désormais ces couleurs plutôt que le
+  // navy/gris + accent de palier fixe d'origine (demandé par Dylan) — même
+  // sens que le header (clair : de la teinte forte vers le plus clair ;
+  // sombre : du quasi-noir vers la teinte forte). "Classique" (pas de
+  // base/mid/high) garde son dégradé d'origine, qui se termine toujours
+  // sur l'accent de palier actif.
+  pt.topBarGradient = activeAffichage.base
+    ? menuTheme === "light"
+      ? `linear-gradient(90deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 55%, ${activeAffichage.base} 100%)`
+      : `linear-gradient(90deg, ${activeAffichage.base} 0%, ${activeAffichage.mid} 45%, ${activeAffichage.high} 100%)`
+    : menuTheme === "light"
       ? `linear-gradient(90deg, #D7DEE6 0%, #93A4BC 35%, ${accent} 100%)`
       : `linear-gradient(90deg, #152238 0%, #29394F 35%, ${accent} 100%)`;
   pt.grabBg =
@@ -2173,7 +3127,7 @@ export default function App() {
     try {
       const res = await fetch(PROXY_URL + "/search-products?q=" + encodeURIComponent(q));
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur de recherche.");
+      if (!res.ok) throw new Error(data.error || t("err_search"));
       setSearchResults(data);
     } catch (e) {
       console.error(e);
@@ -2199,11 +3153,11 @@ export default function App() {
     try {
       const res = await fetch(PROXY_URL + "/trending-category?cat=" + encodeURIComponent(cat.key));
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur de chargement.");
+      if (!res.ok) throw new Error(data.error || t("err_loading"));
       setCatTrendingCache((prev) => ({ ...prev, [cat.key]: data.items || [] }));
     } catch (e) {
       console.error(e);
-      setCatTrendingError(e.message || "Erreur de chargement.");
+      setCatTrendingError(e.message || t("err_loading"));
     } finally {
       setCatTrendingLoadingKey(null);
     }
@@ -2232,12 +3186,12 @@ export default function App() {
     try {
       const res = await fetch(PROXY_URL + "/trending");
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur de chargement.");
+      if (!res.ok) throw new Error(data.error || t("err_loading"));
       setTrendingItems(data.items || []);
       setTrendingPage(1);
     } catch (e) {
       console.error(e);
-      setTrendingError(e.message || "Erreur de chargement.");
+      setTrendingError(e.message || t("err_loading"));
     } finally {
       setTrendingLoading(false);
     }
@@ -2271,7 +3225,7 @@ export default function App() {
       setLeaderboardCache((prev) => ({ ...prev, [cacheKey]: data || [] }));
     } catch (e) {
       console.error(e);
-      setLeaderboardError(e.message || "Erreur de chargement.");
+      setLeaderboardError(e.message || t("err_loading"));
     } finally {
       setLeaderboardLoadingKey(null);
     }
@@ -2306,10 +3260,10 @@ export default function App() {
   const isTop100Total = !!(user && top100TotalRows && top100TotalRows.some((r) => r.user_id === user.id));
 
   const PSEUDO_ERROR_LABELS = {
-    longueur_invalide: "3 à 20 caractères.",
-    caracteres_invalides: "Lettres, chiffres, espaces, apostrophes et tirets uniquement.",
-    deja_pris: "Ce pseudo est déjà pris.",
-    profil_introuvable: "Connecte-toi pour choisir un pseudo.",
+    longueur_invalide: t("pseudo_err_length"),
+    caracteres_invalides: t("pseudo_err_chars"),
+    deja_pris: t("pseudo_err_taken"),
+    profil_introuvable: t("pseudo_err_no_profile"),
   };
   async function savePseudo() {
     if (!user || pseudoSaving) return;
@@ -2328,11 +3282,11 @@ export default function App() {
         // on vide le cache pour forcer un rechargement à la prochaine vue.
         setLeaderboardCache({});
       } else {
-        setPseudoError(PSEUDO_ERROR_LABELS[data && data.reason] || "Erreur, réessaie.");
+        setPseudoError(PSEUDO_ERROR_LABELS[data && data.reason] || t("err_retry"));
       }
     } catch (e) {
       console.error(e);
-      setPseudoError("Erreur, réessaie.");
+      setPseudoError(t("err_retry"));
     } finally {
       setPseudoSaving(false);
     }
@@ -2404,7 +3358,7 @@ export default function App() {
   const portfolioChartPoints = portfolioSortedAsc.map((h) => {
     portfolioRunning += (h.prix_bas + h.prix_haut) / 2;
     return {
-      label: new Date(h.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }),
+      label: new Date(h.date).toLocaleDateString(localeTag(), { day: "numeric", month: "short" }),
       value: portfolioRunning,
     };
   });
@@ -2437,19 +3391,19 @@ export default function App() {
   // plus bas), qui réutilise les mêmes stats mais pour un tout autre usage
   // (débloquer un personnage, pas des icônes de badge).
   const COLLECTION_BADGES = [
-    { id: "first", emoji: "🎉", label: "Premier scan", test: () => history.length >= 1 },
-    { id: "five", emoji: "📸", label: "5 estimations", test: () => history.length >= 5 },
-    { id: "ten", emoji: "🔥", label: "10 estimations", test: () => history.length >= 10 },
-    { id: "fifty", emoji: "🏆", label: "50 estimations", test: () => history.length >= 50 },
-    { id: "streak3", emoji: "⚡", label: "3 jours de suite", test: () => portfolioStreak >= 3 },
-    { id: "streak7", emoji: "🌟", label: "7 jours de suite", test: () => portfolioStreak >= 7 },
-    { id: "streak30", emoji: "👑", label: "30 jours de suite", test: () => portfolioStreak >= 30 },
-    { id: "powerday5", emoji: "🚀", label: "5 estimations en 1 jour", test: () => portfolioMaxPerDay >= 5 },
-    { id: "bigfind", emoji: "💰", label: "Trouvaille à +200 €", test: () => portfolioBestFind >= 200 },
-    { id: "collector500", emoji: "📦", label: "Collection à 500 €", test: () => portfolioValue >= 500 },
-    { id: "collector2000", emoji: "💎", label: "Collection à 2000 €", test: () => portfolioValue >= 2000 },
-    { id: "adgen10", emoji: "📣", label: "10 annonces générées", test: () => lifetimeAdGenerations >= 10 },
-    { id: "adgen50", emoji: "📢", label: "50 annonces générées", test: () => lifetimeAdGenerations >= 50 },
+    { id: "first", emoji: "🎉", label: t("badge_first"), test: () => history.length >= 1 },
+    { id: "five", emoji: "📸", label: t("badge_five"), test: () => history.length >= 5 },
+    { id: "ten", emoji: "🔥", label: t("badge_ten"), test: () => history.length >= 10 },
+    { id: "fifty", emoji: "🏆", label: t("badge_fifty"), test: () => history.length >= 50 },
+    { id: "streak3", emoji: "⚡", label: t("badge_streak3"), test: () => portfolioStreak >= 3 },
+    { id: "streak7", emoji: "🌟", label: t("badge_streak7"), test: () => portfolioStreak >= 7 },
+    { id: "streak30", emoji: "👑", label: t("badge_streak30"), test: () => portfolioStreak >= 30 },
+    { id: "powerday5", emoji: "🚀", label: t("badge_powerday5"), test: () => portfolioMaxPerDay >= 5 },
+    { id: "bigfind", emoji: "💰", label: t("badge_bigfind"), test: () => portfolioBestFind >= 200 },
+    { id: "collector500", emoji: "📦", label: t("badge_collector500"), test: () => portfolioValue >= 500 },
+    { id: "collector2000", emoji: "💎", label: t("badge_collector2000"), test: () => portfolioValue >= 2000 },
+    { id: "adgen10", emoji: "📣", label: t("badge_adgen10"), test: () => lifetimeAdGenerations >= 10 },
+    { id: "adgen50", emoji: "📢", label: t("badge_adgen50"), test: () => lifetimeAdGenerations >= 50 },
   ];
 
   // Panneau "Avatar" : on choisit un PERSONNAGE tout fait, illustré avec un
@@ -2506,36 +3460,41 @@ export default function App() {
   // haut : un plan plus élevé débloque aussi tous les paliers en dessous).
   // Hibou Sage garde en plus son seuil d'estimations : il se débloque par
   // L'UN OU L'AUTRE des deux chemins (voir isCharacterUnlocked).
+  // Les noms de personnages restent identiques dans les 3 langues (comme
+  // des noms de marque/personnages de jeu) — seuls les indices de
+  // déblocage ("dès N estimations" / "avec le pack X") sont traduits, via
+  // `threshold`/`packLabel` (au lieu d'un texte `hint` figé) + la fonction
+  // characterHint() juste après ce tableau.
   const CHARACTERS_META = [
     // --- Palier 0 : gratuits dès le départ ---
     { id: "chineur", name: "Le Chineur", tier: 0, free: true },
     { id: "chineuse", name: "La Chineuse", tier: 0, free: true },
     // --- Palier 1 ---
-    { id: "renard", name: "Renard Malin", tier: 1, test: () => lifetimeEstimations >= 10, hint: "dès 10 estimations" },
-    { id: "robotChrome", name: "Robot Chrome", tier: 1, test: () => lifetimeEstimations >= 25, hint: "dès 25 estimations" },
-    { id: "lapin", name: "Lapin Chanceux", tier: 1, test: () => lifetimeEstimations >= 50, hint: "dès 50 estimations" },
-    { id: "tigreStyle", name: "Tigre Stylé", tier: 1, test: () => lifetimeEstimations >= 100, hint: "dès 100 estimations" },
+    { id: "renard", name: "Renard Malin", tier: 1, test: () => lifetimeEstimations >= 10, threshold: 10 },
+    { id: "robotChrome", name: "Robot Chrome", tier: 1, test: () => lifetimeEstimations >= 25, threshold: 25 },
+    { id: "lapin", name: "Lapin Chanceux", tier: 1, test: () => lifetimeEstimations >= 50, threshold: 50 },
+    { id: "tigreStyle", name: "Tigre Stylé", tier: 1, test: () => lifetimeEstimations >= 100, threshold: 100 },
     // --- Palier 2 ---
-    { id: "astroDebutant", name: "Astro Débutant", tier: 2, test: () => lifetimeEstimations >= 250, hint: "dès 250 estimations" },
-    { id: "hiboo", name: "Hibou Sage", tier: 2, planRank: PLAN_GRADE_RANK.debutant, hint: "avec le pack Starter" },
-    { id: "loupDetective", name: "Loup Détective", tier: 2, test: () => lifetimeEstimations >= 500, hint: "dès 500 estimations" },
-    { id: "sorciereFutee", name: "Sorcière Futée", tier: 2, test: () => lifetimeEstimations >= 750, hint: "dès 750 estimations" },
+    { id: "astroDebutant", name: "Astro Débutant", tier: 2, test: () => lifetimeEstimations >= 250, threshold: 250 },
+    { id: "hiboo", name: "Hibou Sage", tier: 2, planRank: PLAN_GRADE_RANK.debutant, packLabel: "Starter" },
+    { id: "loupDetective", name: "Loup Détective", tier: 2, test: () => lifetimeEstimations >= 500, threshold: 500 },
+    { id: "sorciereFutee", name: "Sorcière Futée", tier: 2, test: () => lifetimeEstimations >= 750, threshold: 750 },
     // --- Palier 3 ---
-    { id: "alienCurieux", name: "Alien Curieux", tier: 3, test: () => lifetimeEstimations >= 1000, hint: "dès 1000 estimations" },
-    { id: "ninjaSilencieux", name: "Ninja Silencieux", tier: 3, test: () => lifetimeEstimations >= 1300, hint: "dès 1300 estimations" },
-    { id: "chevalierDore", name: "Chevalier Doré", tier: 3, test: () => lifetimeEstimations >= 1800, hint: "dès 1800 estimations" },
-    { id: "bebeDragon", name: "Bébé Dragon", tier: 3, test: () => lifetimeEstimations >= 2500, hint: "dès 2500 estimations" },
+    { id: "alienCurieux", name: "Alien Curieux", tier: 3, test: () => lifetimeEstimations >= 1000, threshold: 1000 },
+    { id: "ninjaSilencieux", name: "Ninja Silencieux", tier: 3, test: () => lifetimeEstimations >= 1300, threshold: 1300 },
+    { id: "chevalierDore", name: "Chevalier Doré", tier: 3, test: () => lifetimeEstimations >= 1800, threshold: 1800 },
+    { id: "bebeDragon", name: "Bébé Dragon", tier: 3, test: () => lifetimeEstimations >= 2500, threshold: 2500 },
     // --- Palier 4 ---
-    { id: "capitainePirate", name: "Capitaine Pirate", tier: 4, test: () => lifetimeEstimations >= 3500, hint: "dès 3500 estimations" },
-    { id: "ratonMasque", name: "Raton Masqué", tier: 4, planRank: PLAN_GRADE_RANK.pro, hint: "avec le pack Pro" },
-    { id: "pieuvreMystique", name: "Pieuvre Mystique", tier: 4, test: () => lifetimeEstimations >= 5000, hint: "dès 5000 estimations" },
-    { id: "phenixArdent", name: "Phénix Ardent", tier: 4, test: () => lifetimeEstimations >= 7000, hint: "dès 7000 estimations" },
+    { id: "capitainePirate", name: "Capitaine Pirate", tier: 4, test: () => lifetimeEstimations >= 3500, threshold: 3500 },
+    { id: "ratonMasque", name: "Raton Masqué", tier: 4, planRank: PLAN_GRADE_RANK.pro, packLabel: "Pro" },
+    { id: "pieuvreMystique", name: "Pieuvre Mystique", tier: 4, test: () => lifetimeEstimations >= 5000, threshold: 5000 },
+    { id: "phenixArdent", name: "Phénix Ardent", tier: 4, test: () => lifetimeEstimations >= 7000, threshold: 7000 },
     // --- Palier 5 ---
-    { id: "panthereNuit", name: "Panthère des Nuits", tier: 5, test: () => lifetimeEstimations >= 10000, hint: "dès 10 000 estimations" },
-    { id: "spectreElegant", name: "Spectre Élégant", tier: 5, planRank: PLAN_GRADE_RANK.premium, hint: "avec le pack Premium" },
-    { id: "griffonCeleste", name: "Griffon Céleste", tier: 5, planRank: PLAN_GRADE_RANK.elite, hint: "avec le pack Elite" },
+    { id: "panthereNuit", name: "Panthère des Nuits", tier: 5, test: () => lifetimeEstimations >= 10000, threshold: 10000 },
+    { id: "spectreElegant", name: "Spectre Élégant", tier: 5, planRank: PLAN_GRADE_RANK.premium, packLabel: "Premium" },
+    { id: "griffonCeleste", name: "Griffon Céleste", tier: 5, planRank: PLAN_GRADE_RANK.elite, packLabel: "Elite" },
     // --- Palier 6 : le secret ---
-    { id: "diableEcarlate", name: "Le Diable Écarlate", tier: 6, secret: true, test: () => lifetimeEstimations >= 20000, hint: "??? (secret)" },
+    { id: "diableEcarlate", name: "Le Diable Écarlate", tier: 6, secret: true, test: () => lifetimeEstimations >= 20000, threshold: 20000 },
   ];
   function characterMeta(id) {
     return CHARACTERS_META.find((c) => c.id === id) || CHARACTERS_META[0];
@@ -2546,6 +3505,31 @@ export default function App() {
     const byEstimations = meta.test ? meta.test() : false;
     const byPlan = meta.planRank ? userPlanRank >= meta.planRank : false;
     return byEstimations || byPlan;
+  }
+  // Indice de déblocage traduit ("dès 10 estimations" / "avec le pack
+  // Starter" / "??? (secret)") — calculé à partir de `threshold`/`packLabel`
+  // plutôt qu'un texte `hint` figé en français (voir CHARACTERS_META).
+  function characterHint(meta) {
+    if (meta.packLabel) {
+      return `${t("avatar_hint_pack_prefix")}${meta.packLabel}${t("avatar_hint_pack_suffix")}`;
+    }
+    if (typeof meta.threshold === "number") {
+      return `${t("avatar_hint_from_prefix")}${meta.threshold.toLocaleString(localeTag())}${t("avatar_hint_estimations_suffix")}`;
+    }
+    return t("avatar_hint_secret");
+  }
+  // Libellé + couleur du niveau de confiance d'une estimation (voir
+  // CONFIDENCE_DOTS plus haut) — le texte est traduit ici (accès à t()),
+  // les couleurs restent dans la constante hors composant.
+  const CONFIDENCE_LABEL_KEYS = {
+    haute: "confidence_haute",
+    moyenne: "confidence_moyenne",
+    basse: "confidence_basse",
+    indicative: "confidence_indicative",
+  };
+  function confidenceInfo(key) {
+    const labelKey = CONFIDENCE_LABEL_KEYS[key];
+    return { label: labelKey ? t(labelKey) : key, dot: CONFIDENCE_DOTS[key] || "muted" };
   }
   // Message "félicitations, tu viens de débloquer un avatar" au moment où
   // l'abonnement est validé (demandé par Dylan) — même mécanique que
@@ -2636,11 +3620,11 @@ export default function App() {
         // cache pour forcer un rechargement à la prochaine vue.
         setLeaderboardCache({});
       } else {
-        setAvatarError("Erreur, réessaie.");
+        setAvatarError(t("err_retry"));
       }
     } catch (e) {
       console.error(e);
-      setAvatarError("Erreur, réessaie.");
+      setAvatarError(t("err_retry"));
     } finally {
       setAvatarSaving(false);
     }
@@ -2726,7 +3710,7 @@ export default function App() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {profile && profile.pseudo ? user.email : "historique synchronisé"}
+                  {profile && profile.pseudo ? user.email : t("account_synced_history")}
                 </div>
               </div>
               {profile && (
@@ -2746,7 +3730,7 @@ export default function App() {
                 >
                   {profile.plan !== "gratuit" && profile.subscription_status === "active"
                     ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
-                    : "Gratuit"}
+                    : t("account_plan_free")}
                 </span>
               )}
             </div>
@@ -2773,7 +3757,7 @@ export default function App() {
               }}
             >
               <Smile size={16} color={accent} style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: pt.rowText }}>Avatars</span>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: pt.rowText }}>{t("account_avatars_row")}</span>
               <ChevronRight size={14} color={pt.chevronColor} />
             </button>
 
@@ -2781,8 +3765,8 @@ export default function App() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10, padding: "0 2px" }}>
                 <span className="mono" style={{ fontSize: 11, color: pt.subText }}>
                   {profile.plan !== "gratuit" && profile.subscription_status === "active"
-                    ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel} estimations restantes ce mois`
-                    : `${Math.max(0, 3 - profile.gratuit_utilisees)} estimation(s) gratuite(s) restante(s) ce mois`}
+                    ? `${Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)}/${profile.quota_mensuel}${t("account_quota_paid_suffix")}`
+                    : `${Math.max(0, 3 - profile.gratuit_utilisees)}${t("account_quota_free_suffix")}`}
                 </span>
                 {profile.stripe_customer_id ? (
                   <button
@@ -2791,7 +3775,7 @@ export default function App() {
                     disabled={portalLoading}
                     style={{ flexShrink: 0 }}
                   >
-                    <CreditCard size={14} /> {portalLoading ? "…" : "gérer"}
+                    <CreditCard size={14} /> {portalLoading ? "…" : t("account_manage_button")}
                   </button>
                 ) : (
                   <button
@@ -2802,7 +3786,7 @@ export default function App() {
                     }}
                     style={{ flexShrink: 0 }}
                   >
-                    <Sparkles size={14} /> s'abonner
+                    <Sparkles size={14} /> {t("account_subscribe_button")}
                   </button>
                 )}
               </div>
@@ -2822,12 +3806,12 @@ export default function App() {
             <div style={{ borderTop: pt.dashedBorder, marginTop: 12, paddingTop: 4 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 2px", borderBottom: pt.dashedBorder }}>
                 <Gift size={16} color={accent} style={{ flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: pt.rowText }}>Parrainer un ami</span>
-                <button className="btn-ghost" onClick={shareReferralLink} style={{ flexShrink: 0 }} aria-label="partager mon lien">
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: pt.rowText }}>{t("account_refer_friend")}</span>
+                <button className="btn-ghost" onClick={shareReferralLink} style={{ flexShrink: 0 }} aria-label={t("aria_share_link")}>
                   <Share2 size={14} />
                 </button>
-                <button className="btn-ghost" onClick={copyReferralLink} style={{ flexShrink: 0 }} aria-label="copier le lien">
-                  {referralCopied ? "copié !" : <Copy size={14} />}
+                <button className="btn-ghost" onClick={copyReferralLink} style={{ flexShrink: 0 }} aria-label={t("aria_copy_link")}>
+                  {referralCopied ? t("account_link_copied") : <Copy size={14} />}
                 </button>
               </div>
 
@@ -2835,14 +3819,14 @@ export default function App() {
                 {passwordStatus === "done" || (profile && profile.has_password) ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <Lock size={16} color={accent} style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: pt.rowText }}>Mot de passe défini</span>
+                    <span style={{ fontSize: 13, color: pt.rowText }}>{t("account_password_set")}</span>
                   </div>
                 ) : (
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                       <Lock size={16} color={accent} style={{ flexShrink: 0 }} />
                       <span className="mono" style={{ fontSize: 11, color: pt.subText }}>
-                        définir un mot de passe (se reconnecter sans lien par email)
+                        {t("account_password_set_note")}
                       </span>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
@@ -2851,7 +3835,7 @@ export default function App() {
                           type={showNewPassword ? "text" : "password"}
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="nouveau mot de passe"
+                          placeholder={t("account_new_password_placeholder")}
                           style={{
                             width: "100%",
                             fontFamily: "'Inter', sans-serif",
@@ -2868,7 +3852,7 @@ export default function App() {
                           type="button"
                           className="password-toggle"
                           onClick={() => setShowNewPassword((v) => !v)}
-                          aria-label={showNewPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
+                          aria-label={showNewPassword ? t("aria_hide_password") : t("aria_show_password")}
                         >
                           {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
@@ -2879,7 +3863,7 @@ export default function App() {
                         disabled={passwordStatus === "saving"}
                         style={{ flexShrink: 0 }}
                       >
-                        définir
+                        {t("account_set_password_button")}
                       </button>
                     </div>
                     {passwordError && (
@@ -2909,29 +3893,28 @@ export default function App() {
                 }}
               >
                 <LogOut size={16} color={pt.subText} style={{ flexShrink: 0 }} />
-                <span className="mono" style={{ fontSize: 12, color: pt.subText }}>déconnexion</span>
+                <span className="mono" style={{ fontSize: 12, color: pt.subText }}>{t("account_sign_out")}</span>
               </button>
             </div>
           </div>
         ) : authStatus === "sent" ? (
           <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
-            Lien envoyé ! Vérifie ta boîte mail ({authEmail}) et clique dessus pour te connecter.
+            {t("account_magic_link_sent_prefix")}{authEmail}{t("account_magic_link_sent_suffix")}
           </p>
         ) : authStatus === "signup_sent" ? (
           <p style={{ fontSize: 12, color: pt.rowText, margin: 0 }}>
-            Compte créé ! Vérifie ta boîte mail ({authEmail}) et clique sur le lien de confirmation pour
-            activer ton compte, puis reviens te connecter avec ton mot de passe.
+            {t("account_signup_sent_prefix")}{authEmail}{t("account_signup_sent_suffix")}
           </p>
         ) : (
           <div>
             <p style={{ fontSize: 12, color: pt.rowText, marginTop: 0, marginBottom: 8 }}>
-              Connecte-toi pour sauvegarder ton historique, débloquer ton avatar personnalisable et apparaître au classement (optionnel).
+              {t("account_login_intro")}
             </p>
             <input
               type="email"
               value={authEmail}
               onChange={(e) => setAuthEmail(e.target.value)}
-              placeholder="ton@email.com"
+              placeholder={t("account_email_placeholder")}
               style={{
                 width: "100%",
                 fontFamily: "'Inter', sans-serif",
@@ -2950,7 +3933,7 @@ export default function App() {
                 type={showAuthPassword ? "text" : "password"}
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
-                placeholder="mot de passe"
+                placeholder={t("account_password_placeholder")}
                 style={{
                   width: "100%",
                   fontFamily: "'Inter', sans-serif",
@@ -2967,7 +3950,7 @@ export default function App() {
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowAuthPassword((v) => !v)}
-                aria-label={showAuthPassword ? "masquer le mot de passe" : "afficher le mot de passe"}
+                aria-label={showAuthPassword ? t("aria_hide_password") : t("aria_show_password")}
               >
                 {showAuthPassword ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
@@ -2979,7 +3962,7 @@ export default function App() {
                 disabled={authStatus === "sending"}
                 style={{ flex: 1, justifyContent: "center" }}
               >
-                se connecter
+                {t("account_signin_button")}
               </button>
               <button
                 className="btn-ghost"
@@ -2987,7 +3970,7 @@ export default function App() {
                 disabled={authStatus === "sending"}
                 style={{ flex: 1, justifyContent: "center" }}
               >
-                créer un compte
+                {t("account_signup_button")}
               </button>
             </div>
             <div
@@ -3001,7 +3984,7 @@ export default function App() {
               }}
             >
               <div style={{ flex: 1, height: 1, background: pt.rowBorder.replace("1px solid ", "") }} />
-              ou
+              {t("account_or_divider")}
               <div style={{ flex: 1, height: 1, background: pt.rowBorder.replace("1px solid ", "") }} />
             </div>
             <button
@@ -3010,7 +3993,7 @@ export default function App() {
               disabled={authStatus === "sending" || !authEmail.trim()}
               style={{ width: "100%", justifyContent: "center" }}
             >
-              <Mail size={14} /> recevoir un lien de connexion (sans mot de passe)
+              <Mail size={14} /> {t("account_magic_link_button")}
             </button>
             {authError && (
               <p style={{ fontSize: 11, color: accent, marginTop: 6, marginBottom: 0 }}>{authError}</p>
@@ -3138,11 +4121,7 @@ export default function App() {
     const isHeic =
       /\.hei[cf]$/i.test(file.name || "") || /heic|heif/i.test(file.type || "");
     if (isHeic) {
-      setError(
-        "Ce fichier est au format HEIC (photos iPhone), pas encore géré par ce prototype de test. " +
-          "Solution rapide : Réglages → Appareil photo → Formats → \"Le plus compatible\" sur ton iPhone, " +
-          "puis reprends la photo. La vraie app pourra lire le HEIC nativement."
-      );
+      setError(t("err_heic_format"));
       return;
     }
 
@@ -3173,7 +4152,7 @@ export default function App() {
 
     const reader = new FileReader();
     reader.onerror = () => {
-      setError("Impossible de lire le fichier sélectionné.");
+      setError(t("err_file_read"));
     };
     reader.onload = () => {
       const dataUrl = reader.result;
@@ -3228,7 +4207,7 @@ export default function App() {
         body: JSON.stringify(body),
       });
     } catch (e) {
-      throw new Error("Impossible de contacter l'API (réseau). " + e.message);
+      throw new Error(t("err_api_network_prefix") + e.message);
     }
 
     const rawText = await readBody(res);
@@ -3244,10 +4223,10 @@ export default function App() {
     }
 
     if (data?.error) {
-      throw new Error("Erreur API: " + data.error.message);
+      throw new Error(t("err_api_prefix") + data.error.message);
     }
     if (data?.stop_reason === "max_tokens") {
-      throw new Error("Réponse coupée (max_tokens atteint).");
+      throw new Error(t("err_api_truncated"));
     }
     if (data?.content) {
       const text = data.content
@@ -3267,7 +4246,7 @@ export default function App() {
     }
 
     throw new Error(
-      "Réponse illisible/tronquée de l'API (statut " + res.status + "). Contenu brut: " +
+      t("err_api_unreadable_prefix") + res.status + t("err_api_unreadable_middle") +
         rawText.slice(0, 400)
     );
   }
@@ -3277,12 +4256,12 @@ export default function App() {
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
     if (start === -1 || end === -1) {
-      throw new Error("Pas de JSON trouvé dans la réponse: " + text.slice(0, 300));
+      throw new Error(t("err_json_not_found_prefix") + text.slice(0, 300));
     }
     try {
       return JSON.parse(cleaned.slice(start, end + 1));
     } catch (e) {
-      throw new Error("JSON invalide: " + text.slice(0, 300));
+      throw new Error(t("err_json_invalid_prefix") + text.slice(0, 300));
     }
   }
 
@@ -3342,16 +4321,16 @@ export default function App() {
     try {
       res = await fetch(url);
     } catch (e) {
-      throw new Error("Impossible de contacter le serveur relais: " + e.message);
+      throw new Error(t("err_relay_unreachable_prefix") + e.message);
     }
     let data;
     try {
       data = await res.json();
     } catch (e) {
-      throw new Error("Réponse du serveur relais illisible (statut " + res.status + ").");
+      throw new Error(t("err_relay_unreadable_prefix") + res.status + t("err_relay_unreadable_suffix"));
     }
     if (data.error) {
-      throw new Error("Erreur serveur relais: " + data.error);
+      throw new Error(t("err_relay_error_prefix") + data.error);
     }
     const pickResults = (entry) => ((entry && entry.results) || []).slice(0, 15);
     const bySource = {
@@ -3390,7 +4369,7 @@ export default function App() {
     if (!image && !listingSeed) return;
     setError(null);
     if (!user) {
-      setError("Connecte-toi pour lancer une estimation (3 gratuites par mois, sans carte bancaire).");
+      setError(t("err_login_required_estimate"));
       setShowHistory(true);
       return;
     }
@@ -3416,7 +4395,7 @@ export default function App() {
     if (!item) return;
     setError(null);
     if (!user) {
-      setError("Connecte-toi pour lancer une estimation (3 gratuites par mois, sans carte bancaire).");
+      setError(t("err_login_required_estimate"));
       setShowHistory(true);
       return;
     }
@@ -3524,7 +4503,8 @@ export default function App() {
               "un titre court et accrocheur (60 caractères maximum), et une description de vente honnête et convaincante " +
               "(3 à 5 phrases : mentionne l'état, met en avant les points forts, précise que le prix est à négocier). " +
               "Ne jamais inventer de caractéristiques ou mentir sur l'état. " +
-              'Réponds UNIQUEMENT en JSON: {"titre": "...", "description": "..."}',
+              'Réponds UNIQUEMENT en JSON: {"titre": "...", "description": "..."}' +
+              aiLangInstruction(),
           },
         ],
         "claude-haiku-4-5-20251001"
@@ -3540,7 +4520,7 @@ export default function App() {
         supabase.rpc("record_ad_generation").catch(() => {});
       }
     } catch (e) {
-      setAdError("Impossible de générer l'annonce, réessaie.");
+      setAdError(t("err_ad_generation_failed"));
     } finally {
       setAdLoading(false);
     }
@@ -3556,7 +4536,7 @@ export default function App() {
         setTimeout(() => setAdCopied(false), 2000);
       })
       .catch(() => {
-        setAdError("Impossible de copier automatiquement, sélectionne le texte à la main.");
+        setAdError(t("err_ad_copy_failed"));
       });
   }
 
@@ -3589,14 +4569,14 @@ export default function App() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur lors de la génération.");
+      if (!res.ok) throw new Error(data.error || t("err_extra_angles_generation"));
       if (!data.images || data.images.length === 0) {
-        throw new Error(data.error || "Aucune photo n'a pu être générée, réessaie.");
+        throw new Error(data.error || t("err_extra_angles_none"));
       }
       setExtraAngles(data.images);
     } catch (e) {
       setExtraAnglesAttempted(false); // on relibère le bouton "réessayer"
-      setExtraAnglesError(e.message || "Impossible de générer les photos, réessaie.");
+      setExtraAnglesError(e.message || t("err_extra_angles_failed"));
     } finally {
       setExtraAnglesLoading(false);
     }
@@ -3790,8 +4770,8 @@ export default function App() {
           objet: effectiveDetails.trim() ? `${seedTitle} (${effectiveDetails.trim()})` : seedTitle,
           recherche: effectiveDetails.trim() ? `${seedTitle} ${effectiveDetails.trim()}` : seedTitle,
           categorie: effectiveListingSeed.category || "",
-          etat: "État non vérifiable à distance : estimation basée sur une annonce en ligne, pas sur une photo.",
-          etat_note: "occasion (état non vérifié)",
+          etat: t("seed_etat_unverifiable"),
+          etat_note: t("seed_etat_note"),
         };
       } else {
         setStatus("analyzing");
@@ -3811,7 +4791,9 @@ export default function App() {
                   '{"type_sujet": "objet" ou "etre_vivant" ou "vehicule" ou "immobilier", "objet": "nom précis de l\'objet (marque/modèle si visible) OU description brève et neutre de l\'être vivant OU description du véhicule OU description du bien immobilier", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (vide si pas type objet)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé", "marque": "marque du véhicule si type_sujet=vehicule, sinon vide", "modele": "modèle du véhicule si type_sujet=vehicule, sinon vide", "annee": nombre (année du véhicule si clairement identifiable, sinon null), "type_bien": "maison ou appartement si type_sujet=immobilier, sinon vide"}' +
                   (effectiveDetails.trim()
                     ? ` L'utilisateur précise en plus: "${effectiveDetails.trim()}". Utilise ces précisions en priorité sur ce que tu vois sur la photo si elles se contredisent (ex: la contenance exacte, un défaut caché), et intègre-les dans "objet" et "recherche".`
-                    : ""),
+                    : "") +
+                  aiLangInstruction() +
+                  ' IMPORTANT: le champ "recherche" doit toujours rester en français quelle que soit la langue demandée ci-dessus, car ces mots-clés servent à chercher directement sur des sites français (Leboncoin, Vinted, eBay.fr) — seul "objet" (et les autres champs en langage naturel) doit suivre la langue demandée.',
               },
             ],
           },
@@ -3853,7 +4835,8 @@ export default function App() {
                 "Génère une estimation de prix volontairement fictive et humoristique (les êtres vivants ne sont pas à vendre, c'est un gag). " +
                 "Inclus une courte blague ou remarque drôle et bienveillante liée à ce sujet précis (jamais méchante, jamais dégradante, rien sur l'apparence physique d'une personne). " +
                 "Glisse aussi, sur un ton léger, le rappel que ce n'est bien sûr pas à vendre pour de vrai (les animaux sont des êtres sensibles protégés par la loi, pas des biens; et un humain encore moins). " +
-                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "commentaire": "la blague/remarque, 1 à 2 phrases", "rappel": "le rappel légal/éthique tourné avec humour, 1 phrase"}',
+                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "commentaire": "la blague/remarque, 1 à 2 phrases", "rappel": "le rappel légal/éthique tourné avec humour, 1 phrase"}' +
+                aiLangInstruction(),
             },
           ],
           "claude-haiku-4-5-20251001"
@@ -3867,7 +4850,7 @@ export default function App() {
           commentaire: humor.commentaire,
           rappel: humor.rappel,
           confiance: "humour",
-          source: "estim' mode 'estimer tout, même n'importe quoi' 🎭",
+          source: t("src_humor_mode"),
         };
         setResult(finalResult);
         setStatus("done");
@@ -3992,9 +4975,7 @@ export default function App() {
           }
 
           if (usedPrices.length === 0) {
-            throw new Error(
-              "Des annonces ont été trouvées mais aucune ne correspond précisément au même produit (même format/modèle)."
-            );
+            throw new Error(t("err_listings_no_match"));
           }
 
           // Les ventes eBay confirmées sont un signal beaucoup plus fiable
@@ -4005,10 +4986,10 @@ export default function App() {
           const soldPrices = soldResults.map((r) => r.extracted_price).sort((a, b) => a - b);
           const askingPrices = askingResults.map((r) => r.extracted_price).sort((a, b) => a - b);
           const usedSource =
-            "estimation basée sur " +
+            t("src_used_prefix") +
             usedPrices.length +
-            " annonce(s) d'occasion réelle(s) (Leboncoin/Vinted/eBay)" +
-            (soldPrices.length > 0 ? `, dont ${soldPrices.length} vente(s) eBay confirmée(s)` : "");
+            t("src_used_middle") +
+            (soldPrices.length > 0 ? `${t("src_used_sold_prefix")}${soldPrices.length}${t("src_used_sold_suffix")}` : "");
 
           // Fourchette "brute" (min/max des annonces trouvées), gardée en
           // repli si jamais l'IA ne renvoie pas prix_bas/prix_haut. Ce n'est
@@ -4090,7 +5071,8 @@ export default function App() {
                 "\"facilite_vente\" (0 = très difficile à vendre car peu de demande sur ce type de plateformes d'occasion, 10 = se vend très facilement/vite, en te basant sur le nombre d'annonces trouvées et ta connaissance générale de la demande pour ce type de produit), " +
                 "\"rarete\" (0 = produit courant qu'on trouve facilement partout, 10 = produit très rare/recherché/difficile à trouver). " +
                 "Donne aussi une tendance de marché sur les 10 dernières années pour CE TYPE de produit précis (\"tendance_marche\"): un tableau de EXACTEMENT 11 nombres (indices), un par an, du plus ancien (il y a 10 ans) au plus récent (aujourd'hui = toujours 100, c'est le niveau de prix actuel). Base-toi sur ta connaissance réelle de l'évolution de la cote de cette catégorie: les objets qui prennent de la valeur avec le temps (vintage recherché, collector, édition limitée) doivent avoir des indices qui MONTENT vers 100 en fin de période (donc plus bas au début), ceux qui se déprécient (électronique récente, mobilier neuf de grande diffusion) doivent avoir des indices qui BAISSENT vers 100 (donc plus hauts au début), et un marché de l'occasion ne bouge presque jamais en ligne parfaitement droite: varie légèrement chaque point plutôt qu'une progression linéaire. " +
-                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}',
+                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}' +
+                aiLangInstruction(),
             },
           ], "claude-haiku-4-5-20251001");
           const extra = extractJson(conseilText);
@@ -4128,7 +5110,7 @@ export default function App() {
             breakdown,
           };
         } else {
-          throw new Error("Pas assez d'annonces trouvées pour cet objet.");
+          throw new Error(t("err_listings_not_enough"));
         }
       } catch (marketError) {
         const seedFallbackPart = effectiveListingSeed
@@ -4149,7 +5131,8 @@ export default function App() {
               "\"facilite_vente\" (0 = très difficile à vendre car peu de demande, 10 = se vend très facilement/vite) et " +
               "\"rarete\" (0 = produit courant, 10 = produit très rare/recherché), en te basant sur ta connaissance générale du marché de l'occasion. " +
               "Donne aussi une tendance de marché sur les 10 dernières années pour CE TYPE de produit (\"tendance_marche\"): un tableau de EXACTEMENT 11 nombres (indices), un par an, du plus ancien (il y a 10 ans) au plus récent (aujourd'hui = toujours 100), en montant vers 100 en fin de période si ce type d'objet prend de la valeur avec le temps, en descendant vers 100 s'il se déprécie, avec de légères variations plutôt qu'une ligne droite. " +
-              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}',
+              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}' +
+              aiLangInstruction(),
           },
         ], "claude-haiku-4-5-20251001");
         const fallback = extractJson(priceText);
@@ -4171,7 +5154,7 @@ export default function App() {
             ? fallback.tendance_marche.filter((n) => typeof n === "number" && !isNaN(n))
             : null,
           confiance: "basse",
-          source: "estimation IA (annonces réelles indisponibles: " + marketError.message + ")",
+          source: t("src_ai_no_listings_prefix") + marketError.message + t("src_ai_no_listings_suffix"),
           listings: [],
           breakdown: {},
         };
@@ -4197,7 +5180,7 @@ export default function App() {
       });
     } catch (e) {
       console.error(e);
-      setError(e.message || "L'estimation a échoué. Réessaie avec une autre photo.");
+      setError(e.message || t("err_estimation_failed"));
       setStatus("error");
     }
   }
@@ -4253,7 +5236,8 @@ export default function App() {
               infoText +
               "En te basant sur ta connaissance générale du marché de l'occasion automobile en France, donne une estimation de prix réaliste pour ce véhicule avec ces caractéristiques. " +
               "Si l'année ou le kilométrage manquent, base-toi sur une hypothèse raisonnable pour un véhicule de ce type et signale-le clairement dans \"hypothese\" (sinon chaîne vide). " +
-              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "commentaire": "1 à 2 phrases sur la cote de ce véhicule", "hypothese": "..."}',
+              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "commentaire": "1 à 2 phrases sur la cote de ce véhicule", "hypothese": "..."}' +
+              aiLangInstruction(),
           },
         ],
         "claude-haiku-4-5-20251001"
@@ -4266,7 +5250,7 @@ export default function App() {
         commentaire: data.commentaire,
         hypothese: data.hypothese || null,
         confiance: "indicative",
-        source: "estimation IA véhicule — indicative, pas d'annonces réelles comparées",
+        source: t("src_ai_vehicle"),
       };
       setResult(finalResult);
       setStatus("done");
@@ -4282,7 +5266,7 @@ export default function App() {
       });
     } catch (e) {
       console.error(e);
-      setError(e.message || "L'estimation du véhicule a échoué.");
+      setError(e.message || t("err_vehicle_estimation_failed"));
       setStatus("error");
     }
   }
@@ -4308,7 +5292,8 @@ export default function App() {
               "En te basant sur ta connaissance générale du marché immobilier français, donne une estimation de prix très approximative pour ce bien. " +
               "Précise bien qu'il s'agit d'un ordre de grandeur très large, sans visite ni données précises du marché local. " +
               "Si la ville ou la surface manquent, base-toi sur une hypothèse raisonnable et signale-le clairement dans \"hypothese\" (sinon chaîne vide). " +
-              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "commentaire": "1 à 2 phrases sur l\'estimation", "hypothese": "..."}',
+              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre_euros, "prix_haut": nombre_euros, "commentaire": "1 à 2 phrases sur l\'estimation", "hypothese": "..."}' +
+              aiLangInstruction(),
           },
         ],
         "claude-haiku-4-5-20251001"
@@ -4321,7 +5306,7 @@ export default function App() {
         commentaire: data.commentaire,
         hypothese: data.hypothese || null,
         confiance: "indicative",
-        source: "estimation IA immobilier — très approximative, sans données de marché local",
+        source: t("src_ai_realestate"),
       };
       setResult(finalResult);
       setStatus("done");
@@ -4337,7 +5322,7 @@ export default function App() {
       });
     } catch (e) {
       console.error(e);
-      setError(e.message || "L'estimation du bien immobilier a échoué.");
+      setError(e.message || t("err_realestate_estimation_failed"));
       setStatus("error");
     }
   }
@@ -4369,7 +5354,7 @@ export default function App() {
             }
             className="btn-ghost"
             style={{ padding: "6px 10px", borderColor: pt.ghostBorder, color: pt.ghostColor, background: pt.ghostBg }}
-            aria-label="moins"
+            aria-label={t("aria_minus")}
           >
             <Minus size={14} />
           </button>
@@ -4420,12 +5405,12 @@ export default function App() {
             }
             className="btn-ghost"
             style={{ padding: "6px 10px", borderColor: pt.ghostBorder, color: pt.ghostColor, background: pt.ghostBg }}
-            aria-label="plus"
+            aria-label={t("aria_plus")}
           >
             <Plus size={14} />
           </button>
           <span className="mono" style={{ fontSize: 12, color: pt.subText }}>
-            estimation{creditQuantity > 1 ? "s" : ""}
+            {creditQuantity > 1 ? t("credits_unit_plural") : t("credits_unit_singular")}
           </span>
         </div>
         {bonus > 0 && (
@@ -4513,7 +5498,9 @@ export default function App() {
         >
           <span style={{ fontSize: 18 }}>{gradeUnlockToast.emoji}</span>
           <span className="mono" style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
-            Palier {gradeUnlockToast.label} débloqué !
+            {t("toast_grade_unlocked_prefix")}
+            {gradeUnlockToast.label}
+            {t("toast_grade_unlocked_suffix")}
           </span>
         </div>
       )}
@@ -4540,8 +5527,11 @@ export default function App() {
         >
           <span style={{ fontSize: 18 }}>🎉</span>
           <span className="mono" style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
-            Félicitations, tu viens de débloquer {avatarUnlockToast.names.length > 1 ? "des avatars" : "un avatar"} :{" "}
-            {avatarUnlockToast.names.join(", ")} !
+            {t("avatar_unlock_toast_prefix")}
+            {avatarUnlockToast.names.length > 1 ? t("avatar_unlock_toast_plural") : t("avatar_unlock_toast_singular")}
+            {t("avatar_unlock_toast_colon")}
+            {avatarUnlockToast.names.join(", ")}
+            {t("avatar_unlock_toast_suffix")}
           </span>
         </div>
       )}
@@ -4879,7 +5869,7 @@ export default function App() {
                 padding: "3px 9px",
               }}
             >
-              bêta
+              {t("beta_badge")}
             </span>
             {/* Profil : connexion / déconnexion / avatar — icône unique en
                 haut à droite du header (plus dans le menu hamburger).
@@ -4887,7 +5877,7 @@ export default function App() {
                 icône neutre sinon (ou si pas connecté). */}
             <button
               onClick={() => setShowProfilePanel(true)}
-              aria-label="Mon profil"
+              aria-label={t("aria_my_profile")}
               style={{
                 marginLeft: "auto",
                 flexShrink: 0,
@@ -4919,7 +5909,21 @@ export default function App() {
             <br />
             <span style={{ color: accent }}>{t("hero_title_2")}</span>
           </h1>
-          <p style={{ marginTop: 10, fontSize: 14, color: pt.subText, lineHeight: 1.5, position: "relative" }}>
+          <p
+            style={{
+              marginTop: 10,
+              fontSize: 14,
+              color: pt.subText,
+              lineHeight: 1.5,
+              position: "relative",
+              // Le sous-titre est bien composé de deux idées distinctes (les
+              // objets concernés, puis comment Estim' fait) : whiteSpace
+              // "pre-line" restitue le retour à la ligne présent dans le
+              // texte traduit (demandé par Dylan) sans avoir besoin de deux
+              // <p> séparés ni de <br/> côté JSX.
+              whiteSpace: "pre-line",
+            }}
+          >
             {t("hero_subtitle")}
           </p>
 
@@ -5085,7 +6089,7 @@ export default function App() {
                     color: pt.ghostColor,
                   }}
                 >
-                  <Upload size={14} /> choisir un fichier
+                  <Upload size={14} /> {t("drop_zone_choose_file")}
                 </span>
               </div>
             )}
@@ -5122,7 +6126,7 @@ export default function App() {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <img
               src={image.dataUrl}
-              alt="objet à estimer"
+              alt={t("alt_object_to_estimate")}
               style={{
                 width: "100%",
                 aspectRatio: "4/3",
@@ -5186,11 +6190,11 @@ export default function App() {
                   }}
                 >
                   <label className="mono" style={{ fontSize: 12, color: pt.subText }}>
-                    Précisions (optionnel) — contenance, état, modèle exact...
+                    {t("details_label")}
                   </label>
                   {isListening && (
                     <span className="mono" style={{ fontSize: 11, color: accent }}>
-                      ● écoute…
+                      {t("listening_indicator")}
                     </span>
                   )}
                 </div>
@@ -5198,7 +6202,7 @@ export default function App() {
                   <textarea
                     value={details}
                     onChange={(e) => setDetails(e.target.value)}
-                    placeholder="ex: flacon de 100ml, léger éclat sur le bord"
+                    placeholder={t("details_placeholder")}
                     rows={2}
                     style={{
                       flex: 1,
@@ -5217,8 +6221,8 @@ export default function App() {
                       type="button"
                       className={"btn-mic" + (isListening ? " listening" : "")}
                       onClick={toggleVoiceInput}
-                      aria-label={isListening ? "arrêter la dictée vocale" : "dicter les précisions"}
-                      title={isListening ? "Arrêter" : "Dicter à l'oral"}
+                      aria-label={isListening ? t("aria_stop_dictation") : t("aria_start_dictation")}
+                      title={isListening ? t("dictation_stop_title") : t("dictation_start_title")}
                     >
                       {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                     </button>
@@ -5233,23 +6237,23 @@ export default function App() {
                   {status === "analyzing" && (
                     <>
                       <Loader2 size={16} className="spin" style={{ animation: "spin 1s linear infinite" }} />
-                      Identification…
+                      {t("btn_identifying")}
                     </>
                   )}
                   {status === "pricing" && (
                     <>
                       <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                      Estimation du prix…
+                      {t("btn_pricing")}
                     </>
                   )}
                   {(status === "idle" || status === "error") && (
                     <>
                       <Tag size={16} />
-                      Estimer sa valeur
+                      {t("btn_estimate_value")}
                     </>
                   )}
                 </button>
-                <button className="btn-ghost" onClick={reset} aria-label="changer de photo">
+                <button className="btn-ghost" onClick={reset} aria-label={t("aria_change_photo")}>
                   <RotateCcw size={16} />
                 </button>
               </div>
@@ -5258,18 +6262,18 @@ export default function App() {
             {status === "vehicule_form" && (
               <div className="tag-card">
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 10 }}>
-                  🚗 quelques précisions sur le véhicule
+                  {t("vehicle_form_title")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div>
                     <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
-                      Année
+                      {t("vehicle_year_label")}
                     </label>
                     <input
                       type="number"
                       value={vehicleForm.annee}
                       onChange={(e) => setVehicleForm((v) => ({ ...v, annee: e.target.value }))}
-                      placeholder="ex: 2018"
+                      placeholder={t("vehicle_year_placeholder")}
                       style={{
                         width: "100%",
                         fontFamily: "'Inter', sans-serif",
@@ -5285,13 +6289,13 @@ export default function App() {
                   </div>
                   <div>
                     <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
-                      Kilométrage
+                      {t("vehicle_mileage_label")}
                     </label>
                     <input
                       type="number"
                       value={vehicleForm.kilometrage}
                       onChange={(e) => setVehicleForm((v) => ({ ...v, kilometrage: e.target.value }))}
-                      placeholder="ex: 85000"
+                      placeholder={t("vehicle_mileage_placeholder")}
                       style={{
                         width: "100%",
                         fontFamily: "'Inter', sans-serif",
@@ -5307,7 +6311,7 @@ export default function App() {
                   </div>
                   <div>
                     <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
-                      État général
+                      {t("vehicle_condition_label")}
                     </label>
                     <select
                       value={vehicleForm.etat}
@@ -5324,19 +6328,22 @@ export default function App() {
                         boxSizing: "border-box",
                       }}
                     >
-                      <option value="excellent état">excellent état</option>
-                      <option value="bon état">bon état</option>
-                      <option value="état moyen">état moyen</option>
-                      <option value="à réviser / défauts visibles">à réviser / défauts visibles</option>
+                      {/* Les `value` restent en français (valeurs envoyées à
+                          l'API d'estimation, pas du texte affiché) — seul le
+                          libellé visible dans le <select> suit la langue. */}
+                      <option value="excellent état">{t("vehicle_condition_excellent")}</option>
+                      <option value="bon état">{t("vehicle_condition_good")}</option>
+                      <option value="état moyen">{t("vehicle_condition_average")}</option>
+                      <option value="à réviser / défauts visibles">{t("vehicle_condition_poor")}</option>
                     </select>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                   <button className="btn-primary" onClick={estimateVehicule}>
                     <Tag size={16} />
-                    Estimer
+                    {t("btn_estimate")}
                   </button>
-                  <button className="btn-ghost" onClick={reset} aria-label="changer de photo">
+                  <button className="btn-ghost" onClick={reset} aria-label={t("aria_change_photo")}>
                     <RotateCcw size={16} />
                   </button>
                 </div>
@@ -5346,18 +6353,18 @@ export default function App() {
             {status === "immobilier_form" && (
               <div className="tag-card">
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 10 }}>
-                  🏠 quelques précisions sur le bien
+                  {t("realestate_form_title")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div>
                     <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
-                      Ville ou secteur
+                      {t("realestate_city_label")}
                     </label>
                     <input
                       type="text"
                       value={realEstateForm.ville}
                       onChange={(e) => setRealEstateForm((v) => ({ ...v, ville: e.target.value }))}
-                      placeholder="ex: Rennes centre"
+                      placeholder={t("realestate_city_placeholder")}
                       style={{
                         width: "100%",
                         fontFamily: "'Inter', sans-serif",
@@ -5373,13 +6380,13 @@ export default function App() {
                   </div>
                   <div>
                     <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
-                      Surface (m²)
+                      {t("realestate_surface_label")}
                     </label>
                     <input
                       type="number"
                       value={realEstateForm.surface}
                       onChange={(e) => setRealEstateForm((v) => ({ ...v, surface: e.target.value }))}
-                      placeholder="ex: 65"
+                      placeholder={t("realestate_surface_placeholder")}
                       style={{
                         width: "100%",
                         fontFamily: "'Inter', sans-serif",
@@ -5395,13 +6402,13 @@ export default function App() {
                   </div>
                   <div>
                     <label className="mono" style={{ fontSize: 12, color: pt.subText, display: "block", marginBottom: 4 }}>
-                      Nombre de pièces (optionnel)
+                      {t("realestate_rooms_label")}
                     </label>
                     <input
                       type="number"
                       value={realEstateForm.pieces}
                       onChange={(e) => setRealEstateForm((v) => ({ ...v, pieces: e.target.value }))}
-                      placeholder="ex: 3"
+                      placeholder={t("realestate_rooms_placeholder")}
                       style={{
                         width: "100%",
                         fontFamily: "'Inter', sans-serif",
@@ -5419,9 +6426,9 @@ export default function App() {
                 <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                   <button className="btn-primary" onClick={estimateImmobilier}>
                     <Tag size={16} />
-                    Estimer
+                    {t("btn_estimate")}
                   </button>
-                  <button className="btn-ghost" onClick={reset} aria-label="changer de photo">
+                  <button className="btn-ghost" onClick={reset} aria-label={t("aria_change_photo")}>
                     <RotateCcw size={16} />
                   </button>
                 </div>
@@ -5456,7 +6463,7 @@ export default function App() {
                   />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
-                  🎭 mode "estimer tout, même n'importe quoi"
+                  {t("humor_mode_badge")}
                 </div>
                 <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
                   {result.objet}
@@ -5495,7 +6502,8 @@ export default function App() {
                   />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
-                  {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
+                  {result.type_sujet === "vehicule" ? t("vehicle_estimate_badge") : t("realestate_estimate_badge")}
+                  {t("indicative_suffix")}
                 </div>
                 <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
                   {result.objet}
@@ -5520,7 +6528,8 @@ export default function App() {
                 </div>
                 {result.hypothese && (
                   <div style={{ fontSize: 12, color: pt.chevronColor, fontStyle: "italic", lineHeight: 1.5, marginBottom: 10, position: "relative" }}>
-                    Hypothèse : {result.hypothese}
+                    {t("hypothesis_prefix")}
+                    {result.hypothese}
                   </div>
                 )}
                 <div className="mono" style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.6, position: "relative" }}>
@@ -5585,8 +6594,8 @@ export default function App() {
 
                 <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
                   {[
-                    { key: "estimation", label: "Estimation" },
-                    { key: "statistiques", label: "Statistiques" },
+                    { key: "estimation", label: t("tab_estimation") },
+                    { key: "statistiques", label: t("tab_statistiques") },
                   ].map((tab) => (
                     <button
                       key={tab.key}
@@ -5617,15 +6626,16 @@ export default function App() {
                       marginBottom: 12,
                     }}
                   >
-                    <Gauge label="Facilité à vendre" value={result.facilite_vente} lowLabel="Difficile" highLabel="Facile" theme={menuTheme} accent={accent} accentRgb={accentRgb} />
-                    <Gauge label="Rareté" value={result.rarete} lowLabel="Pas rare" highLabel="Rare" theme={menuTheme} accent={accent} accentRgb={accentRgb} />
+                    <Gauge label={t("gauge_sell_ease_label")} value={result.facilite_vente} lowLabel={t("gauge_sell_ease_low")} highLabel={t("gauge_sell_ease_high")} theme={menuTheme} accent={accent} accentRgb={accentRgb} />
+                    <Gauge label={t("gauge_rarity_label")} value={result.rarete} lowLabel={t("gauge_rarity_low")} highLabel={t("gauge_rarity_high")} theme={menuTheme} accent={accent} accentRgb={accentRgb} />
 
                     {Array.isArray(result.tendance_marche) && result.tendance_marche.length >= 2 && (() => {
                       const trendPoints = buildTrendSeries(
                         result.tendance_marche,
                         trendRange,
                         result.objet || "objet",
-                        (result.prix_bas + result.prix_haut) / 2
+                        (result.prix_bas + result.prix_haut) / 2,
+                        lang
                       );
                       const isShortRange = trendRange === "1j" || trendRange === "1s" || trendRange === "1m";
                       return (
@@ -5641,7 +6651,7 @@ export default function App() {
                               marginBottom: 10,
                             }}
                           >
-                            Tendance de cote
+                            {t("trend_title")}
                           </div>
                           <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
                             {TREND_RANGES.map((r) => (
@@ -5661,25 +6671,21 @@ export default function App() {
                                   cursor: "pointer",
                                 }}
                               >
-                                {r.label}
+                                {t(`trend_range_${r.key}`)}
                               </button>
                             ))}
                           </div>
                           {trendPoints && <PriceEvolutionChart theme={menuTheme} points={trendPoints} />}
                           <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5, marginTop: 10 }}>
-                            Tendance de cote estimée par l'IA pour ce type de produit à partir de sa courbe sur 10
-                            ans (pas une donnée de marché vérifiée) — à prendre comme un repère indicatif, pas une
-                            valeur garantie.
-                            {isShortRange &&
-                              " Sur une période aussi courte, le prix de revente d'un objet d'occasion ne bouge en réalité presque jamais : cette vue sert surtout à zoomer dans la tendance de fond."}
+                            {t("trend_disclaimer")}
+                            {isShortRange && t("trend_short_range_note")}
                           </div>
                         </div>
                       );
                     })()}
 
                     <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
-                      Évaluation par l'IA à partir de la demande observée sur Leboncoin, Vinted et eBay pour ce
-                      produit précis.
+                      {t("trend_ai_evaluation_note")}
                     </div>
                   </div>
                 )}
@@ -5714,7 +6720,7 @@ export default function App() {
                   }}
                 >
                   <Share2 size={13} />
-                  {shareStatus === "generating" ? "génération…" : shareStatus === "downloaded" ? "Image enregistrée !" : "Partager"}
+                  {shareStatus === "generating" ? t("share_generating") : shareStatus === "downloaded" ? t("share_downloaded") : t("share_button")}
                 </button>
 
                 {result.alerte && (
@@ -5748,7 +6754,7 @@ export default function App() {
                       className="brand"
                       style={{ fontSize: brandSize(13), fontStyle: "italic", fontWeight: 500, color: pt.rowText, marginBottom: 6 }}
                     >
-                      Détail par plateforme
+                      {t("breakdown_title")}
                     </div>
                     {result.breakdown &&
                       ["leboncoin", "vinted", "ebay", "ebaySold"].map((key) => {
@@ -5773,11 +6779,12 @@ export default function App() {
                                 className="mono"
                                 style={{ color: key === "ebaySold" ? "#4ADE80" : accent }}
                               >
-                                {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count} {key === "ebaySold" ? "vente" : "annonce"}
+                                {b.min === b.max ? `${b.min} €` : `${b.min}–${b.max} €`} ({b.count}{" "}
+                                {key === "ebaySold" ? t("breakdown_sale_unit") : t("breakdown_listing_unit")}
                                 {b.count > 1 ? "s" : ""})
                               </span>
                             ) : (
-                              <span style={{ color: pt.chevronColor, fontStyle: "italic" }}>indisponible</span>
+                              <span style={{ color: pt.chevronColor, fontStyle: "italic" }}>{t("breakdown_unavailable")}</span>
                             )}
                           </div>
                         );
@@ -5801,8 +6808,12 @@ export default function App() {
                           }}
                         >
                           {listingsOpen
-                            ? "Réduire"
-                            : `Voir le détail des ${result.listings.length} annonce${result.listings.length > 1 ? "s" : ""} retenue${result.listings.length > 1 ? "s" : ""}`}
+                            ? t("listings_collapse")
+                            : `${t("listings_expand_prefix")}${result.listings.length} ${
+                                result.listings.length > 1
+                                  ? t("listings_expand_middle_plural")
+                                  : t("listings_expand_middle_singular")
+                              }`}
                         </button>
                         {listingsOpen && (
                           <div style={{ marginTop: 8 }}>
@@ -5878,11 +6889,11 @@ export default function App() {
                 >
                   {result.prix_brocante && (
                     <div style={{ marginBottom: 8 }}>
-                      <strong>En brocante :</strong> {result.prix_brocante}
+                      <strong>{t("brocante_label")}</strong> {result.prix_brocante}
                     </div>
                   )}
                   <div>
-                    <strong>Conseil :</strong> {result.conseil}
+                    <strong>{t("conseil_label")}</strong> {result.conseil}
                   </div>
                 </div>
                   </>
@@ -5910,18 +6921,17 @@ export default function App() {
                         textDecoration: "underline",
                       }}
                     >
-                      Un détail est faux ? Corriger et recalculer
+                      {t("correction_prompt")}
                     </button>
                   ) : (
                     <div>
                       <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
-                        Précise ce qui ne va pas (ex : "en fait c'est une petite taille"), l'estimation sera
-                        relancée avec cette info :
+                        {t("correction_instructions")}
                       </div>
                       <textarea
                         value={correctionInput}
                         onChange={(e) => setCorrectionInput(e.target.value)}
-                        placeholder="ex : petite taille, pas grande"
+                        placeholder={t("correction_placeholder")}
                         rows={2}
                         style={{
                           width: "100%",
@@ -5954,7 +6964,7 @@ export default function App() {
                             opacity: correctionInput.trim() ? 1 : 0.5,
                           }}
                         >
-                          Recalculer l'estimation
+                          {t("recalculate_button")}
                         </button>
                         <button
                           type="button"
@@ -5973,7 +6983,7 @@ export default function App() {
                             cursor: "pointer",
                           }}
                         >
-                          Annuler
+                          {t("cancel_button")}
                         </button>
                       </div>
                     </div>
@@ -6009,18 +7019,18 @@ export default function App() {
                       }}
                     >
                       <Sparkles size={14} />
-                      Générer une annonce à publier
+                      {t("generate_ad_button")}
                     </button>
                   )}
 
                   {!adText && !adLoading && adGenCount >= 3 && (
                     <div style={{ fontSize: 12, color: pt.chevronColor }}>
-                      Limite de 3 générations atteinte pour cette estimation.
+                      {t("ad_limit_reached")}
                     </div>
                   )}
 
                   {adLoading && (
-                    <div style={{ fontSize: 12, color: pt.chevronColor }}>Génération de l'annonce…</div>
+                    <div style={{ fontSize: 12, color: pt.chevronColor }}>{t("ad_generating")}</div>
                   )}
 
                   {adError && (
@@ -6030,7 +7040,7 @@ export default function App() {
                   {adText && !adLoading && (
                     <div>
                       <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
-                        Annonce prête à coller (modifiable) :
+                        {t("ad_ready_label")}
                       </div>
                       <input
                         value={adText.titre}
@@ -6082,7 +7092,7 @@ export default function App() {
                             cursor: "pointer",
                           }}
                         >
-                          {adCopied ? "Copié !" : "Copier le texte"}
+                          {adCopied ? t("ad_copied") : t("ad_copy_button")}
                         </button>
                         {adGenCount < 3 && (
                           <button
@@ -6099,19 +7109,19 @@ export default function App() {
                               cursor: "pointer",
                             }}
                           >
-                            Régénérer ({3 - adGenCount} restante{3 - adGenCount > 1 ? "s" : ""})
+                            {t("ad_regenerate_prefix")}
+                            {3 - adGenCount}
+                            {3 - adGenCount > 1 ? t("ad_regenerate_suffix_plural") : t("ad_regenerate_suffix_singular")}
                           </button>
                         )}
                       </div>
                       {adGenCount >= 3 && (
                         <div style={{ fontSize: 11, color: pt.chevronColor, marginBottom: 8 }}>
-                          Limite de 3 générations atteinte pour cette estimation — tu peux encore modifier le texte
-                          à la main juste au-dessus.
+                          {t("ad_limit_reached_edit_note")}
                         </div>
                       )}
                       <div style={{ fontSize: 11, color: pt.chevronColor, marginBottom: 6, lineHeight: 1.5 }}>
-                        Copie le texte ci-dessus, puis clique sur une plateforme pour créer ton annonce (colle le
-                        texte une fois sur la page) :
+                        {t("ad_paste_instructions")}
                       </div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         {SELL_PLATFORMS.map((p) => (
@@ -6179,7 +7189,7 @@ export default function App() {
                         marginBottom: 8,
                       }}
                     >
-                      Photos IA sous d'autres angles
+                      {t("extra_angles_title")}
                     </div>
 
                     {!isPremiumPlan && (
@@ -6203,8 +7213,7 @@ export default function App() {
                       >
                         <Lock size={13} color={accent} style={{ flexShrink: 0 }} />
                         <span className="mono" style={{ fontSize: 11, color: accent, textAlign: "left", lineHeight: 1.4 }}>
-                          Fonctionnalité premium — génère jusqu'à 2 photos IA de cet objet sous d'autres angles pour ton
-                          annonce
+                          {t("extra_angles_premium_note")}
                         </span>
                       </button>
                     )}
@@ -6231,7 +7240,7 @@ export default function App() {
                         }}
                       >
                         <Sparkles size={14} />
-                        Générer 2 photos sous d'autres angles
+                        {t("extra_angles_generate_button")}
                       </button>
                     )}
 
@@ -6258,7 +7267,7 @@ export default function App() {
                           ))}
                         </div>
                         <div style={{ fontSize: 12, color: pt.chevronColor }}>
-                          Génération en cours (10 à 20 secondes)…
+                          {t("extra_angles_generating")}
                         </div>
                       </div>
                     )}
@@ -6280,7 +7289,7 @@ export default function App() {
                             cursor: "pointer",
                           }}
                         >
-                          Réessayer
+                          {t("extra_angles_retry_button")}
                         </button>
                       </div>
                     )}
@@ -6305,7 +7314,7 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => downloadExtraAngle(img, i)}
-                                aria-label="télécharger cette photo"
+                                aria-label={t("aria_download_photo")}
                                 style={{
                                   position: "absolute",
                                   bottom: 6,
@@ -6324,7 +7333,7 @@ export default function App() {
                           ))}
                         </div>
                         <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
-                          Télécharge-les puis ajoute-les à ta photo d'origine sur Leboncoin, Vinted ou eBay.
+                          {t("extra_angles_download_note")}
                         </div>
                       </div>
                     )}
@@ -6332,7 +7341,7 @@ export default function App() {
                 )}
 
                 {(() => {
-                  const conf = CONFIDENCE_LABELS[result.confiance] || { label: result.confiance, dot: "muted" };
+                  const conf = confidenceInfo(result.confiance);
                   const dotColor = conf.dot === "muted" ? pt.chevronColor : conf.dot || accent;
                   return (
                     <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 16 }}>
@@ -6401,7 +7410,7 @@ export default function App() {
             >
               <h2 className="brand" style={{ fontSize: brandSize(20), margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
                 <Tag size={16} color={accent} style={{ transform: "rotate(90deg)" }} />
-                Historique
+                {t("history_title")}
               </h2>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 {history.length > 0 && (
@@ -6416,7 +7425,7 @@ export default function App() {
                       textDecoration: "underline",
                     }}
                   >
-                    tout effacer
+                    {t("history_clear_all")}
                   </button>
                 )}
                 <button
@@ -6425,7 +7434,7 @@ export default function App() {
                     setConfirmClearHistory(false);
                   }}
                   style={{ background: "none", border: "none", padding: 4 }}
-                  aria-label="fermer"
+                  aria-label={t("close_label")}
                 >
                   <X size={20} color={pt.closeColor} />
                 </button>
@@ -6434,13 +7443,13 @@ export default function App() {
 
             {!user && (
               <p className="mono" style={{ fontSize: 11, color: pt.subText, marginBottom: 14 }}>
-                Connecte-toi depuis ton profil (icône en haut à droite) pour un historique illimité, synchronisé entre appareils. Sans compte, l'historique reste local à cet appareil.
+                {t("history_login_note")}
               </p>
             )}
 
             {history.length === 0 && (
               <p className="mono" style={{ fontSize: 13, color: pt.subText }}>
-                Aucune estimation pour l'instant.
+                {t("history_empty")}
               </p>
             )}
 
@@ -6484,7 +7493,7 @@ export default function App() {
                     </div>
                     <div className="mono" style={{ fontSize: 12, color: pt.subText }}>
                       {h.prix_bas}–{h.prix_haut} € ·{" "}
-                      {new Date(h.date).toLocaleDateString("fr-FR", {
+                      {new Date(h.date).toLocaleDateString(localeTag(), {
                         day: "numeric",
                         month: "short",
                       })}
@@ -6492,8 +7501,8 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => reestimateFromHistory(h)}
-                    title="Réestimer (voir si le prix a bougé)"
-                    aria-label="réestimer"
+                    title={t("history_reestimate_title")}
+                    aria-label={t("aria_reestimate")}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -6511,7 +7520,7 @@ export default function App() {
                   <button
                     onClick={() => removeFromHistory(h.id)}
                     style={{ background: "none", border: "none", padding: 4, flexShrink: 0 }}
-                    aria-label="supprimer"
+                    aria-label={t("aria_delete")}
                   >
                     <Trash2 size={16} color={accent} />
                   </button>
@@ -6562,11 +7571,13 @@ export default function App() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <Trash2 size={18} color={pt.errorColor} />
               <h2 className="brand" style={{ fontSize: brandSize(18), margin: 0, color: pt.titleColor }}>
-                Tout effacer ?
+                {t("history_clear_confirm_title")}
               </h2>
             </div>
             <p className="mono" style={{ fontSize: 13, color: pt.subText, marginBottom: 20, lineHeight: 1.5 }}>
-              Cette action supprimera définitivement {history.length} estimation{history.length > 1 ? "s" : ""} de ton historique. Impossible de revenir en arrière.
+              {t("history_clear_confirm_body_prefix")}
+              {history.length}
+              {history.length > 1 ? t("history_clear_confirm_body_middle_plural") : t("history_clear_confirm_body_middle_singular")}
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <button
@@ -6584,7 +7595,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                Annuler
+                {t("cancel_button")}
               </button>
               <button
                 className="mono"
@@ -6604,7 +7615,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                Effacer tout
+                {t("history_clear_confirm_button")}
               </button>
             </div>
           </div>
@@ -6642,9 +7653,9 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2 className="brand" style={{ fontSize: brandSize(20), margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
                 <BarChart3 size={16} color={accent} />
-                Ma collection
+                {t("collection_title")}
               </h2>
-              <button onClick={() => setShowCollection(false)} style={{ background: "none", border: "none", padding: 4 }} aria-label="fermer">
+              <button onClick={() => setShowCollection(false)} style={{ background: "none", border: "none", padding: 4 }} aria-label={t("close_label")}>
                 <X size={20} color={pt.closeColor} />
               </button>
             </div>
@@ -6661,25 +7672,25 @@ export default function App() {
               }}
             >
               <span className="mono" style={{ fontSize: 12, fontWeight: 800, color: "#152238" }}>
-                {activeGrade.emoji} Habillage {activeGrade.label}
+                {activeGrade.emoji} {t("collection_grade_prefix")}{activeGrade.label}
               </span>
               {nextGrade && (
                 <span className="mono" style={{ fontSize: 10, color: "#152238", opacity: 0.85 }}>
-                  {nextGrade.label} avec l'abonnement {nextGrade.planLabel}
+                  {nextGrade.label}{t("collection_next_grade_middle")}{nextGrade.planLabel}
                 </span>
               )}
             </div>
 
             {history.length === 0 ? (
               <p className="mono" style={{ fontSize: 13, color: pt.subText }}>
-                Fais ta première estimation pour commencer à remplir ta collection.
+                {t("collection_empty")}
               </p>
             ) : (
               <>
                 <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
                   <div style={{ flex: 1, background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: "14px 12px" }}>
                     <div className="mono" style={{ fontSize: 10, color: pt.subText, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      Valeur estimée
+                      {t("collection_stat_value_label")}
                     </div>
                     <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: accent }}>
                       {Math.round(portfolioValue)} €
@@ -6703,7 +7714,7 @@ export default function App() {
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
                       <span className="mono" style={{ fontSize: 10, color: pt.subText, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        Objets scannés
+                        {t("collection_stat_objects_label")}
                       </span>
                       {portfolioSortedByValueDesc.length > 0 && <ChevronRight size={11} color={pt.chevronColor} />}
                     </div>
@@ -6728,7 +7739,10 @@ export default function App() {
                   >
                     <Flame size={16} color={accent} />
                     <span className="mono" style={{ fontSize: 12, color: pt.rowText }}>
-                      <strong>{portfolioStreak} jours</strong> de suite à checker des prix — continue comme ça !
+                      <strong>
+                        {portfolioStreak} {portfolioStreak > 1 ? t("collection_streak_days_plural") : t("collection_streak_days_singular")}
+                      </strong>
+                      {t("collection_streak_suffix")}
                     </span>
                   </div>
                 )}
@@ -6736,7 +7750,7 @@ export default function App() {
                 {portfolioChartPoints.length >= 2 && (
                   <div style={{ background: pt.rowBg, border: pt.rowBorder, borderRadius: 10, padding: 14, marginBottom: 16, position: "relative" }}>
                     <div className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}>
-                      Valeur de ta collection dans le temps
+                      {t("collection_chart_title")}
                     </div>
                     <PriceEvolutionChart
                       theme={menuTheme}
@@ -6764,7 +7778,11 @@ export default function App() {
                       >
                         <Lock size={13} color={accent} />
                         <span className="mono" style={{ fontSize: 11, color: accent, textAlign: "left" }}>
-                          Passe premium pour voir tes {portfolioChartPoints.length - 5} points d'historique en plus
+                          {t("collection_chart_premium_prefix")}
+                          {portfolioChartPoints.length - 5}
+                          {portfolioChartPoints.length - 5 > 1
+                            ? t("collection_chart_premium_suffix_plural")
+                            : t("collection_chart_premium_suffix_singular")}
                         </span>
                       </button>
                     )}
@@ -6773,7 +7791,7 @@ export default function App() {
 
                 <div style={{ marginBottom: 6 }}>
                   <div className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.strongColor, marginBottom: 10 }}>
-                    Badges
+                    {t("collection_badges_title")}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
                     {COLLECTION_BADGES.map((b) => {
@@ -6840,15 +7858,15 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <h2 className="brand" style={{ fontSize: brandSize(20), margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
                 <BarChart3 size={16} color={accent} />
-                Objets scannés
+                {t("scanned_objects_title")}
               </h2>
-              <button onClick={() => setShowScannedObjectsList(false)} style={{ background: "none", border: "none", padding: 4 }} aria-label="fermer">
+              <button onClick={() => setShowScannedObjectsList(false)} style={{ background: "none", border: "none", padding: 4 }} aria-label={t("close_label")}>
                 <X size={20} color={pt.closeColor} />
               </button>
             </div>
             <p style={{ fontSize: 13, color: pt.subText, marginTop: 0, marginBottom: 14 }}>
-              Du plus cher au moins cher — prix moyen de chaque objet, dont la somme fait ta{" "}
-              <strong style={{ color: pt.rowText }}>valeur estimée</strong> ({Math.round(portfolioValue)} €).
+              {t("scanned_objects_subtitle_prefix")}
+              <strong style={{ color: pt.rowText }}>{t("scanned_objects_subtitle_strong")}</strong> ({Math.round(portfolioValue)} €).
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -6888,7 +7906,7 @@ export default function App() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {h.objet || "Objet"}
+                        {h.objet || t("object_fallback_label")}
                       </div>
                       {h.categorie && (
                         <div className="mono" style={{ fontSize: 10, color: pt.subText }}>
@@ -6954,7 +7972,7 @@ export default function App() {
               <button
                 onClick={() => setShowMenu(false)}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
@@ -7132,7 +8150,7 @@ export default function App() {
               <button
                 onClick={() => setShowDisplayPanel(false)}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
@@ -7140,11 +8158,11 @@ export default function App() {
 
             <div>
               <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
-                Habillage (plan actuel :{" "}
+                {t("display_grade_prefix")}
                 {profile && profile.plan !== "gratuit" && profile.subscription_status === "active"
                   ? PLANS.find((p) => p.key === profile.plan)?.label || profile.plan
-                  : "Gratuit"}
-                )
+                  : t("account_plan_free")}
+                {t("display_grade_suffix")}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {GRADES.map((g) => {
@@ -7159,8 +8177,8 @@ export default function App() {
                         unlocked
                           ? g.label
                           : isOwnerPreview
-                          ? `${g.label} — aperçu (verrouillé pour les autres comptes, débloqué avec l'abonnement ${g.planLabel})`
-                          : `${g.label} — débloqué avec l'abonnement ${g.planLabel}`
+                          ? `${g.label}${t("display_grade_tooltip_preview_prefix")}${g.planLabel}${t("display_grade_tooltip_preview_suffix")}`
+                          : `${g.label}${t("display_grade_tooltip_locked_prefix")}${g.planLabel}${t("display_grade_tooltip_locked_suffix")}`
                       }
                       style={{
                         display: "flex",
@@ -7201,7 +8219,7 @@ export default function App() {
                           textAlign: "center",
                         }}
                       >
-                        {g.planRank === 0 ? "toujours" : unlocked ? "débloqué" : g.planLabel}
+                        {g.planRank === 0 ? t("display_grade_always") : unlocked ? t("display_grade_unlocked") : g.planLabel}
                       </span>
                     </button>
                   );
@@ -7209,14 +8227,18 @@ export default function App() {
               </div>
               {nextGrade && (
                 <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
-                  Prochain palier : {nextGrade.label} avec l'abonnement {nextGrade.planLabel}
+                  {t("display_next_grade_prefix")}
+                  {nextGrade.label}
+                  {t("display_next_grade_middle")}
+                  {nextGrade.planLabel}
+                  {t("display_next_grade_suffix")}
                 </div>
               )}
             </div>
 
             <div style={{ borderTop: pt.dashedBorder, marginTop: 16, paddingTop: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
-                Thème (polices, couleurs et contours de toute l'appli)
+                {t("display_theme_title")}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {AFFICHAGES.map((aff) => {
@@ -7307,12 +8329,12 @@ export default function App() {
                 style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <User size={17} color={accent} />
-                Mon profil
+                {t("profile_title")}
               </h2>
               <button
                 onClick={() => setShowProfilePanel(false)}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
@@ -7364,7 +8386,7 @@ export default function App() {
               <button
                 onClick={() => setShowAvatarPanel(false)}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
@@ -7377,7 +8399,7 @@ export default function App() {
             ) : (
               <>
                 <p style={{ fontSize: 13, color: pt.subText, marginTop: 0, marginBottom: 16 }}>
-                  Choisis ton personnage : il s'affiche à côté de ton pseudo dans le classement. Le Chineur et La Chineuse sont débloqués dès le départ ; les autres se débloquent au fil de tes estimations générées — plus il en faut, plus le perso est stylé. D'autres personnages arriveront progressivement.
+                  {t("avatar_choose_intro")}
                 </p>
 
                 {isOwnerPreview && (
@@ -7393,7 +8415,7 @@ export default function App() {
                       marginBottom: 14,
                     }}
                   >
-                    Mode propriétaire : tu peux essayer tous les personnages ci-dessous, même verrouillés (aperçu uniquement — les autres comptes doivent toujours remplir le défi).
+                    {t("avatar_owner_preview_note")}
                   </div>
                 )}
 
@@ -7427,15 +8449,13 @@ export default function App() {
                     <CharacterAvatar id={avatarCharacterInput} size={150} />
                   )}
                   <span style={{ fontSize: 14, fontWeight: 700, color: pt.strongColor, marginTop: 6 }}>
-                    {avatarCharacterInput === NO_AVATAR_ID ? "Aucun avatar" : characterMeta(avatarCharacterInput).name}
+                    {avatarCharacterInput === NO_AVATAR_ID ? t("avatar_none_label") : characterMeta(avatarCharacterInput).name}
                   </span>
                   <span
                     className="mono"
                     style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, color: pt.subText, marginTop: 4 }}
                   >
-                    {avatarCharacterInput === NO_AVATAR_ID
-                      ? "aucune mascotte, interface de base partout"
-                      : "c'est cette vignette qui s'affiche dans le classement et en haut à droite"}
+                    {avatarCharacterInput === NO_AVATAR_ID ? t("avatar_none_sub") : t("avatar_current_sub")}
                   </span>
                 </div>
 
@@ -7447,7 +8467,7 @@ export default function App() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
                   <button
                     onClick={() => pickCharacter(NO_AVATAR_ID)}
-                    title="Aucun avatar"
+                    title={t("avatar_none_label")}
                     style={{
                       display: "flex",
                       flexDirection: "column",
@@ -7476,7 +8496,7 @@ export default function App() {
                       <X size={20} color={pt.chevronColor} />
                     </span>
                     <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center", lineHeight: 1.2 }}>
-                      Aucun avatar
+                      {t("avatar_none_label")}
                     </span>
                   </button>
                   {[
@@ -7501,12 +8521,12 @@ export default function App() {
                         disabled={!clickable}
                         title={
                           isHiddenSecret
-                            ? "Personnage secret"
+                            ? t("avatar_secret_title")
                             : unlocked
                             ? meta.name
                             : isOwnerPreview
-                            ? `${meta.name} — aperçu (verrouillé pour les autres comptes, ${meta.hint})`
-                            : `${meta.name} — ${meta.hint}`
+                            ? `${meta.name} — ${t("avatar_owner_preview_template").replace("{hint}", characterHint(meta))}`
+                            : `${meta.name} — ${characterHint(meta)}`
                         }
                         style={{
                           display: "flex",
@@ -7535,7 +8555,7 @@ export default function App() {
                               flexShrink: 0,
                             }}
                           >
-                            <span style={{ fontSize: 20 }}>❓</span>
+                            <span style={{ fontSize: 20 }}>{t("avatar_secret_placeholder")}</span>
                           </span>
                         ) : isLockedHidden ? (
                           <span
@@ -7556,13 +8576,13 @@ export default function App() {
                           <CharacterAvatar id={meta.id} size={42} />
                         )}
                         <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center", lineHeight: 1.2 }}>
-                          {isHiddenSecret ? "???" : meta.name}
+                          {isHiddenSecret ? t("avatar_secret_placeholder") : meta.name}
                         </span>
                         {!unlocked && (
                           <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
                             <Lock size={8} color={pt.chevronColor} />
                             <span className="mono" style={{ fontSize: 7, color: pt.chevronColor, textAlign: "center", lineHeight: 1.1 }}>
-                              {isHiddenSecret ? "secret" : meta.hint}
+                              {isHiddenSecret ? t("avatar_secret_hint") : characterHint(meta)}
                             </span>
                           </span>
                         )}
@@ -7580,7 +8600,9 @@ export default function App() {
                     className="mono"
                     style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.subText, marginBottom: 8 }}
                   >
-                    Où afficher {characterMeta(avatarCharacterInput).name} ?
+                    {t("avatar_where_show_prefix")}
+                    {characterMeta(avatarCharacterInput).name}
+                    {t("avatar_where_show_suffix")}
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     {/* "Icône seulement" est présenté en premier : c'est le
@@ -7603,9 +8625,9 @@ export default function App() {
                         textAlign: "left",
                       }}
                     >
-                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>Icône seulement</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>{t("avatar_icon_only_label")}</span>
                       <span className="mono" style={{ fontSize: 10, color: pt.subText, lineHeight: 1.3 }}>
-                        garde l'interface de base pour prendre une photo
+                        {t("avatar_icon_only_desc")}
                       </span>
                     </button>
                     <button
@@ -7624,9 +8646,9 @@ export default function App() {
                         textAlign: "left",
                       }}
                     >
-                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>Arrière-plan de l'appli</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>{t("avatar_background_label")}</span>
                       <span className="mono" style={{ fontSize: 10, color: pt.subText, lineHeight: 1.3 }}>
-                        mascotte en entier sur l'écran photo
+                        {t("avatar_background_desc")}
                       </span>
                     </button>
                   </div>
@@ -7639,7 +8661,7 @@ export default function App() {
                   style={{ marginTop: 16, opacity: avatarSaving || !avatarDirty ? 0.6 : 1 }}
                 >
                   {avatarSaving && <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />}
-                  Enregistrer mon avatar
+                  {t("avatar_save_button")}
                 </button>
                 {avatarError && (
                   <div className="mono" style={{ fontSize: 11, color: pt.errorColor, marginTop: 8 }}>
@@ -7648,7 +8670,7 @@ export default function App() {
                 )}
                 {avatarSavedFlash && (
                   <div className="mono" style={{ fontSize: 11, color: "#4ADE80", marginTop: 8 }}>
-                    Avatar enregistré !
+                    {t("avatar_saved_flash")}
                   </div>
                 )}
               </>
@@ -7720,7 +8742,7 @@ export default function App() {
                   setSearchResults(null);
                 }}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
@@ -7952,7 +8974,7 @@ export default function App() {
               <button
                 onClick={() => setShowTrending(false)}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
@@ -8028,7 +9050,7 @@ export default function App() {
                               background: pt.ghostBg,
                               opacity: page >= totalPages ? 0.4 : 1,
                             }}
-                            aria-label="suivant"
+                            aria-label={t("aria_next")}
                           >
                             <ChevronRight size={14} />
                           </button>
@@ -8083,7 +9105,7 @@ export default function App() {
               <button
                 onClick={() => setShowLeaderboard(false)}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
@@ -8334,7 +9356,7 @@ export default function App() {
               <button
                 onClick={() => setShowSubscriptionPanel(false)}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
@@ -8394,7 +9416,7 @@ export default function App() {
                   >
                     <span style={{ textAlign: "left" }}>
                       <span style={{ display: "block" }}>
-                        {plan.label} — {plan.quota}/mois
+                        {plan.label} — {plan.quota}{t("plan_per_month_suffix")}
                       </span>
                       {plan.bonus > 0 && (
                         <span style={{ display: "block", fontSize: 11, opacity: 0.85 }}>
@@ -8461,7 +9483,7 @@ export default function App() {
               <button
                 onClick={() => setShowContact(false)}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
@@ -8517,23 +9539,21 @@ export default function App() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <h2 className="brand" style={{ fontSize: brandSize(20), margin: 0, color: pt.titleColor }}>
-                Quota atteint
+                {t("paywall_title")}
               </h2>
               <button
                 onClick={() => setShowPaywall(false)}
                 style={{ background: "none", border: "none", padding: 4 }}
-                aria-label="fermer"
+                aria-label={t("close_label")}
               >
                 <X size={20} color={pt.closeColor} />
               </button>
             </div>
 
             <p style={{ fontSize: 13, color: pt.rowText, lineHeight: 1.5, marginTop: 0 }}>
-              {paywallInfo?.reason === "quota_epuise" &&
-                "Tu as utilisé toutes les estimations comprises dans ton abonnement ce mois-ci."}
-              {paywallInfo?.reason === "gratuit_epuise" &&
-                "Tu as utilisé tes estimations gratuites de ce mois-ci."}
-              {!paywallInfo?.reason && "Impossible de continuer l'estimation pour l'instant."}
+              {paywallInfo?.reason === "quota_epuise" && t("paywall_reason_quota_epuise")}
+              {paywallInfo?.reason === "gratuit_epuise" && t("paywall_reason_gratuit_epuise")}
+              {!paywallInfo?.reason && t("paywall_reason_default")}
             </p>
             {paywallInfo?.message && (
               <p style={{ fontSize: 12, color: accent, marginTop: 0 }}>{paywallInfo.message}</p>
@@ -8549,11 +9569,11 @@ export default function App() {
               >
                 {adWatching ? (
                   <>
-                    <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> visionnage en cours…
+                    <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> {t("paywall_watching_ad")}
                   </>
                 ) : (
                   <>
-                    <PlayCircle size={14} /> regarder une pub pour 1 estimation gratuite
+                    <PlayCircle size={14} /> {t("paywall_watch_ad_button")}
                   </>
                 )}
               </button>
@@ -8561,7 +9581,7 @@ export default function App() {
 
             <div style={{ borderTop: pt.dashedBorder, paddingTop: 14 }}>
               <p className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 10 }}>
-                ou passe à un abonnement pour beaucoup plus d'estimations :
+                {t("paywall_or_subscribe")}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {PLANS.map((plan) => (
@@ -8574,7 +9594,7 @@ export default function App() {
                   >
                     <span style={{ textAlign: "left" }}>
                       <span style={{ display: "block" }}>
-                        {plan.label} — {plan.quota}/mois
+                        {plan.label} — {plan.quota}{t("plan_per_month_suffix")}
                       </span>
                       {plan.bonus > 0 && (
                         <span style={{ display: "block", fontSize: 11, opacity: 0.85 }}>
