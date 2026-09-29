@@ -1333,6 +1333,90 @@ function ProductCard({ item, theme = "dark", onEstimate, estimateLabel, estimate
   );
 }
 
+// Anime l'ouverture/fermeture d'un panneau "bottom sheet" (glisse depuis le
+// bas plutôt qu'une simple apparition) et permet de le refermer au doigt en
+// le faisant glisser vers le bas (en plus de la croix/du clic sur le fond) —
+// demandé par Dylan pour le menu et le profil. `open`/`onRequestClose`
+// suivent le state existant du panneau (ex: showMenu/setShowMenu(false)) :
+// rien ne change dans la logique d'ouverture, seule l'animation d'entrée/
+// sortie et le geste de balayage sont ajoutés.
+function useBottomSheet(open, onRequestClose, closeDurationMs = 260) {
+  const [mounted, setMounted] = useState(open);
+  const [entered, setEntered] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const draggingRef = useRef(false);
+  const startYRef = useRef(0);
+  // Les ids stockés ici peuvent être un timeout ou une animation frame —
+  // on appelle les deux fonctions d'annulation sur chacun (sans effet sur
+  // l'id qui ne correspond pas à sa liste) pour ne pas avoir à distinguer
+  // leur origine.
+  const pendingRef = useRef([]);
+  function clearPending() {
+    pendingRef.current.forEach((id) => {
+      clearTimeout(id);
+      cancelAnimationFrame(id);
+    });
+    pendingRef.current = [];
+  }
+
+  useEffect(() => {
+    clearPending();
+    if (open) {
+      setMounted(true);
+      setDragY(0);
+      // Le panneau doit d'abord se poser hors-écran (translateY 1000px)
+      // avant qu'on bascule "entered" à true — sinon le navigateur peint
+      // directement la position finale et il n'y a pas de transition
+      // visible. Deux requestAnimationFrame imbriqués garantissent que ce
+      // premier état hors-écran a bien été peint au moins une fois.
+      const raf1 = requestAnimationFrame(() => {
+        const raf2 = requestAnimationFrame(() => setEntered(true));
+        pendingRef.current.push(raf2);
+      });
+      pendingRef.current.push(raf1);
+    } else if (mounted) {
+      setEntered(false);
+      const t = setTimeout(() => {
+        setMounted(false);
+        setDragY(0);
+      }, closeDurationMs);
+      pendingRef.current.push(t);
+    }
+    return clearPending;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  function onTouchStart(e) {
+    draggingRef.current = true;
+    startYRef.current = e.touches[0].clientY;
+  }
+  function onTouchMove(e) {
+    if (!draggingRef.current) return;
+    const delta = e.touches[0].clientY - startYRef.current;
+    // On ne suit le doigt que vers le bas (fermeture) — vers le haut, le
+    // panneau reste calé en position ouverte.
+    setDragY(delta > 0 ? delta : 0);
+  }
+  function onTouchEnd() {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    if (dragY > 90) {
+      onRequestClose();
+    } else {
+      setDragY(0);
+    }
+  }
+
+  return {
+    mounted,
+    dragHandleProps: { onTouchStart, onTouchMove, onTouchEnd },
+    sheetStyle: {
+      transform: `translateY(${entered ? dragY : 1000}px)`,
+      transition: draggingRef.current ? "none" : "transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)",
+    },
+  };
+}
+
 export default function App() {
   const [image, setImage] = useState(null); // { dataUrl, mediaType, base64 }
   // Quand une estimation est lancée depuis une annonce déjà en ligne (bouton
@@ -1693,6 +1777,9 @@ export default function App() {
   // Menu principal (☰) : historique, recherche produit, tendances,
   // abonnement, contact, langue, déconnexion.
   const [showMenu, setShowMenu] = useState(false);
+  // Anime l'ouverture/fermeture du panneau + geste de balayage vers le bas
+  // pour le refermer (voir useBottomSheet plus haut).
+  const menuSheet = useBottomSheet(showMenu, () => setShowMenu(false));
 
   // Langue de l'interface (persistée localement) — volet de traduction
   // volontairement limité, voir TRANSLATIONS plus haut.
@@ -2156,6 +2243,7 @@ export default function App() {
   // Panneau "Profil" — connexion/compte + accès à l'avatar, ouvert depuis
   // l'icône en haut à droite du header (plus dans le menu hamburger).
   const [showProfilePanel, setShowProfilePanel] = useState(false);
+  const profileSheet = useBottomSheet(showProfilePanel, () => setShowProfilePanel(false));
   // Vérifie si l'utilisateur figure ACTUELLEMENT dans le top 100 du
   // classement total des estimations — sert au déblocage de l'accessoire
   // "médaille" le plus rare de l'avatar (voir WARDROBE plus bas). Version
@@ -6767,7 +6855,7 @@ export default function App() {
       )}
 
       {/* ============ Menu principal (☰) ============ */}
-      {showMenu && (
+      {menuSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -6791,12 +6879,18 @@ export default function App() {
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
               boxShadow: "0 -10px 30px rgba(4, 6, 12, 0.45)",
+              ...menuSheet.sheetStyle,
             }}
           >
-            <div
-              aria-hidden="true"
-              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
-            />
+            {/* Zone de "poignée" élargie (au-delà du petit trait visible)
+                pour pouvoir glisser le panneau vers le bas au doigt et le
+                refermer — en plus de la croix et du clic sur le fond. */}
+            <div {...menuSheet.dragHandleProps} style={{ margin: "-14px -16px 2px", padding: "14px 16px 10px", touchAction: "none" }}>
+              <div
+                aria-hidden="true"
+                style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto" }}
+              />
+            </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
@@ -7120,7 +7214,7 @@ export default function App() {
       )}
 
       {/* ============ Profil (connexion / déconnexion / avatar) ============ */}
-      {showProfilePanel && (
+      {profileSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -7144,12 +7238,15 @@ export default function App() {
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
               boxShadow: "0 -10px 30px rgba(4, 6, 12, 0.45)",
+              ...profileSheet.sheetStyle,
             }}
           >
-            <div
-              aria-hidden="true"
-              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
-            />
+            <div {...profileSheet.dragHandleProps} style={{ margin: "-14px -16px 2px", padding: "14px 16px 10px", touchAction: "none" }}>
+              <div
+                aria-hidden="true"
+                style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto" }}
+              />
+            </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
