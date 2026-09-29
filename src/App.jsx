@@ -1340,12 +1340,28 @@ function ProductCard({ item, theme = "dark", onEstimate, estimateLabel, estimate
 // suivent le state existant du panneau (ex: showMenu/setShowMenu(false)) :
 // rien ne change dans la logique d'ouverture, seule l'animation d'entrée/
 // sortie et le geste de balayage sont ajoutés.
+//
+// Le geste fonctionne depuis PRESQUE N'IMPORTE OÙ sur le panneau (pas
+// juste la petite poignée) — attaché en natif (addEventListener, pas les
+// props React onTouchMove) car on a besoin de vraiment bloquer le scroll
+// pendant qu'on ferme (event.preventDefault), ce que React empêche par
+// défaut sur ses gestionnaires tactiles synthétiques (passive listeners).
+// Pour ne pas entrer en conflit avec le défilement du contenu, on ne prend
+// la main pour fermer que quand le panneau est DÉJÀ remonté tout en haut
+// (scrollTop === 0) ET que le doigt descend — sinon le scroll natif fait
+// son travail normalement.
 function useBottomSheet(open, onRequestClose, closeDurationMs = 260) {
   const [mounted, setMounted] = useState(open);
   const [entered, setEntered] = useState(false);
   const [dragY, setDragY] = useState(0);
+  const sheetRef = useRef(null);
   const draggingRef = useRef(false);
+  const dragYRef = useRef(0);
   const startYRef = useRef(0);
+  function setDrag(v) {
+    dragYRef.current = v;
+    setDragY(v);
+  }
   // Les ids stockés ici peuvent être un timeout ou une animation frame —
   // on appelle les deux fonctions d'annulation sur chacun (sans effet sur
   // l'id qui ne correspond pas à sa liste) pour ne pas avoir à distinguer
@@ -1363,7 +1379,7 @@ function useBottomSheet(open, onRequestClose, closeDurationMs = 260) {
     clearPending();
     if (open) {
       setMounted(true);
-      setDragY(0);
+      setDrag(0);
       // Le panneau doit d'abord se poser hors-écran (translateY 1000px)
       // avant qu'on bascule "entered" à true — sinon le navigateur peint
       // directement la position finale et il n'y a pas de transition
@@ -1378,7 +1394,7 @@ function useBottomSheet(open, onRequestClose, closeDurationMs = 260) {
       setEntered(false);
       const t = setTimeout(() => {
         setMounted(false);
-        setDragY(0);
+        setDrag(0);
       }, closeDurationMs);
       pendingRef.current.push(t);
     }
@@ -1386,30 +1402,59 @@ function useBottomSheet(open, onRequestClose, closeDurationMs = 260) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  function onTouchStart(e) {
-    draggingRef.current = true;
-    startYRef.current = e.touches[0].clientY;
-  }
-  function onTouchMove(e) {
-    if (!draggingRef.current) return;
-    const delta = e.touches[0].clientY - startYRef.current;
-    // On ne suit le doigt que vers le bas (fermeture) — vers le haut, le
-    // panneau reste calé en position ouverte.
-    setDragY(delta > 0 ? delta : 0);
-  }
-  function onTouchEnd() {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    if (dragY > 90) {
-      onRequestClose();
-    } else {
-      setDragY(0);
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    function handleTouchStart(e) {
+      startYRef.current = e.touches[0].clientY;
+      draggingRef.current = false;
     }
-  }
+    function handleTouchMove(e) {
+      const delta = e.touches[0].clientY - startYRef.current;
+      if (delta <= 0) {
+        // Le doigt remonte : jamais une fermeture — on relâche la main au
+        // scroll natif normal.
+        if (draggingRef.current) {
+          draggingRef.current = false;
+          setDrag(0);
+        }
+        return;
+      }
+      if (!draggingRef.current) {
+        // Le doigt descend, mais on ne "prend la main" pour fermer que si
+        // le contenu est déjà remonté tout en haut — sinon on laisse
+        // d'abord le scroll natif remonter le contenu normalement.
+        if (el.scrollTop > 0) return;
+        draggingRef.current = true;
+      }
+      e.preventDefault();
+      setDrag(delta);
+    }
+    function handleTouchEnd() {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      if (dragYRef.current > 90) {
+        onRequestClose();
+      } else {
+        setDrag(0);
+      }
+    }
+    el.addEventListener("touchstart", handleTouchStart, { passive: true });
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    el.addEventListener("touchend", handleTouchEnd, { passive: true });
+    el.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
+      el.removeEventListener("touchend", handleTouchEnd);
+      el.removeEventListener("touchcancel", handleTouchEnd);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   return {
     mounted,
-    dragHandleProps: { onTouchStart, onTouchMove, onTouchEnd },
+    sheetRef,
     sheetStyle: {
       transform: `translateY(${entered ? dragY : 1000}px)`,
       transition: draggingRef.current ? "none" : "transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)",
@@ -6869,6 +6914,7 @@ export default function App() {
           onClick={() => setShowMenu(false)}
         >
           <div
+            ref={menuSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -6882,15 +6928,13 @@ export default function App() {
               ...menuSheet.sheetStyle,
             }}
           >
-            {/* Zone de "poignée" élargie (au-delà du petit trait visible)
-                pour pouvoir glisser le panneau vers le bas au doigt et le
-                refermer — en plus de la croix et du clic sur le fond. */}
-            <div {...menuSheet.dragHandleProps} style={{ margin: "-14px -16px 2px", padding: "14px 16px 10px", touchAction: "none" }}>
-              <div
-                aria-hidden="true"
-                style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto" }}
-              />
-            </div>
+            {/* Le geste de balayage pour fermer fonctionne depuis presque
+                n'importe où sur le panneau (voir useBottomSheet) — ce
+                trait n'est qu'une poignée visuelle. */}
+            <div
+              aria-hidden="true"
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
+            />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
@@ -7228,6 +7272,7 @@ export default function App() {
           onClick={() => setShowProfilePanel(false)}
         >
           <div
+            ref={profileSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -7241,12 +7286,13 @@ export default function App() {
               ...profileSheet.sheetStyle,
             }}
           >
-            <div {...profileSheet.dragHandleProps} style={{ margin: "-14px -16px 2px", padding: "14px 16px 10px", touchAction: "none" }}>
-              <div
-                aria-hidden="true"
-                style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto" }}
-              />
-            </div>
+            {/* Le geste de balayage pour fermer fonctionne depuis presque
+                n'importe où sur le panneau (voir useBottomSheet) — ce
+                trait n'est qu'une poignée visuelle. */}
+            <div
+              aria-hidden="true"
+              style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }}
+            />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
