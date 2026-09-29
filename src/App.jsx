@@ -278,6 +278,12 @@ function hexToRgbString(hex) {
 // `texture` (optionnel) : calques `background-image` décoratifs (grain,
 // vignette, trame, lignes de scan...), posés sous la couleur de fond de la
 // page uniquement — n'affecte ni la disposition ni aucune taille.
+// `headerDark`/`textStrong`/`textSoft` (optionnels) : pour un affichage
+// clair (ex: Vintage) — voir le détail juste avant `function brandSize`
+// plus bas dans le composant.
+// `displayScale` (optionnel, défaut 1) : voir `brandSize()` plus bas — clé
+// pour les polices très larges (Orbitron, Bungee...) afin qu'une phrase
+// comme l'accroche reste sur une seule ligne comme en "Classique".
 const AFFICHAGES = [
   {
     key: "classique",
@@ -289,21 +295,28 @@ const AFFICHAGES = [
     fontBody: "'Inter', sans-serif",
   },
   {
+    // Repris de la proposition "brocante & tampon" (maquette validée par
+    // Dylan) : papier clair, encre foncée, typo affiche condensée + machine
+    // à écrire — plus proche de cette DA que la première version (sépia
+    // sombre) qui ne se distinguait pas assez de "Classique".
     key: "vintage",
     threshold: 0,
     label: "Vintage",
     emoji: "📜",
-    mode: "dark",
-    fontDisplay: "'Playfair Display', Georgia, serif",
+    mode: "light",
+    fontDisplay: "'Anton', sans-serif",
     fontBody: "'Courier Prime', monospace",
-    bodyLetterSpacing: "0.05em",
-    base: "#221909",
-    mid: "#4A331A",
-    high: "#C99A4E",
-    borderRgb: "201, 154, 78",
-    radiusScale: 0.45,
+    bodyLetterSpacing: "0.04em",
+    base: "#EDE3CE",
+    mid: "#E2D5B8",
+    high: "#C98A2E",
+    borderRgb: "43, 36, 28",
+    headerDark: "#2B241C",
+    textStrong: "#2B241C",
+    textSoft: "#6B5D48",
+    radiusScale: 0.35,
     texture:
-      "radial-gradient(circle at 15% 20%, rgba(0,0,0,0.14) 0, transparent 42%), radial-gradient(circle at 85% 12%, rgba(0,0,0,0.12) 0, transparent 38%), radial-gradient(circle at 60% 78%, rgba(0,0,0,0.13) 0, transparent 46%), repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 1px, transparent 1px, transparent 4px)",
+      "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.055) 0, transparent 38%), radial-gradient(circle at 84% 10%, rgba(43,36,28,0.05) 0, transparent 34%), radial-gradient(circle at 62% 66%, rgba(43,36,28,0.055) 0, transparent 42%), radial-gradient(circle at 8% 86%, rgba(43,36,28,0.05) 0, transparent 38%), repeating-linear-gradient(45deg, rgba(43,36,28,0.03) 0px, rgba(43,36,28,0.03) 1px, transparent 1px, transparent 3px)",
   },
   {
     key: "retro",
@@ -313,9 +326,9 @@ const AFFICHAGES = [
     mode: "dark",
     fontDisplay: "'Bungee', cursive",
     fontBody: "'Space Mono', monospace",
-    displayLetterSpacing: "0.02em",
     displayTransform: "uppercase",
-    bodyLetterSpacing: "0.05em",
+    displayScale: 0.85,
+    bodyLetterSpacing: "0.02em",
     bodyTransform: "uppercase",
     base: "#170B2E",
     mid: "#3A1268",
@@ -333,9 +346,10 @@ const AFFICHAGES = [
     mode: "dark",
     fontDisplay: "'Orbitron', sans-serif",
     fontBody: "'Share Tech Mono', monospace",
-    displayLetterSpacing: "0.14em",
+    displayLetterSpacing: "0.03em",
     displayTransform: "uppercase",
-    bodyLetterSpacing: "0.06em",
+    displayScale: 0.78,
+    bodyLetterSpacing: "0.02em",
     bodyTransform: "uppercase",
     base: "#0B0F0D",
     mid: "#1E2E28",
@@ -346,16 +360,20 @@ const AFFICHAGES = [
       "repeating-linear-gradient(0deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px), repeating-linear-gradient(90deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px)",
   },
   {
+    // Police d'affiche passée de Michroma (bien plus large que Fraunces au
+    // même corps, provoquait des débordements/retours à la ligne sur
+    // l'accroche) à Rajdhani, tout aussi futuriste mais condensée.
     key: "futuriste",
     threshold: 0,
     label: "Futuriste",
     emoji: "🚀",
     mode: "dark",
-    fontDisplay: "'Michroma', sans-serif",
+    fontDisplay: "'Rajdhani', sans-serif",
     fontBody: "'Chakra Petch', sans-serif",
-    displayLetterSpacing: "0.18em",
+    displayLetterSpacing: "0.04em",
     displayTransform: "uppercase",
-    bodyLetterSpacing: "0.06em",
+    displayScale: 0.92,
+    bodyLetterSpacing: "0.02em",
     bodyTransform: "uppercase",
     base: "#040912",
     mid: "#0E2A44",
@@ -1894,9 +1912,14 @@ export default function App() {
   // panneaux, header, carte résultat, écran de chargement, zone photo) —
   // "Classique" (pas de base/mid/high) reste strictement identique à avant.
   if (activeAffichage.base) {
+    // Point de départ du dégradé du header/carte résultat : quasi-noir par
+    // défaut (fonctionne pour tous les affichages sombres) — surchargeable
+    // via `headerDark` pour un affichage clair (ex: Vintage) où un départ
+    // noir jurerait avec un papier clair.
+    const headerStart = activeAffichage.headerDark || "#04060C";
     pt.pageBg = activeAffichage.base;
     pt.sheetBg = `linear-gradient(160deg, ${activeAffichage.base} 0%, ${activeAffichage.mid} 45%, ${activeAffichage.high} 100%)`;
-    pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 52%, ${activeAffichage.high} 100%)`;
+    pt.headerBg = `linear-gradient(135deg, ${headerStart} 0%, ${activeAffichage.mid} 52%, ${activeAffichage.high} 100%)`;
     pt.resultCardBg = pt.headerBg;
     pt.loadingBg = `linear-gradient(160deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 100%)`;
     pt.loadingBorder = activeAffichage.high;
@@ -1917,6 +1940,38 @@ export default function App() {
     pt.langUnselectedBorder = `1px solid rgba(${b}, 0.22)`;
     pt.ghostBorder = `rgba(${b}, 0.45)`;
     pt.menuBtnBorder = `rgba(${b}, 0.4)`;
+  }
+  // Texte : uniquement pour un affichage clair au ton marqué (ex: Vintage,
+  // encre sur papier) où les gris-bleutés hérités de PANEL_THEMES.light
+  // jureraient avec la palette chaude — absent ailleurs (textes d'origine
+  // inchangés). `textStrong` = titres/texte fort, `textSoft` = texte
+  // secondaire/atténué.
+  if (activeAffichage.textStrong) {
+    pt.titleColor = activeAffichage.textStrong;
+    pt.strongColor = activeAffichage.textStrong;
+    pt.rowText = activeAffichage.textStrong;
+    pt.cardTitleColor = activeAffichage.textStrong;
+    pt.closeColor = activeAffichage.textStrong;
+    pt.menuBtnColor = activeAffichage.textStrong;
+    pt.ghostColor = activeAffichage.textStrong;
+    pt.dropZoneText = activeAffichage.textStrong;
+    pt.inputText = activeAffichage.textStrong;
+  }
+  if (activeAffichage.textSoft) {
+    pt.subText = activeAffichage.textSoft;
+    pt.chevronColor = activeAffichage.textSoft;
+    pt.chipText = activeAffichage.textSoft;
+  }
+  // Taille des titres `.brand` (voir brandSize() plus bas) : certaines
+  // polices "affichage" (Orbitron, Bungee...) sont nettement plus larges
+  // que Fraunces au même corps — sans compensation, de longues phrases
+  // (ex: l'accroche "Tout a un prix.") débordent ou se recassent sur
+  // plusieurs lignes. `displayScale` (défaut 1) réduit proportionnellement
+  // tous les titres de l'affichage concerné pour qu'ils gardent la même
+  // disposition (une phrase = une ligne), sans jamais toucher aux tailles
+  // des autres éléments.
+  function brandSize(px) {
+    return Math.round(px * (activeAffichage.displayScale ?? 1));
   }
   // Le haut de l'appli (bandeau + poignée des panneaux) se termine toujours
   // sur l'accent actif: c'est ce qui donne l'impression que "tout change"
@@ -4346,7 +4401,7 @@ export default function App() {
         /* Toutes les polices des 5 affichages sont chargées d'un coup (une
            seule requête) pour permettre un changement d'affichage instantané,
            sans "flash" le temps qu'une police se télécharge. */
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@400;600;700&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Michroma&family=Chakra+Petch:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Anton&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; }
         /* Les deux polices dépendent de l'affichage sélectionné (voir
            AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
@@ -4704,7 +4759,7 @@ export default function App() {
           </div>
           <h1
             className="brand"
-            style={{ fontSize: 33, fontWeight: 600, margin: 0, lineHeight: 1.12, color: pt.strongColor, position: "relative" }}
+            style={{ fontSize: brandSize(33), fontWeight: 600, margin: 0, lineHeight: 1.12, color: pt.strongColor, position: "relative" }}
           >
             {t("hero_title_1")}
             <br />
@@ -4747,7 +4802,7 @@ export default function App() {
                   <Sparkles size={13} color="#FFFFFF" className="sparkle" />
                 </span>
                 <span style={{ display: "inline-flex", alignItems: "baseline", gap: 3 }}>
-                  <span className="brand" style={{ fontSize: 17, fontWeight: 600, color: pt.strongColor }}>
+                  <span className="brand" style={{ fontSize: brandSize(17), fontWeight: 600, color: pt.strongColor }}>
                     {profile.plan !== "gratuit" && profile.subscription_status === "active"
                       ? Math.max(0, profile.quota_mensuel - profile.estimations_utilisees)
                       : Math.max(0, 3 - profile.gratuit_utilisees)}
@@ -5249,7 +5304,7 @@ export default function App() {
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   🎭 mode "estimer tout, même n'importe quoi"
                 </div>
-                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
+                <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
                   {result.objet}
                 </div>
 
@@ -5288,7 +5343,7 @@ export default function App() {
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
                 </div>
-                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
+                <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
                   {result.objet}
                 </div>
 
@@ -5332,7 +5387,7 @@ export default function App() {
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.categorie}
                 </div>
-                <div className="brand" style={{ fontSize: 20, fontWeight: 600, marginBottom: 4, color: pt.strongColor, position: "relative" }}>
+                <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 4, color: pt.strongColor, position: "relative" }}>
                   {result.objet}
                 </div>
                 <div style={{ fontSize: 13, color: pt.subText, marginBottom: 16, position: "relative" }}>
@@ -5537,7 +5592,7 @@ export default function App() {
                   >
                     <div
                       className="brand"
-                      style={{ fontSize: 13, fontStyle: "italic", fontWeight: 500, color: pt.rowText, marginBottom: 6 }}
+                      style={{ fontSize: brandSize(13), fontStyle: "italic", fontWeight: 500, color: pt.rowText, marginBottom: 6 }}
                     >
                       Détail par plateforme
                     </div>
@@ -6128,7 +6183,7 @@ export default function App() {
                   return (
                     <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 16 }}>
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                      <span className="brand" style={{ fontSize: 13, fontStyle: "italic", fontWeight: 500, color: pt.rowText }}>
+                      <span className="brand" style={{ fontSize: brandSize(13), fontStyle: "italic", fontWeight: 500, color: pt.rowText }}>
                         {conf.label}
                       </span>
                       <span className="mono" style={{ fontSize: 10, color: pt.chevronColor }}>
@@ -6190,7 +6245,7 @@ export default function App() {
                 marginBottom: 16,
               }}
             >
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
+              <h2 className="brand" style={{ fontSize: brandSize(20), margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
                 <Tag size={16} color={accent} style={{ transform: "rotate(90deg)" }} />
                 Historique
               </h2>
@@ -6352,7 +6407,7 @@ export default function App() {
             />
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <Trash2 size={18} color={pt.errorColor} />
-              <h2 className="brand" style={{ fontSize: 18, margin: 0, color: pt.titleColor }}>
+              <h2 className="brand" style={{ fontSize: brandSize(18), margin: 0, color: pt.titleColor }}>
                 Tout effacer ?
               </h2>
             </div>
@@ -6431,7 +6486,7 @@ export default function App() {
           >
             <div aria-hidden="true" style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
+              <h2 className="brand" style={{ fontSize: brandSize(20), margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
                 <BarChart3 size={16} color={accent} />
                 Ma collection
               </h2>
@@ -6629,7 +6684,7 @@ export default function App() {
           >
             <div aria-hidden="true" style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
+              <h2 className="brand" style={{ fontSize: brandSize(20), margin: 0, display: "flex", alignItems: "center", gap: 8, color: pt.titleColor }}>
                 <BarChart3 size={16} color={accent} />
                 Objets scannés
               </h2>
@@ -6732,7 +6787,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+                style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <Menu size={17} color={accent} />
                 {t("menu_title")}
@@ -6910,7 +6965,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+                style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <Moon size={17} color={accent} />
                 {t("menu_display")}
@@ -7085,7 +7140,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+                style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <User size={17} color={accent} />
                 Mon profil
@@ -7137,7 +7192,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+                style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <Smile size={17} color={accent} />
                 {t("menu_avatar")}
@@ -7472,7 +7527,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+                style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 {searchCategory && (
                   <button
@@ -7721,7 +7776,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+                style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <TrendingUp size={17} color={accent} />
                 {t("trending_title")}
@@ -7852,7 +7907,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+                style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <Trophy size={17} color={accent} />
                 {t("leaderboard_title")}
@@ -8103,7 +8158,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+                style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <Sparkles size={17} color={accent} />
                 {t("subscription_title")}
@@ -8230,7 +8285,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2
                 className="brand"
-                style={{ fontSize: 21, margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
+                style={{ fontSize: brandSize(21), margin: 0, display: "flex", alignItems: "center", gap: 9, color: pt.titleColor }}
               >
                 <Mail size={17} color={accent} />
                 {t("contact_title")}
@@ -8293,7 +8348,7 @@ export default function App() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h2 className="brand" style={{ fontSize: 20, margin: 0, color: pt.titleColor }}>
+              <h2 className="brand" style={{ fontSize: brandSize(20), margin: 0, color: pt.titleColor }}>
                 Quota atteint
               </h2>
               <button
