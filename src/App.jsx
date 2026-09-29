@@ -11,6 +11,11 @@ import decorVintage from "./assets/decor-vintage.jpg";
 import decorRetro from "./assets/decor-retro.jpg";
 import decorRobotique from "./assets/decor-robotique.jpg";
 import decorFuturiste from "./assets/decor-futuriste.jpg";
+import decorLuxe from "./assets/decor-luxe.jpg";
+import decorNoir from "./assets/decor-noir.jpg";
+import decorIndustriel from "./assets/decor-industriel.jpg";
+import decorBotanique from "./assets/decor-botanique.jpg";
+import decorZen from "./assets/decor-zen.jpg";
 
 // Portraits réels (générés avec Google Flow — Nano Banana Pro, cf. doc de
 // prompts) — ce sont les SEULS avatars possibles désormais (l'ancien
@@ -531,11 +536,182 @@ const AFFICHAGES = [
       "radial-gradient(circle at 80% 8%, rgba(51,201,255,0.16) 0, transparent 38%), radial-gradient(circle at 10% 88%, rgba(51,201,255,0.10) 0, transparent 42%), repeating-linear-gradient(115deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px)",
     // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
     // "Vintage" ci-dessus. Le champ d'étoiles tuilé en CSS (qui vivait ici)
-    // a été remplacé par de vraies petites étoiles scintillantes dans le
-    // header (voir plus bas dans le composant, à côté des étincelles) —
-    // Dylan voulait qu'elles brillent/clignotent, ce qu'un simple calque
-    // `background-image` statique ne permet pas.
+    // a été remplacé par de vraies petites étoiles scintillantes posées au
+    // niveau du fond de page (voir plus bas dans le composant, juste après
+    // l'ouverture du conteneur racine, pas dans le header) — Dylan voulait
+    // qu'elles brillent/clignotent, ce qu'un simple calque
+    // `background-image` statique ne permet pas, et qu'elles restent bien
+    // dans le "fond" plutôt que dans le cadran du titre.
     decor: `url(${decorFuturiste}) top center / 100% auto no-repeat`,
+  },
+  {
+    // 5 nouveaux affichages proposés par Claude à la demande de Dylan
+    // ("qu'est-ce qu'il pourrait y avoir d'autre comme thème ?"). Images de
+    // fond générées par Dylan (Google Flow / Nano Banana Pro à partir des
+    // prompts fournis) — même principe que Vintage/Rétro/Robotique/
+    // Futuriste : bande de dégradé de bord en CSS (visible dans la marge
+    // mobile) posée PAR-DESSUS l'image, qui est elle-même ancrée en haut de
+    // page (jamais "cover" plein cadre, pour ne pas s'étirer sur une page
+    // longue).
+    key: "luxe",
+    threshold: 0,
+    label: "Luxe",
+    emoji: "♦️",
+    mode: "dark",
+    // Cinzel : serif capitale à l'antique (inscriptions romaines), très
+    // "maison de vente aux enchères" en majuscules espacées. EB Garamond
+    // en corps de texte pour rester élégant sans nuire à la lisibilité.
+    fontDisplay: "'Cinzel', serif",
+    fontBody: "'EB Garamond', serif",
+    displayTransform: "uppercase",
+    displayLetterSpacing: "0.05em",
+    displayScale: 0.85,
+    heroScale: 0.85,
+    base: "#0D0B08",
+    mid: "#241D12",
+    high: "#D4AF37",
+    borderRgb: "212, 175, 55",
+    radiusScale: 0.4,
+    accent: "#D4AF37",
+    accentDark: "#9C7A1E",
+    accentLight: "#F0DFA0",
+    glow: 0.18,
+    texture:
+      "radial-gradient(circle at 50% 0%, rgba(212,175,55,0.10) 0, transparent 50%), radial-gradient(circle at 85% 90%, rgba(212,175,55,0.07) 0, transparent 45%), linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.025) 50%, transparent 60%)",
+    decor: [
+      "linear-gradient(90deg, rgba(212,175,55,0.20) 0%, rgba(212,175,55,0.07) 3%, transparent 9%, transparent 91%, rgba(212,175,55,0.07) 97%, rgba(212,175,55,0.20) 100%)",
+      `url(${decorLuxe}) top center / 100% auto no-repeat`,
+    ].join(", "),
+  },
+  {
+    key: "noir",
+    threshold: 0,
+    label: "Film noir",
+    emoji: "🕵️",
+    mode: "dark",
+    // Bebas Neue : typo capitale condensée façon affiche de film policier
+    // des années 40. Special Elite imite une machine à écrire, esprit
+    // rapport d'enquête/dossier.
+    fontDisplay: "'Bebas Neue', sans-serif",
+    fontBody: "'Special Elite', monospace",
+    displayTransform: "uppercase",
+    displayLetterSpacing: "0.03em",
+    bodyLetterSpacing: "0.02em",
+    heroScale: 0.85,
+    base: "#0A0A0A",
+    mid: "#2B2B2B",
+    high: "#C9C9C9",
+    borderRgb: "170, 170, 170",
+    radiusScale: 0.2,
+    // Seule touche de couleur : un rouge sombre façon "détail signifiant"
+    // dans un film en noir et blanc — tout le reste reste en niveaux de
+    // gris.
+    accent: "#B0201F",
+    accentDark: "#701412",
+    accentLight: "#D65C57",
+    glow: 0.1,
+    // Vignettage marqué (bords assombris, centre plus lumineux façon
+    // projecteur) plutôt qu'un grain de pellicule (retenue de l'épisode
+    // Vintage : trop de "petits points").
+    texture:
+      "radial-gradient(circle at 50% 30%, rgba(255,255,255,0.06) 0, transparent 55%), radial-gradient(circle at 50% 50%, transparent 35%, rgba(0,0,0,0.4) 100%)",
+    decor: [
+      "linear-gradient(90deg, rgba(0,0,0,0.4) 0%, transparent 9%, transparent 91%, rgba(0,0,0,0.4) 100%)",
+      `url(${decorNoir}) top center / 100% auto no-repeat`,
+    ].join(", "),
+  },
+  {
+    key: "industriel",
+    threshold: 0,
+    label: "Industriel",
+    emoji: "⚙️",
+    mode: "dark",
+    // Big Shoulders Display : condensée et massive, façon tôle
+    // embossée/pochoir d'usine. IBM Plex Mono pour le côté technique/
+    // étiquette d'atelier.
+    fontDisplay: "'Big Shoulders Display', sans-serif",
+    fontBody: "'IBM Plex Mono', monospace",
+    displayTransform: "uppercase",
+    displayLetterSpacing: "0.02em",
+    displayScale: 0.85,
+    bodyTransform: "uppercase",
+    bodyLetterSpacing: "0.02em",
+    heroScale: 0.85,
+    base: "#1C1C1A",
+    mid: "#3A362E",
+    high: "#B5502A",
+    borderRgb: "181, 80, 42",
+    radiusScale: 0,
+    accent: "#B5502A",
+    accentDark: "#7A3419",
+    accentLight: "#E08F5E",
+    glow: 0.1,
+    texture:
+      "radial-gradient(circle at 20% 20%, rgba(181,80,42,0.08) 0, transparent 42%), radial-gradient(circle at 80% 75%, rgba(0,0,0,0.28) 0, transparent 50%), repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, transparent 2px, transparent 14px)",
+    decor: [
+      "linear-gradient(90deg, rgba(181,80,42,0.20) 0%, rgba(181,80,42,0.08) 3%, transparent 9%, transparent 91%, rgba(181,80,42,0.08) 97%, rgba(181,80,42,0.20) 100%)",
+      `url(${decorIndustriel}) top center / 100% auto no-repeat`,
+    ].join(", "),
+  },
+  {
+    key: "botanique",
+    threshold: 0,
+    label: "Botanique",
+    emoji: "🌿",
+    mode: "light",
+    // Cormorant Garamond : serif fine et délicate façon herbier ancien.
+    // Karla en corps de texte pour rester lisible sans casser la douceur.
+    fontDisplay: "'Cormorant Garamond', serif",
+    fontBody: "'Karla', sans-serif",
+    heroScale: 0.85,
+    base: "#F3F1E7",
+    mid: "#D9E0C7",
+    high: "#5B7A52",
+    borderRgb: "91, 122, 82",
+    textStrong: "#2E3A24",
+    textSoft: "#5F6F52",
+    radiusScale: 0.6,
+    accent: "#5B7A52",
+    accentDark: "#3B5233",
+    accentLight: "#A8C79A",
+    glow: 0.08,
+    texture:
+      "radial-gradient(circle at 15% 15%, rgba(91,122,82,0.10) 0, transparent 45%), radial-gradient(circle at 85% 20%, rgba(169,199,154,0.14) 0, transparent 42%), radial-gradient(circle at 70% 80%, rgba(91,122,82,0.09) 0, transparent 48%), radial-gradient(circle at 20% 85%, rgba(139,163,110,0.10) 0, transparent 46%)",
+    decor: [
+      "linear-gradient(90deg, rgba(91,122,82,0.18) 0%, rgba(91,122,82,0.07) 3%, transparent 9%, transparent 91%, rgba(91,122,82,0.07) 97%, rgba(91,122,82,0.18) 100%)",
+      `url(${decorBotanique}) top center / 100% auto no-repeat`,
+    ].join(", "),
+  },
+  {
+    key: "zen",
+    threshold: 0,
+    label: "Zen",
+    emoji: "⛩️",
+    mode: "light",
+    // Zen Old Mincho / Zen Kaku Gothic New : polices japonaises (le nom
+    // n'est pas un hasard) — mincho élégante pour le titre, gothic nette
+    // pour le corps. Esprit papier washi + très peu de texture (le "ma",
+    // l'espace vide, fait partie de l'esthétique).
+    fontDisplay: "'Zen Old Mincho', serif",
+    fontBody: "'Zen Kaku Gothic New', sans-serif",
+    heroScale: 0.85,
+    base: "#F5F1E8",
+    mid: "#E8E1D2",
+    high: "#8A1F1F",
+    borderRgb: "31, 29, 26",
+    textStrong: "#1F1D1A",
+    textSoft: "#5A564C",
+    radiusScale: 0.15,
+    accent: "#8A1F1F",
+    accentDark: "#5C1414",
+    accentLight: "#C97A7A",
+    glow: 0.05,
+    texture:
+      "radial-gradient(circle at 85% 15%, rgba(31,29,26,0.05) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(138,31,31,0.06) 0, transparent 35%)",
+    decor: [
+      "linear-gradient(90deg, rgba(31,29,26,0.14) 0%, rgba(31,29,26,0.05) 3%, transparent 8%, transparent 92%, rgba(31,29,26,0.05) 97%, rgba(31,29,26,0.14) 100%)",
+      `url(${decorZen}) top center / 100% auto no-repeat`,
+    ].join(", "),
   },
 ];
 
@@ -5695,7 +5871,7 @@ export default function App() {
         /* Toutes les polices des 5 affichages sont chargées d'un coup (une
            seule requête) pour permettre un changement d'affichage instantané,
            sans "flash" le temps qu'une police se télécharge. */
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Karla:wght@400;500;600;700&family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
         * { box-sizing: border-box; }
         /* Les deux polices dépendent de l'affichage sélectionné (voir
            AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
