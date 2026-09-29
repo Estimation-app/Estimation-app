@@ -241,50 +241,92 @@ function hexToRgbString(hex) {
   return `${r}, ${g}, ${b}`;
 }
 
-// "Fonds" débloqués au fil des JOURS DE CONNEXION CONSÉCUTIFS (et non plus
-// des générations d'annonce) — voir connectionStreak plus bas, dérivé du
-// même suivi de dates que lifetimeConnectionDays. Le premier ("bleu")
-// correspond au fond navy/blanc habituel — il n'est jamais verrouillé et
-// ne modifie rien (voir la logique de pt.* plus bas : on ne touche aux
-// dégradés de fond que pour les autres teintes). Chaque teinte fournit 3
-// tons pour le mode sombre et 3 pour le mode clair, utilisés pour
-// reconstruire dynamiquement pageBg/sheetBg/headerBg/etc. "bleu" et
-// "blanc" sont les deux fonds historiques (l'ancienne bascule fond sombre/
-// clair du menu, désormais fusionnée ici) : toujours débloqués, jamais
-// retouchés (mode "dark"/"light" = les thèmes PANEL_THEMES existants tels
-// quels). Les couleurs suivantes sont volontairement saturées/vives (pas
-// de pastel délavé) pour bien se voir, sur le même principe que le bleu
-// nuit d'origine — seules les grandes surfaces (page/panneaux/header/
-// carte résultat/écran de chargement/zone photo) sont retouchées, via un
-// dégradé base → mid → high propre à chaque teinte (voir plus bas dans le
-// composant, juste avant `const pt = ...`).
-const BG_SKINS = [
-  { key: "bleu", threshold: 0, label: "Bleu nuit", emoji: "🔵", mode: "dark", base: "#0A1220", mid: "#152238", high: "#26374E" },
-  { key: "blanc", threshold: 0, label: "Blanc", emoji: "⚪", mode: "light", base: "#E9EDF2", mid: "#F4F6F9", high: "#D7DEE6" },
-  { key: "vert", threshold: 3, label: "Vert", emoji: "🟢", mode: "dark", base: "#051A10", mid: "#0F3D26", high: "#17824C" },
-  { key: "jaune", threshold: 7, label: "Jaune", emoji: "🟡", mode: "dark", base: "#1F1605", mid: "#4D3800", high: "#8A6800" },
-  { key: "marron", threshold: 14, label: "Marron", emoji: "🟤", mode: "dark", base: "#1C120A", mid: "#442A17", high: "#7A4A26" },
-  { key: "rouge", threshold: 30, label: "Rouge", emoji: "🔴", mode: "dark", base: "#210609", mid: "#6E1620", high: "#B22B3A" },
-  { key: "violet", threshold: 60, label: "Violet", emoji: "🟣", mode: "dark", base: "#180A28", mid: "#3F1768", high: "#6D2FB0" },
-  // "Platine" : palier ultime ("masterclass" demandé) — argenté/brillant,
-  // avec des nuances qui tirent vers le bleu-cyan du grade "diamant" (voir
-  // GRADES plus haut) pour rappeler la pierre précieuse sans le copier.
-  // Seul palier avec `glow` (halo lumineux) et petits glyphes "incrustés"
-  // (voir le bloc `activeBgSkin.key === "platine"` dans le header).
-  // "high" a été assombri (l'ancien #D9F3FF, quasi blanc, rendait illisible
-  // le texte clair du thème sombre — chevronColor, subText, etc. — sur les
-  // panneaux/écrans utilisant pt.sheetBg/loadingBg dérivés de cette teinte,
-  // notamment le seuil d'estimations sous les avatars verrouillés). L'effet
-  // "brillant" reste porté par `glow` + les glyphes incrustés, pas par la
-  // clarté du dégradé de fond.
-  { key: "platine", threshold: 100, label: "Platine", emoji: "💠", mode: "dark", base: "#10141B", mid: "#3C4B5E", high: "#5F7186", glow: 0.4 },
+// "Affichages" : styles visuels sélectionnables pour TOUTE l'application —
+// remplace l'ancien système de "Fonds" (paliers de couleur débloqués par
+// jours de connexion). Chaque affichage change les polices d'écriture, les
+// couleurs d'arrière-plan et les contours (bordures/séparateurs), mais NE
+// TOUCHE JAMAIS à la disposition, aux tailles de texte ni aux dimensions
+// des cadres/panneaux — ceux-ci restent strictement identiques d'un
+// affichage à l'autre (seuls les tokens de couleur/police de pt.* et les
+// deux polices `.brand`/`.mono` changent, voir `const pt = ...` plus bas
+// dans le composant). "Classique" correspond exactement au look actuel de
+// l'appli (aucune surcharge : reprend PANEL_THEMES.dark tel quel) et reste
+// le choix par défaut. Le mécanisme de déblocage (aujourd'hui : tous
+// disponibles d'emblée, `threshold: 0` pour chacun) sera revu plus tard —
+// voir la sélection juste avant `const pt = ...`.
+//
+// `base`/`mid`/`high` (optionnels) : reconstruisent, comme avant, les
+// grandes surfaces (page/panneaux/header/carte résultat/écran de
+// chargement/zone photo) via un dégradé base → mid → high propre à
+// l'affichage — absent pour "Classique" (surfaces d'origine inchangées).
+// `borderRgb` (optionnel) : teinte (r, g, b) utilisée pour recolorer les
+// contours (bordures de lignes/chips/champs/pointillés/cartes) tout en
+// conservant exactement les mêmes épaisseurs/styles ("1px solid",
+// "1px dashed"...) qu'aujourd'hui — absent pour "Classique" (contours
+// d'origine inchangés).
+const AFFICHAGES = [
+  {
+    key: "classique",
+    threshold: 0,
+    label: "Classique",
+    emoji: "🔷",
+    mode: "dark",
+    fontDisplay: "'Fraunces', Georgia, serif",
+    fontBody: "'Inter', sans-serif",
+  },
+  {
+    key: "vintage",
+    threshold: 0,
+    label: "Vintage",
+    emoji: "📜",
+    mode: "dark",
+    fontDisplay: "'Playfair Display', Georgia, serif",
+    fontBody: "'Courier Prime', monospace",
+    base: "#1C140B",
+    mid: "#3A2A17",
+    high: "#8A6A3A",
+    borderRgb: "184, 142, 84",
+  },
+  {
+    key: "retro",
+    threshold: 0,
+    label: "Rétro",
+    emoji: "📼",
+    mode: "dark",
+    fontDisplay: "'Bungee', cursive",
+    fontBody: "'Space Mono', monospace",
+    base: "#170B2E",
+    mid: "#3A1268",
+    high: "#E6247A",
+    borderRgb: "255, 90, 190",
+  },
+  {
+    key: "robotique",
+    threshold: 0,
+    label: "Robotique",
+    emoji: "🤖",
+    mode: "dark",
+    fontDisplay: "'Orbitron', sans-serif",
+    fontBody: "'Share Tech Mono', monospace",
+    base: "#0D1210",
+    mid: "#1E2E28",
+    high: "#3FE0A5",
+    borderRgb: "63, 224, 165",
+  },
+  {
+    key: "futuriste",
+    threshold: 0,
+    label: "Futuriste",
+    emoji: "🚀",
+    mode: "dark",
+    fontDisplay: "'Michroma', sans-serif",
+    fontBody: "'Chakra Petch', sans-serif",
+    base: "#050B14",
+    mid: "#0E2A44",
+    high: "#33C9FF",
+    borderRgb: "51, 201, 255",
+  },
 ];
-// Progression réelle des paliers à débloquer (le "blanc" est un fond
-// alternatif toujours disponible, pas une récompense — il ne fait donc pas
-// partie de l'échelle utilisée pour calculer le palier le plus haut
-// atteint / le prochain palier, sinon il court-circuiterait "bleu" comme
-// fond "le plus haut débloqué" par défaut puisque les deux ont le seuil 0).
-const BG_PROGRESSION = BG_SKINS.filter((sk) => sk.key !== "blanc");
 
 // Affiche le portrait réel (Google Flow — Nano Banana Pro) d'un personnage.
 // Plus aucun dessin SVG : si l'id n'a pas (ou plus) de portrait dans
@@ -1731,13 +1773,13 @@ export default function App() {
   }, [lifetimeAdGenerations]);
 
   // Nombre de jours DISTINCTS où l'appli a été ouverte, et jours
-  // CONSÉCUTIFS jusqu'à aujourd'hui (streak) — sert désormais à débloquer
-  // les "fonds" de couleur (BG_SKINS plus haut) à la place des générations
-  // d'annonce, et sert toujours à débloquer certains personnages de
-  // l'avatar (voir CHARACTERS_META plus bas). Propre à l'appareil (local
-  // uniquement) : on garde la liste des dates (YYYY-MM-DD) déjà vues dans
-  // localStorage, et on ajoute la date du jour une seule fois au montage
-  // si elle n'y est pas encore.
+  // CONSÉCUTIFS jusqu'à aujourd'hui (streak) — sert à débloquer certains
+  // personnages de l'avatar (voir CHARACTERS_META plus bas). Ne sert plus à
+  // débloquer les affichages (AFFICHAGES plus haut, tous disponibles
+  // d'emblée pour l'instant — mécanisme de déblocage à définir plus tard).
+  // Propre à l'appareil (local uniquement) : on garde la liste des dates
+  // (YYYY-MM-DD) déjà vues dans localStorage, et on ajoute la date du jour
+  // une seule fois au montage si elle n'y est pas encore.
   function computeConnectionStreak(days) {
     try {
       const set = new Set(Array.isArray(days) ? days : []);
@@ -1788,70 +1830,54 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function bgSkinForStreak(n) {
-    let b = BG_PROGRESSION[0];
-    for (const sk of BG_PROGRESSION) {
-      if (n >= sk.threshold) b = sk;
-    }
-    return b;
-  }
-  const highestUnlockedBgSkin = bgSkinForStreak(connectionStreak);
-  const nextBgSkin = BG_PROGRESSION.find((sk) => sk.threshold > connectionStreak) || null;
-
-  const [selectedBgSkinKey, setSelectedBgSkinKey] = useState(() => {
+  const [selectedAffichageKey, setSelectedAffichageKey] = useState(() => {
     try {
-      const stored = localStorage.getItem("estim_bg_skin");
-      if (stored) return stored;
-      // Migration : l'ancienne bascule fond sombre/clair du menu a fusionné
-      // dans les "fonds" — qui avait choisi le fond clair garde "blanc".
-      return localStorage.getItem("estim_menu_theme") === "light" ? "blanc" : null;
-    } catch (e) {
-      return null;
-    }
+      const stored = localStorage.getItem("estim_affichage");
+      if (stored && AFFICHAGES.some((a) => a.key === stored)) return stored;
+    } catch (e) {}
+    return "classique";
   });
   useEffect(() => {
     try {
-      if (selectedBgSkinKey) localStorage.setItem("estim_bg_skin", selectedBgSkinKey);
+      localStorage.setItem("estim_affichage", selectedAffichageKey);
     } catch (e) {}
-  }, [selectedBgSkinKey]);
-  const prevBgSkinKeyRef = useRef(highestUnlockedBgSkin.key);
-  const [bgSkinUnlockToast, setBgSkinUnlockToast] = useState(null);
-  useEffect(() => {
-    if (highestUnlockedBgSkin.key !== prevBgSkinKeyRef.current) {
-      prevBgSkinKeyRef.current = highestUnlockedBgSkin.key;
-      if (highestUnlockedBgSkin.key !== "bleu") {
-        setSelectedBgSkinKey(highestUnlockedBgSkin.key);
-        setBgSkinUnlockToast(highestUnlockedBgSkin);
-        setTimeout(() => setBgSkinUnlockToast(null), 5000);
-      }
-    }
-  }, [highestUnlockedBgSkin.key]);
+  }, [selectedAffichageKey]);
 
-  const activeBgSkin =
-    (selectedBgSkinKey &&
-      BG_SKINS.find((sk) => sk.key === selectedBgSkinKey && (sk.threshold <= connectionStreak || isOwnerPreview))) ||
-    highestUnlockedBgSkin;
-  // Utilisé pour le halo et les petits glyphes "incrustés" du palier
-  // "platine" (voir header plus bas) — calculé une fois ici, indépendant
-  // du système de halo existant (`activeGrade.glow`) lié aux habillages.
-  const bgSkinAccentRgb = hexToRgbString(activeBgSkin.high);
+  // Tous les affichages sont débloqués d'emblée (`threshold: 0` pour
+  // chacun, voir AFFICHAGES plus haut) — le mécanisme de déblocage sera
+  // défini dans un second temps, ce qui garde la sélection ci-dessous très
+  // simple (pas de notion de "plus haut débloqué"/toast/progression).
+  const activeAffichage = AFFICHAGES.find((a) => a.key === selectedAffichageKey) || AFFICHAGES[0];
 
-  // Le thème clair/sombre est désormais entièrement dérivé du fond choisi
-  // ("blanc" → light, tout le reste → dark) — il n'y a plus de bascule
-  // séparée dans le menu, voir BG_SKINS plus haut.
-  const menuTheme = activeBgSkin.mode;
+  const menuTheme = activeAffichage.mode;
   const pt = { ...(PANEL_THEMES[menuTheme] || PANEL_THEMES.dark) };
-  // Fond de couleur débloqué : on ne retouche que les grandes surfaces
-  // (page, panneaux, header, carte résultat, écran de chargement, zone
-  // photo) — "bleu" et "blanc" restent strictement identiques à avant.
-  if (activeBgSkin.key !== "bleu" && activeBgSkin.key !== "blanc") {
-    pt.pageBg = activeBgSkin.base;
-    pt.sheetBg = `linear-gradient(160deg, ${activeBgSkin.base} 0%, ${activeBgSkin.mid} 45%, ${activeBgSkin.high} 100%)`;
-    pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeBgSkin.mid} 52%, ${activeBgSkin.high} 100%)`;
+  // Arrière-plans : on ne retouche que les grandes surfaces (page,
+  // panneaux, header, carte résultat, écran de chargement, zone photo) —
+  // "Classique" (pas de base/mid/high) reste strictement identique à avant.
+  if (activeAffichage.base) {
+    pt.pageBg = activeAffichage.base;
+    pt.sheetBg = `linear-gradient(160deg, ${activeAffichage.base} 0%, ${activeAffichage.mid} 45%, ${activeAffichage.high} 100%)`;
+    pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 52%, ${activeAffichage.high} 100%)`;
     pt.resultCardBg = pt.headerBg;
-    pt.loadingBg = `linear-gradient(160deg, ${activeBgSkin.high} 0%, ${activeBgSkin.mid} 100%)`;
-    pt.loadingBorder = activeBgSkin.high;
-    pt.dropZoneBg = `radial-gradient(circle at 50% 32%, ${activeBgSkin.mid} 0%, ${activeBgSkin.base} 72%)`;
+    pt.loadingBg = `linear-gradient(160deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 100%)`;
+    pt.loadingBorder = activeAffichage.high;
+    pt.dropZoneBg = `radial-gradient(circle at 50% 32%, ${activeAffichage.mid} 0%, ${activeAffichage.base} 72%)`;
+  }
+  // Contours : même principe, on ne change que la teinte (r, g, b) des
+  // bordures/séparateurs/pointillés — jamais leur épaisseur ni leur style
+  // ("1px solid"/"1px dashed" conservés tels quels) — "Classique" (pas de
+  // borderRgb) reste strictement identique à avant.
+  if (activeAffichage.borderRgb) {
+    const b = activeAffichage.borderRgb;
+    pt.rowBorder = `1px solid rgba(${b}, 0.22)`;
+    pt.chipBorder = `1px solid rgba(${b}, 0.32)`;
+    pt.inputBorder = `1px solid rgba(${b}, 0.4)`;
+    pt.dashedBorder = `1px dashed rgba(${b}, 0.32)`;
+    pt.cardBorder = `1px solid rgba(${b}, 0.22)`;
+    pt.formCardBorder = `1px solid rgba(${b}, 0.28)`;
+    pt.langUnselectedBorder = `1px solid rgba(${b}, 0.22)`;
+    pt.ghostBorder = `rgba(${b}, 0.45)`;
+    pt.menuBtnBorder = `rgba(${b}, 0.4)`;
   }
   // Le haut de l'appli (bandeau + poignée des panneaux) se termine toujours
   // sur l'accent actif: c'est ce qui donne l'impression que "tout change"
@@ -2282,10 +2308,10 @@ export default function App() {
   }
   // Message "félicitations, tu viens de débloquer un avatar" au moment où
   // l'abonnement est validé (demandé par Dylan) — même mécanique que
-  // gradeUnlockToast/bgSkinUnlockToast plus haut : on ignore le tout
-  // premier calcul après le chargement du profil (pas un vrai déblocage,
-  // juste la synchronisation initiale), et seule une VRAIE montée de
-  // palier d'abonnement en cours de session déclenche le toast.
+  // gradeUnlockToast plus haut : on ignore le tout premier calcul après le
+  // chargement du profil (pas un vrai déblocage, juste la synchronisation
+  // initiale), et seule une VRAIE montée de palier d'abonnement en cours de
+  // session déclenche le toast.
   const prevAvatarPlanRankRef = useRef(userPlanRank);
   const avatarPlanRankSyncedRef = useRef(false);
   const [avatarUnlockToast, setAvatarUnlockToast] = useState(null);
@@ -4242,39 +4268,12 @@ export default function App() {
         </div>
       )}
 
-      {bgSkinUnlockToast && (
-        <div
-          role="status"
-          style={{
-            position: "fixed",
-            top: gradeUnlockToast ? 60 : 14,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 60,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: `linear-gradient(135deg, ${bgSkinUnlockToast.mid} 0%, ${bgSkinUnlockToast.high} 100%)`,
-            color: "#FFFFFF",
-            borderRadius: 30,
-            padding: "10px 16px",
-            boxShadow: "0 8px 24px rgba(4, 6, 12, 0.4)",
-            maxWidth: "90vw",
-          }}
-        >
-          <span style={{ fontSize: 18 }}>{bgSkinUnlockToast.emoji}</span>
-          <span className="mono" style={{ fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
-            Fond {bgSkinUnlockToast.label} débloqué !
-          </span>
-        </div>
-      )}
-
       {avatarUnlockToast && (
         <div
           role="status"
           style={{
             position: "fixed",
-            top: 14 + (gradeUnlockToast ? 46 : 0) + (bgSkinUnlockToast ? 46 : 0),
+            top: 14 + (gradeUnlockToast ? 46 : 0),
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 60,
@@ -4298,14 +4297,17 @@ export default function App() {
       )}
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&display=swap');
+        /* Toutes les polices des 5 affichages sont chargées d'un coup (une
+           seule requête) pour permettre un changement d'affichage instantané,
+           sans "flash" le temps qu'une police se télécharge. */
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@400;600;700&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Michroma&family=Chakra+Petch:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; }
-        .brand { font-family: 'Fraunces', serif; }
-        /* Remplace l'ancienne police "JetBrains Mono" (trop "code/debug" au
-           goût de l'utilisateur) par Inter, déjà chargée pour le corps du
-           texte — un seul point de changement qui s'applique à tous les
-           usages de .mono dans toute l'appli. */
-        .mono { font-family: 'Inter', sans-serif; }
+        /* Les deux polices dépendent de l'affichage sélectionné (voir
+           AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
+           l'écriture de TOUTE l'appli sans toucher aux tailles/dispositions,
+           qui restent fixées dans chaque style inline. */
+        .brand { font-family: ${activeAffichage.fontDisplay}; }
+        .mono { font-family: ${activeAffichage.fontBody}; }
         button { font-family: inherit; cursor: pointer; }
         @keyframes sparkle-pulse {
           0%, 100% { opacity: 0.15; transform: scale(0.8); }
@@ -4501,45 +4503,11 @@ export default function App() {
             borderRadius: 22,
             padding: "22px 20px 24px",
             background: pt.headerBg,
-            boxShadow: [
-              activeGrade.glow ? `0 0 0 1px rgba(${accentRgb}, ${activeGrade.glow * 0.6}), 0 18px 40px rgba(${accentRgb}, ${activeGrade.glow * 0.5})` : null,
-              activeBgSkin.key === "platine" ? `0 0 0 1px rgba(${bgSkinAccentRgb}, 0.5), 0 0 30px rgba(${bgSkinAccentRgb}, ${activeBgSkin.glow || 0.4})` : null,
-            ]
-              .filter(Boolean)
-              .join(", ") || "none",
+            boxShadow: activeGrade.glow
+              ? `0 0 0 1px rgba(${accentRgb}, ${activeGrade.glow * 0.6}), 0 18px 40px rgba(${accentRgb}, ${activeGrade.glow * 0.5})`
+              : "none",
           }}
         >
-          {activeBgSkin.key === "platine" && (
-            <>
-              {[
-                { top: "9%", left: "16%", size: 10, glyph: "✦", delay: "0s" },
-                { top: "20%", left: "72%", size: 15, glyph: "❖", delay: "0.35s" },
-                { top: "54%", left: "93%", size: 9, glyph: "✧", delay: "0.9s" },
-                { top: "80%", left: "28%", size: 11, glyph: "✦", delay: "1.3s" },
-                { top: "46%", left: "5%", size: 8, glyph: "✧", delay: "1.7s" },
-                { top: "6%", left: "48%", size: 12, glyph: "❖", delay: "0.6s" },
-              ].map((s, i) => (
-                <span
-                  key={`pl-${i}`}
-                  aria-hidden="true"
-                  className="sparkle"
-                  style={{
-                    position: "absolute",
-                    top: s.top,
-                    left: s.left,
-                    fontSize: s.size,
-                    color: activeBgSkin.high,
-                    textShadow: `0 0 8px rgba(${bgSkinAccentRgb}, 0.9)`,
-                    animationDelay: s.delay,
-                    pointerEvents: "none",
-                  }}
-                >
-                  {s.glyph}
-                </span>
-              ))}
-            </>
-          )}
-
           {activeGrade.key === "diamant" && (
             <>
               {[
@@ -6980,24 +6948,19 @@ export default function App() {
 
             <div style={{ borderTop: pt.dashedBorder, marginTop: 16, paddingTop: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
-                Fonds ({connectionStreak} jour{connectionStreak > 1 ? "s" : ""} de connexion d'affilée)
+                Thème (polices, couleurs et contours de toute l'appli)
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {BG_SKINS.map((sk) => {
-                  const unlocked = sk.threshold <= connectionStreak;
-                  const canSelect = unlocked || isOwnerPreview;
-                  const isActive = activeBgSkin.key === sk.key;
+                {AFFICHAGES.map((aff) => {
+                  const isActive = activeAffichage.key === aff.key;
+                  const swatchHigh = aff.high || "#F2662E";
+                  const swatchMid = aff.mid || "#152238";
+                  const swatchBase = aff.base || "#0A1220";
                   return (
                     <button
-                      key={sk.key}
-                      onClick={() => canSelect && setSelectedBgSkinKey(sk.key)}
-                      title={
-                        unlocked
-                          ? sk.label
-                          : isOwnerPreview
-                          ? `${sk.label} — aperçu (verrouillé pour les autres comptes, débloqué à ${sk.threshold} jours de connexion d'affilée)`
-                          : `${sk.label} — débloqué à ${sk.threshold} jours de connexion d'affilée`
-                      }
+                      key={aff.key}
+                      onClick={() => setSelectedAffichageKey(aff.key)}
+                      title={aff.label}
                       style={{
                         display: "flex",
                         flexDirection: "column",
@@ -7006,8 +6969,7 @@ export default function App() {
                         background: "none",
                         border: "none",
                         padding: 0,
-                        cursor: canSelect ? "pointer" : "default",
-                        opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
+                        cursor: "pointer",
                       }}
                     >
                       <div
@@ -7015,53 +6977,21 @@ export default function App() {
                           width: 34,
                           height: 34,
                           borderRadius: "50%",
-                          background: `linear-gradient(135deg, ${sk.high} 0%, ${sk.mid} 55%, ${sk.base} 100%)`,
-                          border: isActive ? "3px solid #FFFFFF" : sk.key === "platine" ? "2px solid rgba(217, 243, 255, 0.55)" : "2px solid rgba(255, 255, 255, 0.25)",
-                          boxShadow: isActive
-                            ? `0 0 0 2px ${sk.high}`
-                            : sk.key === "platine"
-                            ? `0 0 10px rgba(${hexToRgbString(sk.high)}, 0.55)`
-                            : "none",
+                          background: `linear-gradient(135deg, ${swatchHigh} 0%, ${swatchMid} 55%, ${swatchBase} 100%)`,
+                          border: isActive ? "3px solid #FFFFFF" : "2px solid rgba(255, 255, 255, 0.25)",
+                          boxShadow: isActive ? `0 0 0 2px ${swatchHigh}` : "none",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          position: "relative",
                         }}
-                      >
-                        {!unlocked && <Lock size={12} color="#FFFFFF" />}
-                        {unlocked && sk.key === "platine" && (
-                          <span
-                            aria-hidden="true"
-                            className="sparkle"
-                            style={{
-                              position: "absolute",
-                              top: -3,
-                              right: -3,
-                              fontSize: 10,
-                              color: sk.high,
-                              textShadow: `0 0 6px rgba(${hexToRgbString(sk.high)}, 0.9)`,
-                            }}
-                          >
-                            ✦
-                          </span>
-                        )}
-                      </div>
+                      />
                       <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
-                        {sk.emoji} {sk.label}
-                      </span>
-                      <span className="mono" style={{ fontSize: 8, color: unlocked ? "#4ADE80" : pt.chevronColor, textAlign: "center" }}>
-                        {sk.threshold === 0 ? "toujours" : unlocked ? "débloqué" : `${sk.threshold} jours`}
+                        {aff.emoji} {aff.label}
                       </span>
                     </button>
                   );
                 })}
               </div>
-              {nextBgSkin && (
-                <div className="mono" style={{ fontSize: 10, color: pt.chevronColor, marginTop: 8 }}>
-                  Prochain fond : {nextBgSkin.label} à {nextBgSkin.threshold} jours de connexion d'affilée (
-                  {connectionStreak}/{nextBgSkin.threshold})
-                </div>
-              )}
             </div>
           </div>
         </div>
