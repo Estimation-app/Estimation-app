@@ -390,13 +390,19 @@ const AFFICHAGES = [
     accentDark: "#8C5225",
     accentLight: "#E7A876",
     glow: 0.12,
-    // Dylan trouvait d'abord le fond "très blanc neutre" (v1), puis le
-    // grain papier ajouté pour corriger ça "trop texturé, trop de petits
-    // points" (v2, bruit fractal retiré) : uniquement des nuances de
-    // couleur douces et progressives (façon carton/papier kraft superposés)
-    // via plusieurs taches larges et floues, sans aucun grain/pointillé —
-    // en plus du hachurage carton (lignes, pas des points) déjà présent.
+    // Historique : "très blanc neutre" (v1) → grain papier ajouté, "trop
+    // texturé, trop de petits points" (v2, bruit fractal retiré, taches
+    // douces seulement) → "encore trop monotone" (v3) : Dylan voulait des
+    // nuances plus marquées façon parchemin, comme des endroits "un peu
+    // brûlés" ou plus vieillis, pas juste une teinte uniforme. Ajout de
+    // quelques taches "brûlées" à dégradé plus contrasté (cœur plus foncé,
+    // brun brûlé, qui se fond ensuite) dans les coins/bords — en plus des
+    // taches douces existantes (nuance d'ensemble) et du hachurage carton.
     texture: [
+      "radial-gradient(circle at 4% 6%, rgba(66,45,22,0.24) 0%, rgba(66,45,22,0.10) 24%, transparent 46%)",
+      "radial-gradient(circle at 95% 5%, rgba(84,54,20,0.20) 0%, rgba(84,54,20,0.07) 26%, transparent 48%)",
+      "radial-gradient(circle at 92% 72%, rgba(58,38,18,0.22) 0%, rgba(58,38,18,0.08) 24%, transparent 46%)",
+      "radial-gradient(circle at 10% 94%, rgba(66,45,22,0.20) 0%, rgba(66,45,22,0.08) 25%, transparent 48%)",
       "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.11) 0, transparent 40%)",
       "radial-gradient(circle at 84% 10%, rgba(184,121,30,0.10) 0, transparent 40%)",
       "radial-gradient(circle at 62% 66%, rgba(43,36,28,0.11) 0, transparent 46%)",
@@ -5563,6 +5569,7 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
+        position: "relative",
         // Les calques décoratifs de l'affichage actif sont posés SOUS la
         // couleur de fond (pt.pageBg, réutilisée ailleurs comme couleur
         // unie — ex: contour SVG des graphiques — donc jamais modifiée
@@ -5582,6 +5589,48 @@ export default function App() {
         padding: "28px 16px 60px",
       }}
     >
+      {/* Étoiles scintillantes de Futuriste : posées ici, au niveau du FOND
+          de la page (comme `decor`/`texture` juste au-dessus, pas dans le
+          <header>/"cadran") — Dylan avait raison de corriger : la première
+          version les avait mises dans le header par erreur. Ancrées en
+          pixels depuis le haut (même convention que les autres calques
+          `decor`, voir plus haut) pour rester groupées près du
+          header/de l'accroche quelle que soit la longueur de la page,
+          `left` en % de la pleine largeur. Vraies étoiles DOM (et non un
+          calque CSS statique) pour qu'elles clignotent réellement via
+          @keyframes sparkle-pulse ; tailles variées (5 à 13px), délais/
+          durées différents pour un effet naturel. */}
+      {activeAffichage.key === "futuriste" &&
+        [
+          { top: 18, left: "78%", size: 13, delay: "0s", duration: "2.6s" },
+          { top: 174, left: "92%", size: 8, delay: "0.5s", duration: "3.1s" },
+          { top: 101, left: "6%", size: 9, delay: "1s", duration: "2.4s" },
+          { top: 56, left: "95%", size: 6, delay: "1.4s", duration: "2.9s" },
+          { top: 213, left: "14%", size: 7, delay: "0.8s", duration: "2.2s" },
+          { top: 140, left: "88%", size: 11, delay: "1.8s", duration: "3.4s" },
+          { top: 8, left: "50%", size: 5, delay: "0.3s", duration: "2.7s" },
+          { top: 230, left: "60%", size: 6, delay: "1.6s", duration: "2.5s" },
+        ].map((s, i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            className="sparkle"
+            style={{
+              position: "absolute",
+              top: s.top,
+              left: s.left,
+              fontSize: s.size,
+              color: accentLight,
+              animationDelay: s.delay,
+              animationDuration: s.duration,
+              pointerEvents: "none",
+              zIndex: 0,
+            }}
+          >
+            ✦
+          </span>
+        ))}
+
       <div
         aria-hidden="true"
         style={{
@@ -5846,46 +5895,6 @@ export default function App() {
               : "none",
           }}
         >
-          {activeAffichage.key === "futuriste" && (
-            <>
-              {/* Petites étoiles scintillantes (apparaissent/disparaissent,
-                  voir @keyframes sparkle-pulse) plutôt que le champ
-                  d'étoiles tuilé en CSS d'avant, statique — Dylan voulait
-                  moins d'étoiles mais qu'elles brillent vraiment, avec des
-                  tailles bien variées (5 à 13px) et un rythme différent
-                  pour chacune (délai + durée), pour un effet plus naturel
-                  qu'un simple clignotement synchronisé. */}
-              {[
-                { top: "10%", left: "78%", size: 13, delay: "0s", duration: "2.6s" },
-                { top: "62%", left: "92%", size: 8, delay: "0.5s", duration: "3.1s" },
-                { top: "36%", left: "6%", size: 9, delay: "1s", duration: "2.4s" },
-                { top: "20%", left: "95%", size: 6, delay: "1.4s", duration: "2.9s" },
-                { top: "76%", left: "14%", size: 7, delay: "0.8s", duration: "2.2s" },
-                { top: "50%", left: "88%", size: 11, delay: "1.8s", duration: "3.4s" },
-                { top: "8%", left: "50%", size: 5, delay: "0.3s", duration: "2.7s" },
-                { top: "82%", left: "60%", size: 6, delay: "1.6s", duration: "2.5s" },
-              ].map((s, i) => (
-                <span
-                  key={i}
-                  aria-hidden="true"
-                  className="sparkle"
-                  style={{
-                    position: "absolute",
-                    top: s.top,
-                    left: s.left,
-                    fontSize: s.size,
-                    color: accentLight,
-                    animationDelay: s.delay,
-                    animationDuration: s.duration,
-                    pointerEvents: "none",
-                  }}
-                >
-                  ✦
-                </span>
-              ))}
-            </>
-          )}
-
           {/* Étiquette décorative géante en filigrane, pour le côté "fun" —
               purement décoratif (aria-hidden), reprend la forme du tag du
               logo, très discrète (faible opacité) pour ne jamais gêner la
