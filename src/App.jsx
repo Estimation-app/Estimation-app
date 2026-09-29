@@ -289,6 +289,23 @@ function hexToRgbString(hex) {
 // `displayScale` (optionnel, défaut 1) : voir `brandSize()` plus bas — clé
 // pour les polices très larges (Orbitron, Bungee...) afin qu'une phrase
 // comme l'accroche reste sur une seule ligne comme en "Classique".
+// `heroScale` (optionnel, défaut 1) : réduit spécifiquement le titre et le
+// sous-titre de l'accroche d'accueil ("Combien ça vaut, vraiment ?" + la
+// phrase "Meuble, bijoux, vieux jouet...") — indépendant de `displayScale`
+// (qui s'applique à tous les titres `.brand` de l'appli) car Dylan a
+// signalé que seule cette accroche paraissait trop grande sur Vintage/
+// Rétro/Robotique (Futuriste allait déjà bien).
+// `decor` (optionnel) : calque(s) `background-image` décoratifs
+// supplémentaires, en rapport avec le thème (tampon/étoile pour Vintage,
+// soleil synthwave pour Rétro, circuits pour Robotique, étoiles/anneau
+// pour Futuriste...), posés AU-DESSUS de `texture` — ancrés en pixels
+// depuis le haut (jamais en % vertical, le conteneur grandit avec le
+// contenu) pour rester groupés près du header/de l'accroche quelle que
+// soit la longueur de la page. Purement décoratif, n'affecte ni la
+// disposition ni aucune taille.
+function svgBg(svg) {
+  return `url('data:image/svg+xml,${encodeURIComponent(svg)}')`;
+}
 const AFFICHAGES = [
   {
     key: "classique",
@@ -298,6 +315,8 @@ const AFFICHAGES = [
     mode: "dark",
     fontDisplay: "'Fraunces', Georgia, serif",
     fontBody: "'Inter', sans-serif",
+    decor:
+      "radial-gradient(circle at 10% 20px, rgba(240, 200, 120, 0.10) 0, transparent 46%), radial-gradient(circle at 94% -40px, rgba(240, 200, 120, 0.09) 0, transparent 40%)",
   },
   {
     // Repris de la proposition "brocante & tampon" (maquette validée par
@@ -317,6 +336,7 @@ const AFFICHAGES = [
     displayTransform: "uppercase",
     displayLetterSpacing: "0.015em",
     bodyLetterSpacing: "0.04em",
+    heroScale: 0.85,
     base: "#EDE3CE",
     // mid/high plus soutenus (plus saturés, moins "délavés") qu'au premier
     // essai pour que les panneaux/écran de chargement aient davantage de
@@ -329,6 +349,19 @@ const AFFICHAGES = [
     radiusScale: 0.25,
     texture:
       "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.09) 0, transparent 38%), radial-gradient(circle at 84% 10%, rgba(43,36,28,0.08) 0, transparent 34%), radial-gradient(circle at 62% 66%, rgba(43,36,28,0.09) 0, transparent 42%), radial-gradient(circle at 8% 86%, rgba(43,36,28,0.08) 0, transparent 38%), repeating-linear-gradient(45deg, rgba(43,36,28,0.045) 0px, rgba(43,36,28,0.045) 1px, transparent 1px, transparent 3px)",
+    // Tampon postal (grand cercle pointillé + étoile) en haut à droite,
+    // petit cercle pointillé isolé en haut à gauche — même encre foncée que
+    // le texte (#2B241C), très discret (opacité 0.12-0.16).
+    decor: [
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">
+  <circle cx="80" cy="80" r="64" fill="none" stroke="#2B241C" stroke-width="2" stroke-dasharray="5 7" opacity="0.16"/>
+  <circle cx="80" cy="80" r="50" fill="none" stroke="#2B241C" stroke-width="1.4" opacity="0.12"/>
+  <path d="M80 44 L85 62 L104 62 L88 73 L94 91 L80 80 L66 91 L72 73 L56 62 L75 62 Z" fill="#2B241C" opacity="0.12"/>
+</svg>`)} top -20px right -20px / 190px 190px no-repeat`,
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90">
+  <circle cx="45" cy="45" r="36" fill="none" stroke="#2B241C" stroke-width="1.6" stroke-dasharray="3 6" opacity="0.13"/>
+</svg>`)} top 70px left -25px / 100px 100px no-repeat`,
+    ].join(", "),
   },
   {
     key: "retro",
@@ -340,6 +373,7 @@ const AFFICHAGES = [
     fontBody: "'Space Mono', monospace",
     displayTransform: "uppercase",
     displayScale: 0.85,
+    heroScale: 0.85,
     bodyLetterSpacing: "0.02em",
     bodyTransform: "uppercase",
     base: "#170B2E",
@@ -349,6 +383,16 @@ const AFFICHAGES = [
     radiusScale: 1.4,
     texture:
       "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px), radial-gradient(circle at 18% 14%, rgba(255,46,146,0.14) 0, transparent 40%), radial-gradient(circle at 86% 82%, rgba(110,30,230,0.16) 0, transparent 46%)",
+    // Soleil synthwave (demi-cercle + bandes horizontales façon "gap") en
+    // haut à droite, un peu plus bas que les autres décors pour rester
+    // sous l'accroche plutôt que la traverser.
+    decor: `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="150">
+  <path d="M20 140 A100 100 0 0 1 220 140 Z" fill="#FF2E92" opacity="0.16"/>
+  <rect x="20" y="92" width="200" height="5" fill="#170B2E" opacity="0.6"/>
+  <rect x="20" y="106" width="200" height="5" fill="#170B2E" opacity="0.6"/>
+  <rect x="20" y="120" width="200" height="6" fill="#170B2E" opacity="0.6"/>
+  <rect x="20" y="134" width="200" height="7" fill="#170B2E" opacity="0.6"/>
+</svg>`)} top 150px right -30px / 250px 155px no-repeat`,
   },
   {
     key: "robotique",
@@ -361,6 +405,7 @@ const AFFICHAGES = [
     displayLetterSpacing: "0.03em",
     displayTransform: "uppercase",
     displayScale: 0.78,
+    heroScale: 0.85,
     bodyLetterSpacing: "0.02em",
     bodyTransform: "uppercase",
     base: "#0B0F0D",
@@ -370,6 +415,32 @@ const AFFICHAGES = [
     radiusScale: 0,
     texture:
       "repeating-linear-gradient(0deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px), repeating-linear-gradient(90deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px)",
+    // Traces de circuit imprimé (traits à angle droit + nœuds), tracées à
+    // l'écart de la colonne de texte pour ne jamais la traverser.
+    decor: [
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="170" height="170">
+  <g fill="none" stroke="#3FE0A5" stroke-width="1.6" opacity="0.22">
+    <path d="M90 6 H140 V38"/>
+    <path d="M120 170 H150 V60 H100"/>
+    <path d="M160 6 V52 H130"/>
+  </g>
+  <g fill="#3FE0A5" opacity="0.3">
+    <circle cx="140" cy="6" r="3"/>
+    <circle cx="140" cy="38" r="3"/>
+    <circle cx="100" cy="60" r="3"/>
+    <circle cx="160" cy="52" r="3"/>
+  </g>
+</svg>`)} top -10px right -10px / 180px 180px no-repeat`,
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <g fill="none" stroke="#3FE0A5" stroke-width="1.4" opacity="0.16">
+    <path d="M0 20 H36 V60 H70"/>
+  </g>
+  <g fill="#3FE0A5" opacity="0.22">
+    <circle cx="36" cy="20" r="2.4"/>
+    <circle cx="70" cy="60" r="2.4"/>
+  </g>
+</svg>`)} top 90px left -15px / 110px 110px no-repeat`,
+    ].join(", "),
   },
   {
     // Police d'affiche passée de Michroma (bien plus large que Fraunces au
@@ -394,6 +465,32 @@ const AFFICHAGES = [
     radiusScale: 1.8,
     texture:
       "radial-gradient(circle at 80% 8%, rgba(51,201,255,0.16) 0, transparent 38%), radial-gradient(circle at 10% 88%, rgba(51,201,255,0.10) 0, transparent 42%), repeating-linear-gradient(115deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px)",
+    // Champ d'étoiles éparses + anneau orbital, en haut à droite ; petit
+    // amas d'étoiles isolé en haut à gauche.
+    decor: [
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240">
+  <g fill="#33C9FF">
+    <circle cx="20" cy="30" r="1.7" opacity="0.55"/>
+    <circle cx="60" cy="10" r="1.1" opacity="0.4"/>
+    <circle cx="150" cy="50" r="1.9" opacity="0.55"/>
+    <circle cx="205" cy="22" r="1.3" opacity="0.45"/>
+    <circle cx="110" cy="95" r="1.1" opacity="0.35"/>
+    <circle cx="32" cy="160" r="1.5" opacity="0.45"/>
+    <circle cx="185" cy="195" r="1.7" opacity="0.5"/>
+    <circle cx="215" cy="140" r="1.1" opacity="0.35"/>
+    <circle cx="80" cy="200" r="1.3" opacity="0.4"/>
+  </g>
+  <ellipse cx="120" cy="120" rx="100" ry="42" fill="none" stroke="#33C9FF" stroke-width="1.2" opacity="0.16" transform="rotate(-18 120 120)"/>
+</svg>`)} top -20px right -20px / 260px 260px no-repeat`,
+      `${svgBg(`<svg xmlns="http://www.w3.org/2000/svg" width="110" height="150">
+  <g fill="#33C9FF">
+    <circle cx="10" cy="20" r="1.3" opacity="0.4"/>
+    <circle cx="40" cy="60" r="1" opacity="0.3"/>
+    <circle cx="20" cy="110" r="1.5" opacity="0.4"/>
+    <circle cx="70" cy="30" r="1" opacity="0.3"/>
+  </g>
+</svg>`)} top 40px left -10px / 120px 160px no-repeat`,
+    ].join(", "),
   },
 ];
 
@@ -3062,6 +3159,14 @@ export default function App() {
   function brandSize(px) {
     return Math.round(px * (activeAffichage.displayScale ?? 1));
   }
+  // Taille du titre et du sous-titre de l'accroche d'accueil — distincte de
+  // `brandSize()` (voir `heroScale` dans AFFICHAGES ci-dessus) : Dylan a
+  // trouvé le titre "Combien ça vaut, vraiment ?" et le sous-titre "Meuble,
+  // bijoux, vieux jouet..." trop gros sur Vintage/Rétro/Robotique, alors
+  // que Futuriste allait bien — donc un réglage à part, pas un nouvel
+  // ajustement de `displayScale` qui toucherait aussi les autres titres.
+  pt.heroTitleSize = Math.round(brandSize(33) * (activeAffichage.heroScale ?? 1));
+  pt.heroSubtitleSize = Math.round(14 * (activeAffichage.heroScale ?? 1));
   // Liseré tout en haut de l'appli : pour un affichage avec sa propre
   // palette (Vintage, Rétro, Robotique, Futuriste — tout ce qui a
   // base/mid/high), il reprend désormais ces couleurs plutôt que le
@@ -5465,12 +5570,14 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        // Le calque de texture (grain/vignette/trame/scanlines) de
-        // l'affichage actif est posé SOUS la couleur de fond (pt.pageBg,
-        // réutilisée ailleurs comme couleur unie — ex: contour SVG des
-        // graphiques — donc jamais modifiée elle-même) : purement
-        // décoratif, n'affecte ni la disposition ni aucune taille.
-        background: activeAffichage.texture ? `${activeAffichage.texture}, ${pt.pageBg}` : pt.pageBg,
+        // Les calques décoratifs de l'affichage actif sont posés SOUS la
+        // couleur de fond (pt.pageBg, réutilisée ailleurs comme couleur
+        // unie — ex: contour SVG des graphiques — donc jamais modifiée
+        // elle-même) : purement décoratif, n'affecte ni la disposition ni
+        // aucune taille. `decor` (motifs en rapport avec le thème, ancrés
+        // en haut) passe AU-DESSUS de `texture` (grain/vignette/trame/
+        // scanlines, sur toute la page).
+        background: [activeAffichage.decor, activeAffichage.texture, pt.pageBg].filter(Boolean).join(", "),
         // La police de corps par défaut (héritée par tout texte sans
         // classe .brand/.mono, ex: le sous-titre de l'accroche) suit
         // désormais l'affichage sélectionné.
@@ -5922,7 +6029,7 @@ export default function App() {
           </div>
           <h1
             className="brand"
-            style={{ fontSize: brandSize(33), fontWeight: 600, margin: 0, lineHeight: 1.12, color: pt.strongColor, position: "relative" }}
+            style={{ fontSize: pt.heroTitleSize, fontWeight: 600, margin: 0, lineHeight: 1.12, color: pt.strongColor, position: "relative" }}
           >
             {t("hero_title_1")}
             <br />
@@ -5931,7 +6038,7 @@ export default function App() {
           <p
             style={{
               marginTop: 10,
-              fontSize: 14,
+              fontSize: pt.heroSubtitleSize,
               color: pt.subText,
               lineHeight: 1.5,
               position: "relative",
