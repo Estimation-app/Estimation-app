@@ -336,13 +336,14 @@ const AFFICHAGES = [
     label: "Vintage",
     emoji: "📜",
     mode: "light",
-    fontDisplay: "'Anton', sans-serif",
+    // Anton (police d'affiche condensée) remplacée par Playfair Display à
+    // la demande de Dylan, qui n'aimait pas cette police sur le titre
+    // d'accroche — Playfair Display est une serif élégante à fort
+    // contraste, courante sur les visuels vintage/brocante, et se lit très
+    // bien en casse normale (contrairement à Anton, pensée pour les
+    // capitales) : plus de transformation uppercase forcée sur ce thème.
+    fontDisplay: "'Playfair Display', serif",
     fontBody: "'Courier Prime', monospace",
-    // Anton est dessinée pour être lue en capitales (façon affiche/tampon)
-    // — en minuscules elle perd tout son caractère et ressemble à une
-    // police condensée quelconque.
-    displayTransform: "uppercase",
-    displayLetterSpacing: "0.015em",
     bodyLetterSpacing: "0.04em",
     heroScale: 0.85,
     base: "#EDE3CE",
@@ -3121,14 +3122,19 @@ export default function App() {
   // ajustement de `displayScale` qui toucherait aussi les autres titres.
   pt.heroTitleSize = Math.round(brandSize(33) * (activeAffichage.heroScale ?? 1));
   pt.heroSubtitleSize = Math.round(14 * (activeAffichage.heroScale ?? 1));
-  // Couleur du titre de l'accroche ("Combien ça vaut, vraiment ?") et du
-  // compteur d'estimations restantes juste en dessous : sur Vintage,
-  // pt.strongColor (textStrong, quasi noir) rendait ces deux éléments trop
-  // "bruts/agressifs" en grand/gras selon Dylan — on utilise alors
-  // textSoft (brun plus doux, déjà utilisé ailleurs dans ce même
-  // affichage) uniquement pour ces deux éléments précis, sans toucher aux
+  // Couleur (et graisse) du titre de l'accroche ("Combien ça vaut,")
+  // et du compteur d'estimations restantes juste en dessous : sur
+  // Vintage, pt.strongColor (textStrong, quasi noir) rendait ces deux
+  // éléments trop "bruts/agressifs" en grand/gras selon Dylan — un premier
+  // passage au brun textSoft réglait ça, mais rendait le titre pas assez
+  // mis en valeur à son goût. Couleur intermédiaire dédiée (#4A3620, plus
+  // soutenue que textSoft #6B5D48 sans revenir au quasi-noir de
+  // textStrong) + graisse remontée à 800 (Playfair Display, qui a une
+  // vraie graisse "black", contrairement à Anton) pour lui redonner de la
+  // présence. Uniquement pour ces deux éléments précis, sans toucher aux
   // autres titres/panneaux qui gardent pt.strongColor.
-  pt.heroEmphasisColor = activeAffichage.key === "vintage" && activeAffichage.textSoft ? activeAffichage.textSoft : pt.strongColor;
+  pt.heroEmphasisColor = activeAffichage.key === "vintage" ? "#4A3620" : pt.strongColor;
+  pt.heroTitleWeight = activeAffichage.key === "vintage" ? 800 : 600;
   // Liseré tout en haut de l'appli : pour un affichage avec sa propre
   // palette (Vintage, Rétro, Robotique, Futuriste — tout ce qui a
   // base/mid/high), il reprend désormais ces couleurs plutôt que le
@@ -5628,7 +5634,7 @@ export default function App() {
         /* Toutes les polices des 5 affichages sont chargées d'un coup (une
            seule requête) pour permettre un changement d'affichage instantané,
            sans "flash" le temps qu'une police se télécharge. */
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Anton&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; }
         /* Les deux polices dépendent de l'affichage sélectionné (voir
            AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
@@ -5991,7 +5997,7 @@ export default function App() {
           </div>
           <h1
             className="brand"
-            style={{ fontSize: pt.heroTitleSize, fontWeight: 600, margin: 0, lineHeight: 1.12, color: pt.heroEmphasisColor, position: "relative" }}
+            style={{ fontSize: pt.heroTitleSize, fontWeight: pt.heroTitleWeight, margin: 0, lineHeight: 1.12, color: pt.heroEmphasisColor, position: "relative" }}
           >
             {t("hero_title_1")}
             <br />
