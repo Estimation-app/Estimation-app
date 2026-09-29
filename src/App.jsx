@@ -13,7 +13,8 @@ import decorRobotique from "./assets/decor-robotique.jpg";
 import decorFuturiste from "./assets/decor-futuriste.jpg";
 import decorLuxe from "./assets/decor-luxe.jpg";
 import decorNoir from "./assets/decor-noir.jpg";
-import decorZen from "./assets/decor-zen.jpg";
+import decorForet from "./assets/decor-foret.jpg";
+import decorManga from "./assets/decor-manga.jpg";
 
 // Portraits réels (générés avec Google Flow — Nano Banana Pro, cf. doc de
 // prompts) — ce sont les SEULS avatars possibles désormais (l'ancien
@@ -646,38 +647,49 @@ const AFFICHAGES = [
     glow: 0.15,
     texture:
       "radial-gradient(circle at 12% 10%, rgba(63,174,102,0.14) 0, transparent 42%), radial-gradient(circle at 88% 18%, rgba(20,60,38,0.35) 0, transparent 46%), radial-gradient(circle at 80% 85%, rgba(63,174,102,0.10) 0, transparent 48%), radial-gradient(circle at 15% 88%, rgba(15,45,28,0.4) 0, transparent 50%)",
-    decor:
+    // Fond généré par IA (Google Flow — Nano Banana Pro), même principe que
+    // les autres : ancré en haut, largeur du conteneur, bande de bord
+    // par-dessus.
+    decor: [
       "linear-gradient(90deg, rgba(63,174,102,0.22) 0%, rgba(63,174,102,0.08) 3%, transparent 9%, transparent 91%, rgba(63,174,102,0.08) 97%, rgba(63,174,102,0.22) 100%)",
+      `url(${decorForet}) top center / 100% auto no-repeat`,
+    ].join(", "),
   },
   {
-    key: "zen",
+    // Remplace "Zen" (papier washi, minimalisme japonais épuré) à la
+    // demande de Dylan : ambiance manga/comics japonais, plus graphique et
+    // énergique. `texture` simule des "vitesses"/hachures façon trame
+    // manga (repeating-conic-gradient, lignes radiant depuis un coin) en
+    // complément de la photo générée par IA (voir `decor`).
+    key: "manga",
     threshold: 0,
-    label: "Zen",
-    emoji: "⛩️",
+    label: "Manga",
+    emoji: "🎌",
     mode: "light",
-    // Zen Old Mincho / Zen Kaku Gothic New : polices japonaises (le nom
-    // n'est pas un hasard) — mincho élégante pour le titre, gothic nette
-    // pour le corps. Esprit papier washi + très peu de texture (le "ma",
-    // l'espace vide, fait partie de l'esthétique).
-    fontDisplay: "'Zen Old Mincho', serif",
-    fontBody: "'Zen Kaku Gothic New', sans-serif",
+    // Reggae One : police japonaise épaisse et impactante, esprit
+    // lettrage de couverture manga. Noto Sans JP en corps de texte, sobre
+    // et lisible (compatible japonais si jamais utile plus tard).
+    fontDisplay: "'Reggae One', cursive",
+    fontBody: "'Noto Sans JP', sans-serif",
+    displayTransform: "uppercase",
+    displayLetterSpacing: "0.01em",
     heroScale: 0.85,
-    base: "#F5F1E8",
-    mid: "#E8E1D2",
-    high: "#8A1F1F",
-    borderRgb: "31, 29, 26",
-    textStrong: "#1F1D1A",
-    textSoft: "#5A564C",
-    radiusScale: 0.15,
-    accent: "#8A1F1F",
-    accentDark: "#5C1414",
-    accentLight: "#C97A7A",
+    base: "#F7F7F4",
+    mid: "#D9D9D6",
+    high: "#E0202B",
+    borderRgb: "20, 20, 20",
+    textStrong: "#121212",
+    textSoft: "#4A4A48",
+    radiusScale: 0.1,
+    accent: "#E0202B",
+    accentDark: "#A10E17",
+    accentLight: "#FF6B72",
     glow: 0.05,
     texture:
-      "radial-gradient(circle at 85% 15%, rgba(31,29,26,0.05) 0, transparent 40%), radial-gradient(circle at 10% 90%, rgba(138,31,31,0.06) 0, transparent 35%)",
+      "repeating-conic-gradient(from 0deg at 6% 8%, rgba(18,18,18,0.05) 0deg 1.2deg, transparent 1.2deg 5deg), repeating-conic-gradient(from 0deg at 94% 92%, rgba(224,32,43,0.07) 0deg 1.2deg, transparent 1.2deg 6deg)",
     decor: [
-      "linear-gradient(90deg, rgba(31,29,26,0.14) 0%, rgba(31,29,26,0.05) 3%, transparent 8%, transparent 92%, rgba(31,29,26,0.05) 97%, rgba(31,29,26,0.14) 100%)",
-      `url(${decorZen}) top center / 100% auto no-repeat`,
+      "linear-gradient(90deg, rgba(224,32,43,0.20) 0%, rgba(224,32,43,0.07) 3%, transparent 9%, transparent 91%, rgba(18,18,18,0.06) 97%, rgba(18,18,18,0.20) 100%)",
+      `url(${decorManga}) top center / 100% auto no-repeat`,
     ].join(", "),
   },
 ];
@@ -3248,17 +3260,6 @@ export default function App() {
       menuTheme === "light"
         ? `linear-gradient(135deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 55%, ${activeAffichage.base} 100%)`
         : `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 52%, ${activeAffichage.high} 100%)`;
-    // Zen : Dylan trouvait le passage rouge -> blanc "trop net" sur la carte
-    // résultat (mid et base y sont deux crèmes très proches, donc l'essentiel
-    // du dégradé générique ci-dessus se joue en fait entre "high" (rouge) et
-    // "mid" sur seulement 55% du dégradé — trop rapide). Une étape
-    // intermédiaire (mélange rouge/crème) étale la transition sur un
-    // parcours plus long et plus progressif, sans toucher aux autres
-    // affichages clairs (Vintage, Botanique) qui gardent la formule
-    // générique ci-dessus.
-    if (activeAffichage.key === "zen") {
-      pt.headerBg = `linear-gradient(135deg, ${activeAffichage.high} 0%, #B98078 32%, ${activeAffichage.mid} 68%, ${activeAffichage.base} 100%)`;
-    }
     pt.resultCardBg = pt.headerBg;
     pt.loadingBg = `linear-gradient(160deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 100%)`;
     pt.loadingBorder = activeAffichage.high;
@@ -5849,7 +5850,7 @@ export default function App() {
         /* Toutes les polices des 5 affichages sont chargées d'un coup (une
            seule requête) pour permettre un changement d'affichage instantané,
            sans "flash" le temps qu'une police se télécharge. */
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Bevan&family=Mulish:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Bevan&family=Mulish:wght@400;500;600;700&family=Reggae+One&family=Noto+Sans+JP:wght@400;500;700&display=swap');
         * { box-sizing: border-box; }
         /* Les deux polices dépendent de l'affichage sélectionné (voir
            AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
