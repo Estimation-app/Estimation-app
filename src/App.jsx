@@ -7,10 +7,10 @@ import logoWordmarkDark from "./assets/logo-wordmark.png";
 // à partir d'une capture de l'appli + un prompt par thème, demandé par
 // Dylan en remplacement des décors CSS/SVG précédents) — voir leur usage
 // dans AFFICHAGES ci-dessous.
-import decorVintage from "./assets/decor/decor-vintage.jpg";
-import decorRetro from "./assets/decor/decor-retro.jpg";
-import decorRobotique from "./assets/decor/decor-robotique.jpg";
-import decorFuturiste from "./assets/decor/decor-futuriste.jpg";
+import decorVintage from "./assets/decor-vintage.jpg";
+import decorRetro from "./assets/decor-retro.jpg";
+import decorRobotique from "./assets/decor-robotique.jpg";
+import decorFuturiste from "./assets/decor-futuriste.jpg";
 
 // Portraits réels (générés avec Google Flow — Nano Banana Pro, cf. doc de
 // prompts) — ce sont les SEULS avatars possibles désormais (l'ancien
