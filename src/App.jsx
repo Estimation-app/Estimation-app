@@ -392,12 +392,16 @@ const AFFICHAGES = [
     glow: 0.12,
     // Historique : "très blanc neutre" (v1) → grain papier ajouté, "trop
     // texturé, trop de petits points" (v2, bruit fractal retiré, taches
-    // douces seulement) → "encore trop monotone" (v3) : Dylan voulait des
-    // nuances plus marquées façon parchemin, comme des endroits "un peu
-    // brûlés" ou plus vieillis, pas juste une teinte uniforme. Ajout de
-    // quelques taches "brûlées" à dégradé plus contrasté (cœur plus foncé,
-    // brun brûlé, qui se fond ensuite) dans les coins/bords — en plus des
-    // taches douces existantes (nuance d'ensemble) et du hachurage carton.
+    // douces) → "encore trop monotone" (v3, taches "brûlées" ajoutées) →
+    // "je ne le vois pas, sûrement caché derrière les cadrans" (v4) : sur
+    // mobile, les cadrans (header, panneaux...) occupent presque toute la
+    // largeur — il ne reste qu'une toute petite marge sur les côtés, donc
+    // des taches ancrées en % de la page entière tombaient presque
+    // toujours DESSOUS un cadran. Corrigé via la bande de bord dans
+    // `decor` ci-dessous (visible dans cette marge, sur toute la hauteur
+    // de la page, quelle que soit sa longueur) — `texture` garde les
+    // taches "brûlées"/douces pour la nuance d'ensemble là où le fond
+    // reste visible (bas de page, une fois l'image de `decor` terminée).
     texture: [
       "radial-gradient(circle at 4% 6%, rgba(66,45,22,0.24) 0%, rgba(66,45,22,0.10) 24%, transparent 46%)",
       "radial-gradient(circle at 95% 5%, rgba(84,54,20,0.20) 0%, rgba(84,54,20,0.07) 26%, transparent 48%)",
@@ -416,13 +420,21 @@ const AFFICHAGES = [
     // conteneur, hauteur proportionnelle (jamais "cover" plein cadre) et
     // ancré en haut — comme les anciens décors SVG, pour ne pas s'étirer
     // de façon disproportionnée sur une page longue (le conteneur grandit
-    // avec le contenu). texture/pageBg restent dessous, visibles une fois
-    // l'image terminée plus bas dans la page. v3 (Dylan trouvait les
-    // versions précédentes trop chargées) : quasiment du papier uni, avec
-    // juste un timbre et une étiquette tout en haut des coins — plus
-    // besoin du décalage vertical de la v2 (qui servait à éviter
-    // l'appareil photo, absent ici).
-    decor: `url(${decorVintage}) top center / 100% auto no-repeat`,
+    // avec le contenu). v3 (Dylan trouvait les versions précédentes trop
+    // chargées) : quasiment du papier uni, avec juste un timbre et une
+    // étiquette tout en haut des coins. Bande de nuance "parchemin" v4
+    // ajoutée PAR-DESSUS l'image (même principe que le grain qui vivait
+    // ici avant) : un dégradé horizontal, teinté seulement sur les tout
+    // premiers/derniers % de largeur (transparent au milieu, là où les
+    // cadrans couvrent tout) — un `linear-gradient` s'étire automatiquement
+    // sur toute la hauteur réelle de la page, donc reste visible dans la
+    // marge des deux côtés quelle que soit la longueur du contenu,
+    // contrairement aux taches de `texture` ci-dessus qui ne couvrent que
+    // le haut de page.
+    decor: [
+      "linear-gradient(90deg, rgba(66,45,22,0.24) 0%, rgba(66,45,22,0.11) 3%, transparent 9%, transparent 91%, rgba(84,54,20,0.11) 97%, rgba(84,54,20,0.24) 100%)",
+      `url(${decorVintage}) top center / 100% auto no-repeat`,
+    ].join(", "),
   },
   {
     key: "retro",
@@ -5591,25 +5603,28 @@ export default function App() {
     >
       {/* Étoiles scintillantes de Futuriste : posées ici, au niveau du FOND
           de la page (comme `decor`/`texture` juste au-dessus, pas dans le
-          <header>/"cadran") — Dylan avait raison de corriger : la première
-          version les avait mises dans le header par erreur. Ancrées en
-          pixels depuis le haut (même convention que les autres calques
-          `decor`, voir plus haut) pour rester groupées près du
-          header/de l'accroche quelle que soit la longueur de la page,
-          `left` en % de la pleine largeur. Vraies étoiles DOM (et non un
-          calque CSS statique) pour qu'elles clignotent réellement via
-          @keyframes sparkle-pulse ; tailles variées (5 à 13px), délais/
+          <header>/"cadran") — Dylan a signalé qu'il n'en voyait qu'une ou
+          deux : sur mobile, les cadrans (header, panneaux...) occupent
+          presque toute la largeur de la page, donc des étoiles ancrées en
+          % de la LARGEUR ENTIÈRE (ex: 78%, 92%...) tombaient presque
+          toujours SOUS un cadran. Repositionnées tout au bord (`left`/
+          `right` à 0.5-3%, dans la fine marge latérale toujours visible,
+          jamais couverte par un cadran) et réparties sur une plus grande
+          hauteur (jusqu'à ~540px) pour ne pas rester groupées uniquement
+          derrière le header. Vraies étoiles DOM (et non un calque CSS
+          statique) pour qu'elles clignotent réellement via
+          @keyframes sparkle-pulse ; tailles variées (6 à 13px), délais/
           durées différents pour un effet naturel. */}
       {activeAffichage.key === "futuriste" &&
         [
-          { top: 18, left: "78%", size: 13, delay: "0s", duration: "2.6s" },
-          { top: 174, left: "92%", size: 8, delay: "0.5s", duration: "3.1s" },
-          { top: 101, left: "6%", size: 9, delay: "1s", duration: "2.4s" },
-          { top: 56, left: "95%", size: 6, delay: "1.4s", duration: "2.9s" },
-          { top: 213, left: "14%", size: 7, delay: "0.8s", duration: "2.2s" },
-          { top: 140, left: "88%", size: 11, delay: "1.8s", duration: "3.4s" },
-          { top: 8, left: "50%", size: 5, delay: "0.3s", duration: "2.7s" },
-          { top: 230, left: "60%", size: 6, delay: "1.6s", duration: "2.5s" },
+          { top: 14, left: "1%", size: 9, delay: "0s", duration: "2.6s" },
+          { top: 40, right: "1.5%", size: 8, delay: "0.5s", duration: "3.1s" },
+          { top: 160, left: "2%", size: 6, delay: "1s", duration: "2.4s" },
+          { top: 220, right: "1%", size: 13, delay: "1.4s", duration: "2.9s" },
+          { top: 340, left: "0.5%", size: 12, delay: "0.8s", duration: "2.2s" },
+          { top: 380, right: "2.5%", size: 6, delay: "1.8s", duration: "3.4s" },
+          { top: 500, left: "2.5%", size: 7, delay: "0.3s", duration: "2.7s" },
+          { top: 540, right: "1%", size: 10, delay: "1.6s", duration: "2.5s" },
         ].map((s, i) => (
           <span
             key={i}
@@ -5619,6 +5634,7 @@ export default function App() {
               position: "absolute",
               top: s.top,
               left: s.left,
+              right: s.right,
               fontSize: s.size,
               color: accentLight,
               animationDelay: s.delay,
