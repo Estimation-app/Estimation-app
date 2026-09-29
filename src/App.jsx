@@ -306,17 +306,25 @@ const AFFICHAGES = [
     mode: "light",
     fontDisplay: "'Anton', sans-serif",
     fontBody: "'Courier Prime', monospace",
+    // Anton est dessinée pour être lue en capitales (façon affiche/tampon)
+    // — en minuscules elle perd tout son caractère et ressemble à une
+    // police condensée quelconque.
+    displayTransform: "uppercase",
+    displayLetterSpacing: "0.015em",
     bodyLetterSpacing: "0.04em",
     base: "#EDE3CE",
-    mid: "#E2D5B8",
-    high: "#C98A2E",
+    // mid/high plus soutenus (plus saturés, moins "délavés") qu'au premier
+    // essai pour que les panneaux/écran de chargement aient davantage de
+    // présence une fois qu'on quitte la page principale.
+    mid: "#DCC89C",
+    high: "#B8791E",
     borderRgb: "43, 36, 28",
     headerDark: "#2B241C",
     textStrong: "#2B241C",
     textSoft: "#6B5D48",
-    radiusScale: 0.35,
+    radiusScale: 0.25,
     texture:
-      "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.055) 0, transparent 38%), radial-gradient(circle at 84% 10%, rgba(43,36,28,0.05) 0, transparent 34%), radial-gradient(circle at 62% 66%, rgba(43,36,28,0.055) 0, transparent 42%), radial-gradient(circle at 8% 86%, rgba(43,36,28,0.05) 0, transparent 38%), repeating-linear-gradient(45deg, rgba(43,36,28,0.03) 0px, rgba(43,36,28,0.03) 1px, transparent 1px, transparent 3px)",
+      "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.09) 0, transparent 38%), radial-gradient(circle at 84% 10%, rgba(43,36,28,0.08) 0, transparent 34%), radial-gradient(circle at 62% 66%, rgba(43,36,28,0.09) 0, transparent 42%), radial-gradient(circle at 8% 86%, rgba(43,36,28,0.08) 0, transparent 38%), repeating-linear-gradient(45deg, rgba(43,36,28,0.045) 0px, rgba(43,36,28,0.045) 1px, transparent 1px, transparent 3px)",
   },
   {
     key: "retro",
@@ -4671,7 +4679,7 @@ export default function App() {
                 qu'il y a derrière) plutôt qu'une couleur fixe — sur fond
                 navy ça ne se voyait pas, mais sur un affichage clair (ex:
                 Vintage) un rond plein bleu/noir tranchait fort. */}
-            <circle cx="7.5" cy="7.5" r="1.6" fill="none" />
+            <circle cx="7.5" cy="7.5" r="1.6" fill="none" stroke={accentDark} strokeWidth="0.6" />
           </svg>
 
           {/* Le bouton menu est un élément normal du flux (pas absolu) juste
@@ -5001,7 +5009,7 @@ export default function App() {
                         d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
                         fill={accent}
                       />
-                      <circle cx="7.5" cy="7.5" r="1.7" fill="none" />
+                      <circle cx="7.5" cy="7.5" r="1.7" fill="none" stroke={accentDark} strokeWidth="0.6" />
                     </svg>
                   </div>
                 </div>
@@ -5303,7 +5311,7 @@ export default function App() {
                     d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
                     fill={accent}
                   />
-                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" />
+                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" stroke={accentDark} strokeWidth="0.6" />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   🎭 mode "estimer tout, même n'importe quoi"
@@ -5342,7 +5350,7 @@ export default function App() {
                     d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
                     fill={accent}
                   />
-                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" />
+                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" stroke={accentDark} strokeWidth="0.6" />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.type_sujet === "vehicule" ? "🚗 estimation véhicule" : "🏠 estimation immobilière"} · indicative
@@ -5386,7 +5394,7 @@ export default function App() {
                     d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"
                     fill={accent}
                   />
-                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" />
+                  <circle cx="7.5" cy="7.5" r="1.6" fill="none" stroke={accentDark} strokeWidth="0.6" />
                 </svg>
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
                   {result.categorie}
