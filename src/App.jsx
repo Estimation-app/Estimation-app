@@ -316,42 +316,6 @@ function svgBg(svg) {
   return `url('data:image/svg+xml,${encodeURIComponent(svg)}')`;
 }
 
-// Grain "vieux papier" pour Vintage : bruit fractal (feTurbulence) teinté
-// sépia, mosaïqué en petite tuile répétée sur tout le fond, pour casser le
-// blanc/crème trop neutre et donner un aspect papier journal qui a un peu
-// mal vieilli. Combiné dans `texture` avec des taches de vieillissement
-// (foxing) de teintes variées — voir plus bas.
-const vintagePaperGrain = `<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90">
-  <filter id="g"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0.16  0 0 0 0 0.12  0 0 0 0 0.08  0 0 0 0.5 0"/></filter>
-  <rect width="90" height="90" filter="url(#g)"/>
-</svg>`;
-
-// Petit champ d'étoiles pour Futuriste : mosaïque de points blancs/cyan
-// répétée sur tout le fond (posée au-dessus de la photo générée par IA),
-// pour renforcer l'ambiance "espace" que Dylan trouvait trop discrète.
-const futuristeStars = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180">
-  <g fill="#EAF7FF">
-    <circle cx="14" cy="22" r="1.1" opacity="0.55"/>
-    <circle cx="52" cy="8" r="0.8" opacity="0.4"/>
-    <circle cx="88" cy="46" r="1.3" opacity="0.55"/>
-    <circle cx="126" cy="18" r="0.9" opacity="0.45"/>
-    <circle cx="30" cy="70" r="0.9" opacity="0.4"/>
-    <circle cx="70" cy="98" r="1.2" opacity="0.5"/>
-    <circle cx="146" cy="110" r="1.1" opacity="0.5"/>
-    <circle cx="20" cy="128" r="1.0" opacity="0.45"/>
-    <circle cx="60" cy="140" r="0.8" opacity="0.35"/>
-    <circle cx="100" cy="150" r="1.3" opacity="0.5"/>
-    <circle cx="160" cy="60" r="0.9" opacity="0.4"/>
-    <circle cx="170" cy="140" r="0.8" opacity="0.35"/>
-  </g>
-  <g fill="#33C9FF">
-    <circle cx="110" cy="80" r="0.9" opacity="0.4"/>
-    <circle cx="40" cy="160" r="1.0" opacity="0.4"/>
-    <circle cx="140" cy="150" r="0.8" opacity="0.35"/>
-    <circle cx="6" cy="100" r="0.9" opacity="0.4"/>
-  </g>
-</svg>`;
-
 const AFFICHAGES = [
   {
     key: "classique",
@@ -426,18 +390,19 @@ const AFFICHAGES = [
     accentDark: "#8C5225",
     accentLight: "#E7A876",
     glow: 0.12,
-    // Dylan trouvait le fond "très blanc neutre" : grain papier (bruit
-    // fractal tuilé, voir vintagePaperGrain) + taches de vieillissement
-    // (foxing) de teintes ambrées/grises variées, en plus des smudges et du
-    // hachurage carton d'origine — pour un effet papier journal qui a mal
-    // vieilli, sans nuire à la lisibilité du texte.
+    // Dylan trouvait d'abord le fond "très blanc neutre" (v1), puis le
+    // grain papier ajouté pour corriger ça "trop texturé, trop de petits
+    // points" (v2, bruit fractal retiré) : uniquement des nuances de
+    // couleur douces et progressives (façon carton/papier kraft superposés)
+    // via plusieurs taches larges et floues, sans aucun grain/pointillé —
+    // en plus du hachurage carton (lignes, pas des points) déjà présent.
     texture: [
-      `${svgBg(vintagePaperGrain)} 0 0 / 90px 90px repeat`,
-      "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.10) 0, transparent 38%)",
-      "radial-gradient(circle at 84% 10%, rgba(184,121,30,0.08) 0, transparent 34%)",
-      "radial-gradient(circle at 62% 66%, rgba(43,36,28,0.10) 0, transparent 42%)",
-      "radial-gradient(circle at 8% 86%, rgba(107,93,72,0.09) 0, transparent 38%)",
-      "radial-gradient(circle at 46% 40%, rgba(184,121,30,0.05) 0, transparent 46%)",
+      "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.11) 0, transparent 40%)",
+      "radial-gradient(circle at 84% 10%, rgba(184,121,30,0.10) 0, transparent 40%)",
+      "radial-gradient(circle at 62% 66%, rgba(43,36,28,0.11) 0, transparent 46%)",
+      "radial-gradient(circle at 8% 86%, rgba(107,93,72,0.11) 0, transparent 44%)",
+      "radial-gradient(circle at 46% 40%, rgba(184,121,30,0.07) 0, transparent 50%)",
+      "radial-gradient(circle at 30% 96%, rgba(139,110,60,0.09) 0, transparent 48%)",
       "repeating-linear-gradient(45deg, rgba(43,36,28,0.05) 0px, rgba(43,36,28,0.05) 1px, transparent 1px, transparent 3px)",
     ].join(", "),
     // Fond généré par IA (Google Flow — Nano Banana Pro) à partir d'une
@@ -450,15 +415,8 @@ const AFFICHAGES = [
     // versions précédentes trop chargées) : quasiment du papier uni, avec
     // juste un timbre et une étiquette tout en haut des coins — plus
     // besoin du décalage vertical de la v2 (qui servait à éviter
-    // l'appareil photo, absent ici). Grain papier (vintagePaperGrain)
-    // ajouté PAR-DESSUS l'image (pas seulement dans `texture`, masqué sous
-    // l'image sinon) pour que la texture "vieux papier" reste visible même
-    // dans la zone couverte par la photo, là où Dylan trouvait le fond trop
-    // neutre au premier coup d'œil.
-    decor: [
-      `${svgBg(vintagePaperGrain)} 0 0 / 90px 90px repeat`,
-      `url(${decorVintage}) top center / 100% auto no-repeat`,
-    ].join(", "),
+    // l'appareil photo, absent ici).
+    decor: `url(${decorVintage}) top center / 100% auto no-repeat`,
   },
   {
     key: "retro",
@@ -475,17 +433,19 @@ const AFFICHAGES = [
     bodyTransform: "uppercase",
     base: "#170B2E",
     mid: "#3A1268",
-    high: "#FF2E92",
-    borderRgb: "255, 90, 190",
+    // Rose adouci (Dylan trouvait l'image globale trop agressive/fatigante
+    // pour les yeux, notamment le dégradé du bandeau titre vers le rose) —
+    // moins saturé/moins "néon pur" que le rose d'origine (#FF2E92), tout
+    // en restant clairement dans l'esprit synthwave.
+    high: "#E2699D",
+    borderRgb: "226, 105, 157",
     radiusScale: 1.4,
-    // Rose néon assorti au "high" ci-dessus — glow marqué, cohérent avec
-    // l'ambiance rétro-gaming/synthwave.
-    accent: "#FF2E92",
-    accentDark: "#B0186B",
-    accentLight: "#FF7FC0",
-    glow: 0.32,
+    accent: "#E2699D",
+    accentDark: "#A13E6C",
+    accentLight: "#F0A8C7",
+    glow: 0.22,
     texture:
-      "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px), radial-gradient(circle at 18% 14%, rgba(255,46,146,0.14) 0, transparent 40%), radial-gradient(circle at 86% 82%, rgba(110,30,230,0.16) 0, transparent 46%)",
+      "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px), radial-gradient(circle at 18% 14%, rgba(226,105,157,0.11) 0, transparent 40%), radial-gradient(circle at 86% 82%, rgba(110,30,230,0.13) 0, transparent 46%)",
     // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
     // "Vintage" ci-dessus.
     decor: `url(${decorRetro}) top center / 100% auto no-repeat`,
@@ -506,17 +466,18 @@ const AFFICHAGES = [
     bodyTransform: "uppercase",
     base: "#0B0F0D",
     mid: "#1E2E28",
-    high: "#3FE0A5",
-    borderRgb: "63, 224, 165",
+    // Vert légèrement adouci (Dylan : un peu fort pour les yeux, quoique
+    // moins gênant que le rose de Rétro) — un cran moins vif que
+    // l'original (#3FE0A5).
+    high: "#3FCB98",
+    borderRgb: "63, 203, 152",
     radiusScale: 0,
-    // Vert circuit assorti au "high" ci-dessus — glow moyen, façon lueur de
-    // LED/plaquette électronique.
-    accent: "#3FE0A5",
-    accentDark: "#1F9A70",
-    accentLight: "#A8F5D6",
-    glow: 0.26,
+    accent: "#3FCB98",
+    accentDark: "#1C8A66",
+    accentLight: "#9EE8C9",
+    glow: 0.2,
     texture:
-      "repeating-linear-gradient(0deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px), repeating-linear-gradient(90deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px)",
+      "repeating-linear-gradient(0deg, rgba(63,203,152,0.05) 0px, rgba(63,203,152,0.05) 1px, transparent 1px, transparent 26px), repeating-linear-gradient(90deg, rgba(63,203,152,0.05) 0px, rgba(63,203,152,0.05) 1px, transparent 1px, transparent 26px)",
     // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
     // "Vintage" ci-dessus.
     decor: `url(${decorRobotique}) top center / 100% auto no-repeat`,
@@ -551,13 +512,12 @@ const AFFICHAGES = [
     texture:
       "radial-gradient(circle at 80% 8%, rgba(51,201,255,0.16) 0, transparent 38%), radial-gradient(circle at 10% 88%, rgba(51,201,255,0.10) 0, transparent 42%), repeating-linear-gradient(115deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px)",
     // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
-    // "Vintage" ci-dessus. Petit champ d'étoiles (futuristeStars) ajouté
-    // par-dessus, tuilé sur tout le fond : Dylan trouvait l'ambiance
-    // "espace" pas assez présente.
-    decor: [
-      `${svgBg(futuristeStars)} 0 0 / 180px 180px repeat`,
-      `url(${decorFuturiste}) top center / 100% auto no-repeat`,
-    ].join(", "),
+    // "Vintage" ci-dessus. Le champ d'étoiles tuilé en CSS (qui vivait ici)
+    // a été remplacé par de vraies petites étoiles scintillantes dans le
+    // header (voir plus bas dans le composant, à côté des étincelles) —
+    // Dylan voulait qu'elles brillent/clignotent, ce qu'un simple calque
+    // `background-image` statique ne permet pas.
+    decor: `url(${decorFuturiste}) top center / 100% auto no-repeat`,
   },
 ];
 
@@ -5888,10 +5848,22 @@ export default function App() {
         >
           {activeAffichage.key === "futuriste" && (
             <>
+              {/* Petites étoiles scintillantes (apparaissent/disparaissent,
+                  voir @keyframes sparkle-pulse) plutôt que le champ
+                  d'étoiles tuilé en CSS d'avant, statique — Dylan voulait
+                  moins d'étoiles mais qu'elles brillent vraiment, avec des
+                  tailles bien variées (5 à 13px) et un rythme différent
+                  pour chacune (délai + durée), pour un effet plus naturel
+                  qu'un simple clignotement synchronisé. */}
               {[
-                { top: "14%", left: "82%", size: 12, delay: "0s" },
-                { top: "68%", left: "90%", size: 8, delay: "0.6s" },
-                { top: "40%", left: "8%", size: 9, delay: "1.1s" },
+                { top: "10%", left: "78%", size: 13, delay: "0s", duration: "2.6s" },
+                { top: "62%", left: "92%", size: 8, delay: "0.5s", duration: "3.1s" },
+                { top: "36%", left: "6%", size: 9, delay: "1s", duration: "2.4s" },
+                { top: "20%", left: "95%", size: 6, delay: "1.4s", duration: "2.9s" },
+                { top: "76%", left: "14%", size: 7, delay: "0.8s", duration: "2.2s" },
+                { top: "50%", left: "88%", size: 11, delay: "1.8s", duration: "3.4s" },
+                { top: "8%", left: "50%", size: 5, delay: "0.3s", duration: "2.7s" },
+                { top: "82%", left: "60%", size: 6, delay: "1.6s", duration: "2.5s" },
               ].map((s, i) => (
                 <span
                   key={i}
@@ -5904,6 +5876,7 @@ export default function App() {
                     fontSize: s.size,
                     color: accentLight,
                     animationDelay: s.delay,
+                    animationDuration: s.duration,
                     pointerEvents: "none",
                   }}
                 >
@@ -5967,7 +5940,7 @@ export default function App() {
               alt="estim'"
               style={{ height: 26, width: "auto", display: "block" }}
             />
-            {activeAffichage.key !== "classique" && (
+            {activeAffichage.key !== "classique" && activeAffichage.key !== "blanc" && (
               <span
                 title={`Affichage ${activeAffichage.label}`}
                 style={{
