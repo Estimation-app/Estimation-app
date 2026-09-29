@@ -13,7 +13,6 @@ import decorRobotique from "./assets/decor-robotique.jpg";
 import decorFuturiste from "./assets/decor-futuriste.jpg";
 import decorLuxe from "./assets/decor-luxe.jpg";
 import decorNoir from "./assets/decor-noir.jpg";
-import decorIndustriel from "./assets/decor-industriel.jpg";
 import decorZen from "./assets/decor-zen.jpg";
 
 // Portraits réels (générés avec Google Flow — Nano Banana Pro, cf. doc de
@@ -619,45 +618,6 @@ const AFFICHAGES = [
     decor: [
       "linear-gradient(90deg, rgba(0,0,0,0.2) 0%, transparent 9%, transparent 91%, rgba(0,0,0,0.2) 100%)",
       `url(${decorNoir}) top center / 100% auto no-repeat`,
-    ].join(", "),
-  },
-  {
-    key: "industriel",
-    threshold: 0,
-    label: "Industriel",
-    emoji: "⚙️",
-    mode: "dark",
-    // Big Shoulders Display : condensée et massive, façon tôle
-    // embossée/pochoir d'usine. IBM Plex Mono pour le côté technique/
-    // étiquette d'atelier.
-    fontDisplay: "'Big Shoulders Display', sans-serif",
-    fontBody: "'IBM Plex Mono', monospace",
-    displayTransform: "uppercase",
-    displayLetterSpacing: "0.02em",
-    displayScale: 0.85,
-    bodyTransform: "uppercase",
-    bodyLetterSpacing: "0.02em",
-    heroScale: 0.85,
-    base: "#1C1C1A",
-    mid: "#3A362E",
-    // "high" pilote les grands aplats (sheetBg/headerBg/topBar...) : passé
-    // d'un orange rouille vif (#B5502A) à un gris acier chaud, plus fidèle
-    // à la photo de tôle ajoutée par Dylan ("je me serais plus fié à la
-    // couleur du fond qui est grise, enlève un peu d'orange"). La rouille
-    // reste seulement en touche d'accent (boutons, prix...), et nettement
-    // moins saturée qu'avant.
-    high: "#8C887E",
-    borderRgb: "150, 143, 130",
-    radiusScale: 0,
-    accent: "#A9663D",
-    accentDark: "#734526",
-    accentLight: "#D9A97C",
-    glow: 0.07,
-    texture:
-      "radial-gradient(circle at 20% 20%, rgba(150,143,130,0.08) 0, transparent 42%), radial-gradient(circle at 80% 75%, rgba(0,0,0,0.28) 0, transparent 50%), repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, transparent 2px, transparent 14px)",
-    decor: [
-      "linear-gradient(90deg, rgba(150,143,130,0.18) 0%, rgba(150,143,130,0.06) 3%, transparent 9%, transparent 91%, rgba(169,102,61,0.06) 97%, rgba(169,102,61,0.16) 100%)",
-      `url(${decorIndustriel}) top center / 100% auto no-repeat`,
     ].join(", "),
   },
   {
@@ -5889,7 +5849,7 @@ export default function App() {
         /* Toutes les polices des 5 affichages sont chargées d'un coup (une
            seule requête) pour permettre un changement d'affichage instantané,
            sans "flash" le temps qu'une police se télécharge. */
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Bevan&family=Mulish:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Zen+Old+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Bevan&family=Mulish:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; }
         /* Les deux polices dépendent de l'affichage sélectionné (voir
            AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
