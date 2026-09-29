@@ -3,6 +3,14 @@ import { createClient } from "@supabase/supabase-js";
 import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User, Download, Plus, Minus } from "lucide-react";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 import logoWordmarkDark from "./assets/logo-wordmark.png";
+// Fonds d'écran par affichage (générés avec Google Flow — Nano Banana Pro,
+// à partir d'une capture de l'appli + un prompt par thème, demandé par
+// Dylan en remplacement des décors CSS/SVG précédents) — voir leur usage
+// dans AFFICHAGES ci-dessous.
+import decorVintage from "./assets/decor/decor-vintage.jpg";
+import decorRetro from "./assets/decor/decor-retro.jpg";
+import decorRobotique from "./assets/decor/decor-robotique.jpg";
+import decorFuturiste from "./assets/decor/decor-futuriste.jpg";
 
 // Portraits réels (générés avec Google Flow — Nano Banana Pro, cf. doc de
 // prompts) — ce sont les SEULS avatars possibles désormais (l'ancien
@@ -349,10 +357,14 @@ const AFFICHAGES = [
     radiusScale: 0.25,
     texture:
       "radial-gradient(circle at 18% 22%, rgba(43,36,28,0.09) 0, transparent 38%), radial-gradient(circle at 84% 10%, rgba(43,36,28,0.08) 0, transparent 34%), radial-gradient(circle at 62% 66%, rgba(43,36,28,0.09) 0, transparent 42%), radial-gradient(circle at 8% 86%, rgba(43,36,28,0.08) 0, transparent 38%), repeating-linear-gradient(45deg, rgba(43,36,28,0.045) 0px, rgba(43,36,28,0.045) 1px, transparent 1px, transparent 3px)",
-    // Décor SVG (cartons) retiré à la demande de Dylan : les décors des 4
-    // affichages personnalisés (Vintage/Rétro/Robotique/Futuriste) seront
-    // remplacés par des images générées par IA (Google Flow / Nano Banana
-    // Pro) — voir les prompts fournis en conversation.
+    // Fond généré par IA (Google Flow — Nano Banana Pro) à partir d'une
+    // capture de l'appli + prompt dédié : dimensionné sur la largeur du
+    // conteneur, hauteur proportionnelle (jamais "cover" plein cadre) et
+    // ancré en haut — comme les anciens décors SVG, pour ne pas s'étirer
+    // de façon disproportionnée sur une page longue (le conteneur grandit
+    // avec le contenu). texture/pageBg restent dessous, visibles une fois
+    // l'image terminée plus bas dans la page.
+    decor: `url(${decorVintage}) top center / 100% auto no-repeat`,
   },
   {
     key: "retro",
@@ -374,8 +386,9 @@ const AFFICHAGES = [
     radiusScale: 1.4,
     texture:
       "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px), radial-gradient(circle at 18% 14%, rgba(255,46,146,0.14) 0, transparent 40%), radial-gradient(circle at 86% 82%, rgba(110,30,230,0.16) 0, transparent 46%)",
-    // Décor SVG (soleil + grille) retiré à la demande de Dylan : voir note
-    // sur "Vintage" ci-dessus.
+    // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
+    // "Vintage" ci-dessus.
+    decor: `url(${decorRetro}) top center / 100% auto no-repeat`,
   },
   {
     key: "robotique",
@@ -398,8 +411,9 @@ const AFFICHAGES = [
     radiusScale: 0,
     texture:
       "repeating-linear-gradient(0deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px), repeating-linear-gradient(90deg, rgba(63,224,165,0.06) 0px, rgba(63,224,165,0.06) 1px, transparent 1px, transparent 26px)",
-    // Décor SVG (circuits) retiré à la demande de Dylan : voir note sur
+    // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
     // "Vintage" ci-dessus.
+    decor: `url(${decorRobotique}) top center / 100% auto no-repeat`,
   },
   {
     // Police d'affiche passée de Michroma (bien plus large que Fraunces au
@@ -424,8 +438,9 @@ const AFFICHAGES = [
     radiusScale: 1.8,
     texture:
       "radial-gradient(circle at 80% 8%, rgba(51,201,255,0.16) 0, transparent 38%), radial-gradient(circle at 10% 88%, rgba(51,201,255,0.10) 0, transparent 42%), repeating-linear-gradient(115deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px)",
-    // Décor SVG (étoiles + anneau) retiré à la demande de Dylan : voir
-    // note sur "Vintage" ci-dessus.
+    // Fond généré par IA (Google Flow — Nano Banana Pro) — voir note sur
+    // "Vintage" ci-dessus.
+    decor: `url(${decorFuturiste}) top center / 100% auto no-repeat`,
   },
 ];
 
