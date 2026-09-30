@@ -8328,7 +8328,12 @@ export default function App() {
               <div style={{ fontSize: 12, fontWeight: 600, color: pt.rowText, marginBottom: 8 }}>
                 {t("display_theme_title")}
               </div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {/* Une ligne par thème (au lieu d'une grille qui enveloppait le
+                  libellé sur 2 ou 3 lignes selon la police/longueur du nom de
+                  chaque affichage, ce qui donnait des cartes de hauteurs
+                  incohérentes — demandé par Dylan) : nom sur une seule ligne,
+                  aligné à gauche à côté de la pastille de couleur. */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {AFFICHAGES.map((aff) => {
                   const isActive = activeAffichage.key === aff.key;
                   const swatchHigh = aff.high || "#F2662E";
@@ -8338,32 +8343,31 @@ export default function App() {
                     <button
                       key={aff.key}
                       onClick={() => setSelectedAffichageKey(aff.key)}
-                      title={aff.label}
                       style={{
                         display: "flex",
-                        flexDirection: "column",
                         alignItems: "center",
-                        gap: 4,
-                        background: "none",
-                        border: "none",
-                        padding: 0,
+                        gap: 12,
+                        width: "100%",
+                        textAlign: "left",
+                        background: isActive ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
+                        border: isActive ? `2px solid ${accent}` : pt.rowBorder,
+                        borderRadius: 10,
+                        padding: "9px 14px",
                         cursor: "pointer",
                       }}
                     >
-                      <div
+                      <span
+                        aria-hidden="true"
                         style={{
-                          width: 34,
-                          height: 34,
+                          width: 28,
+                          height: 28,
                           borderRadius: "50%",
+                          flexShrink: 0,
                           background: `linear-gradient(135deg, ${swatchHigh} 0%, ${swatchMid} 55%, ${swatchBase} 100%)`,
-                          border: isActive ? "3px solid #FFFFFF" : "2px solid rgba(255, 255, 255, 0.25)",
-                          boxShadow: isActive ? `0 0 0 2px ${swatchHigh}` : "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          border: "2px solid rgba(255, 255, 255, 0.25)",
                         }}
                       />
-                      <span className="mono" style={{ fontSize: 9, color: pt.subText, textAlign: "center" }}>
+                      <span className="mono" style={{ fontSize: 13, fontWeight: 500, color: pt.rowText, whiteSpace: "nowrap" }}>
                         {aff.emoji} {aff.label}
                       </span>
                     </button>
