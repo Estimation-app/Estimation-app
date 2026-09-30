@@ -1047,23 +1047,15 @@ const TRANSLATIONS = {
     ad_regenerate_suffix_plural: " restantes)",
     ad_limit_reached_edit_note:
       "Limite de 3 générations atteinte pour cette estimation — tu peux encore modifier le texte à la main juste au-dessus.",
-    ad_paste_instructions:
-      "Clique sur une plateforme : le texte est copié automatiquement et la page de création d'annonce s'ouvre, il ne reste plus qu'à le coller :",
     ad_publish_on_prefix: "Publier sur ",
     ad_published_prefix: "Texte copié pour ",
     ad_published_suffix: " — colle-le dans le formulaire qui vient de s'ouvrir.",
-    ad_photos_button_prefix: "Partager ",
-    ad_photos_count_singular: " photo",
-    ad_photos_count_plural: " photos",
-    ad_photos_note:
-      "Envoie-les directement vers Leboncoin, Vinted ou eBay si l'appli propose de les recevoir, ou enregistre-les pour les ajouter toi-même à l'annonce.",
     extra_angles_title: "Photos IA sous d'autres angles",
     extra_angles_premium_note:
       "Fonctionnalité premium — génère jusqu'à 2 photos IA de cet objet sous d'autres angles pour ton annonce",
     extra_angles_generate_button: "Générer 2 photos sous d'autres angles",
     extra_angles_generating: "Génération en cours (10 à 20 secondes)…",
     extra_angles_retry_button: "Réessayer",
-    extra_angles_download_note: "Télécharge-les puis ajoute-les à ta photo d'origine sur Leboncoin, Vinted ou eBay.",
     photo_zoom_download_button: "Télécharger",
 
     // Historique / confirmation suppression
@@ -1420,23 +1412,15 @@ const TRANSLATIONS = {
     ad_regenerate_suffix_plural: " left)",
     ad_limit_reached_edit_note:
       "Limit of 3 generations reached for this estimate — you can still edit the text by hand just above.",
-    ad_paste_instructions:
-      "Click a platform: the text is copied automatically and the listing page opens, all that's left is to paste it:",
     ad_publish_on_prefix: "Post on ",
     ad_published_prefix: "Text copied for ",
     ad_published_suffix: " — paste it into the form that just opened.",
-    ad_photos_button_prefix: "Share ",
-    ad_photos_count_singular: " photo",
-    ad_photos_count_plural: " photos",
-    ad_photos_note:
-      "Send them straight to Leboncoin, Vinted or eBay if the app offers to receive them, or save them to add to the listing yourself.",
     extra_angles_title: "AI photos from other angles",
     extra_angles_premium_note:
       "Premium feature — generates up to 2 AI photos of this item from other angles for your listing",
     extra_angles_generate_button: "Generate 2 photos from other angles",
     extra_angles_generating: "Generating (10 to 20 seconds)…",
     extra_angles_retry_button: "Retry",
-    extra_angles_download_note: "Download them, then add them to your original photo on Leboncoin, Vinted or eBay.",
     photo_zoom_download_button: "Download",
 
     // History / clear confirmation
@@ -1793,23 +1777,15 @@ const TRANSLATIONS = {
     ad_regenerate_suffix_plural: " restantes)",
     ad_limit_reached_edit_note:
       "Límite de 3 generaciones alcanzado para esta estimación — todavía puedes editar el texto a mano justo arriba.",
-    ad_paste_instructions:
-      "Haz clic en una plataforma: el texto se copia automáticamente y se abre la página de creación del anuncio, solo falta pegarlo:",
     ad_publish_on_prefix: "Publicar en ",
     ad_published_prefix: "Texto copiado para ",
     ad_published_suffix: " — pégalo en el formulario que se acaba de abrir.",
-    ad_photos_button_prefix: "Compartir ",
-    ad_photos_count_singular: " foto",
-    ad_photos_count_plural: " fotos",
-    ad_photos_note:
-      "Envíalas directamente a Leboncoin, Vinted o eBay si la app permite recibirlas, o guárdalas para añadirlas tú mismo al anuncio.",
     extra_angles_title: "Fotos con IA desde otros ángulos",
     extra_angles_premium_note:
       "Función premium — genera hasta 2 fotos con IA de este objeto desde otros ángulos para tu anuncio",
     extra_angles_generate_button: "Generar 2 fotos desde otros ángulos",
     extra_angles_generating: "Generando (10 a 20 segundos)…",
     extra_angles_retry_button: "Reintentar",
-    extra_angles_download_note: "Descárgalas y añádelas a tu foto original en Leboncoin, Vinted o eBay.",
     photo_zoom_download_button: "Descargar",
 
     // Historial / confirmación de borrado
@@ -2689,9 +2665,6 @@ export default function App() {
   const [extraAnglesLoading, setExtraAnglesLoading] = useState(false);
   const [extraAnglesError, setExtraAnglesError] = useState(null);
   const [extraAnglesAttempted, setExtraAnglesAttempted] = useState(false); // masque le bouton une fois un essai réussi (coût réel par génération)
-  // Nombre de photos disponibles pour l'annonce (photo d'origine + photos IA
-  // sous d'autres angles déjà générées) — voir collectAdPhotos/shareAdPhotos.
-  const adPhotoCount = (image && image.base64 ? 1 : 0) + (extraAngles ? extraAngles.length : 0);
   // Photo agrandie en plein écran (clic sur une miniature d'angle IA — trop
   // petites pour bien juger le résultat avant de l'enregistrer, demandé par
   // Dylan) : { img: { data, mime_type }, index } | null.
@@ -3294,17 +3267,39 @@ export default function App() {
   // risquer du texte de la même couleur que son fond — corrige le "jaune
   // sur jaune" remonté par Dylan sur Vintage, de façon générale pour
   // n'importe quel affichage actuel ou futur.
-  pt.accentText = accent;
-  if (activeAffichage.base) {
-    const worstContrast = Math.min(
-      contrastRatio(accent, activeAffichage.base),
-      contrastRatio(accent, activeAffichage.mid),
-      contrastRatio(accent, activeAffichage.high)
-    );
-    if (worstContrast < 3) {
-      pt.accentText = pt.strongColor;
-    }
+  // Généralisation du même principe à TOUS les textes affichés dans cette
+  // carte (titre, commentaire, source, notes, libellés de la section
+  // "annonce"...), pas seulement au texte de couleur `accent` ci-dessus.
+  // Remonté par Dylan sur Robotique ("en dessous de la confiance élevée, on
+  // n'y voit pas grand-chose") : ce texte utilise `pt.rowText`/
+  // `pt.chevronColor`, pas `accent` — donc non couvert par le correctif
+  // précédent. Plus largement, seuls Vintage et Manga (textStrong/textSoft,
+  // voir plus haut) ont une couleur de texte pensée pour leur propre
+  // dégradé ; Rétro/Robotique/Futuriste/Luxe retombent sur les couleurs
+  // "texte sur fond sombre uni" par défaut, jamais vérifiées contre LEUR
+  // dégradé base/mid/high (qui, lui, finit souvent sur une teinte `high`
+  // vive/claire) : cardSafeColor() ne change RIEN quand le contraste est
+  // déjà suffisant (donc aucune régression sur Classique/Vintage/Manga) et
+  // ne retombe sur un pôle clair/sombre que quand c'est nécessaire, en
+  // choisissant celui des deux qui reste lisible sur les TROIS teintes du
+  // dégradé à la fois.
+  function cardSafeColor(normalHex, minContrast) {
+    if (!activeAffichage.base || !normalHex) return normalHex;
+    const bg1 = activeAffichage.base;
+    const bg2 = activeAffichage.mid;
+    const bg3 = activeAffichage.high;
+    const worst = (hex) => Math.min(contrastRatio(hex, bg1), contrastRatio(hex, bg2), contrastRatio(hex, bg3));
+    if (worst(normalHex) >= (minContrast ?? 4.5)) return normalHex;
+    const lightPole = "#FFFFFF";
+    const darkPole = "#152238";
+    return worst(lightPole) >= worst(darkPole) ? lightPole : darkPole;
   }
+  pt.accentText = cardSafeColor(accent, 3);
+  pt.cardStrongText = cardSafeColor(pt.strongColor, 3);
+  pt.cardRowText = cardSafeColor(pt.rowText, 4.5);
+  pt.cardChevronColor = cardSafeColor(pt.chevronColor, 4.5);
+  pt.cardSubText = cardSafeColor(pt.subText, 4.5);
+  pt.cardInputText = cardSafeColor(pt.inputText, 4.5);
   // Taille des titres `.brand` (voir brandSize() plus bas) : certaines
   // polices "affichage" (Orbitron, Bungee...) sont nettement plus larges
   // que Fraunces au même corps — sans compensation, de longues phrases
@@ -4921,80 +4916,6 @@ export default function App() {
     } finally {
       window.open(platform.url, "_blank", "noopener,noreferrer");
     }
-  }
-
-  // Rassemble les photos disponibles pour l'annonce : la photo d'origine
-  // (toujours présente si une estimation a été faite) + les éventuelles
-  // photos supplémentaires générées par l'IA sous d'autres angles (jusqu'à
-  // 2, voir generateExtraAngles plus bas) — jusqu'à 3 au total, photo
-  // principale en premier.
-  function collectAdPhotos() {
-    const photos = [];
-    if (image && image.base64) {
-      photos.push({ data: image.base64, mimeType: image.mediaType || "image/jpeg" });
-    }
-    if (extraAngles && extraAngles.length > 0) {
-      extraAngles.forEach((img) => {
-        photos.push({ data: img.data, mimeType: img.mime_type || "image/jpeg" });
-      });
-    }
-    return photos;
-  }
-
-  function adPhotosToFiles() {
-    const safeLabel =
-      (result?.objet || "objet")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/gi, "-")
-        .replace(/^-+|-+$/g, "") || "objet";
-    return collectAdPhotos().map((photo, i) => {
-      const byteChars = atob(photo.data);
-      const bytes = new Uint8Array(byteChars.length);
-      for (let j = 0; j < byteChars.length; j++) bytes[j] = byteChars.charCodeAt(j);
-      const blob = new Blob([bytes], { type: photo.mimeType });
-      const ext = photo.mimeType === "image/png" ? "png" : "jpg";
-      return new File([blob], `estim-${safeLabel}-photo-${i + 1}.${ext}`, { type: photo.mimeType });
-    });
-  }
-
-  // Bouton "Partager les photos" à côté du texte de l'annonce : envoie (via
-  // le partage natif du système, qui inclut souvent les applis Leboncoin/
-  // Vinted installées comme destinations possibles) ou, à défaut,
-  // télécharge la photo d'origine + les photos IA déjà générées, pour les
-  // avoir sous la main au moment de créer l'annonce — demandé par Dylan
-  // ("le texte, les photos, il ne reste plus qu'à publier"). Volontairement
-  // séparé des boutons "Publier sur…" (publishToPlatform) plutôt que
-  // combiné en un seul clic : déclencher à la fois le partage natif de
-  // fichiers ET l'ouverture d'un nouvel onglet depuis le même clic n'est
-  // pas fiable sur tous les navigateurs (l'un des deux peut être bloqué
-  // faute d'un "vrai" geste utilisateur dédié) — deux boutons séparés
-  // garantissent que chaque action marche à coup sûr.
-  async function shareAdPhotos() {
-    const files = adPhotosToFiles();
-    if (files.length === 0) return;
-    try {
-      if (navigator.canShare && navigator.canShare({ files })) {
-        await navigator.share({ files });
-        return;
-      }
-    } catch (e) {
-      if (e && e.name === "AbortError") return; // partage annulé par l'utilisateur
-    }
-    // Repli (desktop, ou navigateur sans partage de fichiers) : téléchargement
-    // direct de chaque photo, légèrement décalé pour éviter qu'un navigateur
-    // ne bloque des téléchargements groupés déclenchés d'un coup.
-    files.forEach((file, i) => {
-      setTimeout(() => {
-        const url = URL.createObjectURL(file);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, i * 300);
-    });
   }
 
   // Génère jusqu'à 2 photos supplémentaires du même objet sous d'autres
@@ -6911,7 +6832,7 @@ export default function App() {
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: pt.accentText, marginBottom: 4, position: "relative" }}>
                   {t("humor_mode_badge")}
                 </div>
-                <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
+                <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 12, color: pt.cardStrongText, position: "relative" }}>
                   {result.objet}
                 </div>
 
@@ -6924,7 +6845,7 @@ export default function App() {
                     borderTop: pt.dashedBorder,
                     paddingTop: 12,
                     fontSize: 14,
-                    color: pt.rowText,
+                    color: pt.cardRowText,
                     lineHeight: 1.6,
                     marginBottom: 10,
                     position: "relative",
@@ -6932,7 +6853,7 @@ export default function App() {
                 >
                   {result.commentaire}
                 </div>
-                <div style={{ fontSize: 12, color: pt.chevronColor, fontStyle: "italic", lineHeight: 1.5, position: "relative" }}>
+                <div style={{ fontSize: 12, color: pt.cardChevronColor, fontStyle: "italic", lineHeight: 1.5, position: "relative" }}>
                   {result.rappel}
                 </div>
               </div>
@@ -6951,7 +6872,7 @@ export default function App() {
                   {result.type_sujet === "vehicule" ? t("vehicle_estimate_badge") : t("realestate_estimate_badge")}
                   {t("indicative_suffix")}
                 </div>
-                <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
+                <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 12, color: pt.cardStrongText, position: "relative" }}>
                   {result.objet}
                 </div>
 
@@ -6964,7 +6885,7 @@ export default function App() {
                     borderTop: pt.dashedBorder,
                     paddingTop: 12,
                     fontSize: 14,
-                    color: pt.rowText,
+                    color: pt.cardRowText,
                     lineHeight: 1.6,
                     marginBottom: result.hypothese ? 10 : 14,
                     position: "relative",
@@ -6973,12 +6894,12 @@ export default function App() {
                   {result.commentaire}
                 </div>
                 {result.hypothese && (
-                  <div style={{ fontSize: 12, color: pt.chevronColor, fontStyle: "italic", lineHeight: 1.5, marginBottom: 10, position: "relative" }}>
+                  <div style={{ fontSize: 12, color: pt.cardChevronColor, fontStyle: "italic", lineHeight: 1.5, marginBottom: 10, position: "relative" }}>
                     {t("hypothesis_prefix")}
                     {result.hypothese}
                   </div>
                 )}
-                <div className="mono" style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.6, position: "relative" }}>
+                <div className="mono" style={{ fontSize: 11, color: pt.cardChevronColor, lineHeight: 1.6, position: "relative" }}>
                   {result.source}
                 </div>
               </div>
@@ -6996,10 +6917,10 @@ export default function App() {
                 <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: pt.accentText, marginBottom: 4, position: "relative" }}>
                   {result.categorie}
                 </div>
-                <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 4, color: pt.strongColor, position: "relative" }}>
+                <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 4, color: pt.cardStrongText, position: "relative" }}>
                   {result.objet}
                 </div>
-                <div style={{ fontSize: 13, color: pt.subText, marginBottom: 16, position: "relative" }}>
+                <div style={{ fontSize: 13, color: pt.cardSubText, marginBottom: 16, position: "relative" }}>
                   {result.etat} · <em>{result.etat_note}</em>
                 </div>
 
@@ -7011,7 +6932,7 @@ export default function App() {
                       gap: 6,
                       flexWrap: "wrap",
                       fontSize: 11,
-                      color: pt.subText,
+                      color: pt.cardSubText,
                       background: pt.rowBg,
                       border: pt.rowBorder,
                       borderRadius: 8,
@@ -7055,7 +6976,7 @@ export default function App() {
                         borderRadius: 4,
                         border: "1px solid " + (resultTab === tab.key ? accent : pt.rowBorder.replace("1px solid ", "")),
                         background: resultTab === tab.key ? accent : "transparent",
-                        color: resultTab === tab.key ? "#FFFFFF" : pt.chevronColor,
+                        color: resultTab === tab.key ? "#FFFFFF" : pt.cardChevronColor,
                         cursor: "pointer",
                       }}
                     >
@@ -7093,7 +7014,7 @@ export default function App() {
                               fontWeight: 700,
                               letterSpacing: "0.08em",
                               textTransform: "uppercase",
-                              color: pt.strongColor,
+                              color: pt.cardStrongText,
                               marginBottom: 10,
                             }}
                           >
@@ -7113,7 +7034,7 @@ export default function App() {
                                   borderRadius: 6,
                                   border: trendRange === r.key ? `1px solid ${accent}` : pt.rowBorder,
                                   background: trendRange === r.key ? accent : "transparent",
-                                  color: trendRange === r.key ? "#FFFFFF" : pt.chevronColor,
+                                  color: trendRange === r.key ? "#FFFFFF" : pt.cardChevronColor,
                                   cursor: "pointer",
                                 }}
                               >
@@ -7122,7 +7043,7 @@ export default function App() {
                             ))}
                           </div>
                           {trendPoints && <PriceEvolutionChart theme={menuTheme} points={trendPoints} />}
-                          <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5, marginTop: 10 }}>
+                          <div style={{ fontSize: 11, color: pt.cardChevronColor, lineHeight: 1.5, marginTop: 10 }}>
                             {t("trend_disclaimer")}
                             {isShortRange && t("trend_short_range_note")}
                           </div>
@@ -7130,7 +7051,7 @@ export default function App() {
                       );
                     })()}
 
-                    <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 11, color: pt.cardChevronColor, lineHeight: 1.5 }}>
                       {t("trend_ai_evaluation_note")}
                     </div>
                   </div>
@@ -7141,7 +7062,7 @@ export default function App() {
                 <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
-                <div style={{ fontSize: 13, color: pt.subText, marginBottom: 14 }}>
+                <div style={{ fontSize: 13, color: pt.cardSubText, marginBottom: 14 }}>
                   {t("used_price_label")}
                 </div>
 
@@ -7198,7 +7119,7 @@ export default function App() {
                   >
                     <div
                       className="brand"
-                      style={{ fontSize: brandSize(13), fontStyle: "italic", fontWeight: 500, color: pt.rowText, marginBottom: 6 }}
+                      style={{ fontSize: brandSize(13), fontStyle: "italic", fontWeight: 500, color: pt.cardRowText, marginBottom: 6 }}
                     >
                       {t("breakdown_title")}
                     </div>
@@ -7212,7 +7133,7 @@ export default function App() {
                             key={key}
                             style={{
                               fontSize: 12,
-                              color: pt.rowText,
+                              color: pt.cardRowText,
                               display: "flex",
                               justifyContent: "space-between",
                               gap: 8,
@@ -7230,7 +7151,7 @@ export default function App() {
                                 {b.count > 1 ? "s" : ""})
                               </span>
                             ) : (
-                              <span style={{ color: pt.chevronColor, fontStyle: "italic" }}>{t("breakdown_unavailable")}</span>
+                              <span style={{ color: pt.cardChevronColor, fontStyle: "italic" }}>{t("breakdown_unavailable")}</span>
                             )}
                           </div>
                         );
@@ -7244,7 +7165,7 @@ export default function App() {
                           className="mono"
                           style={{
                             fontSize: 11,
-                            color: pt.chevronColor,
+                            color: pt.cardChevronColor,
                             background: "none",
                             border: "none",
                             padding: 0,
@@ -7274,7 +7195,7 @@ export default function App() {
                           {...rowProps}
                           style={{
                             fontSize: 12,
-                            color: pt.rowText,
+                            color: pt.cardRowText,
                             display: "flex",
                             justifyContent: "space-between",
                             gap: 8,
@@ -7290,7 +7211,7 @@ export default function App() {
                                 style={{
                                   flexShrink: 0,
                                   fontSize: 10,
-                                  color: l.source === "ebaySold" ? "#4ADE80" : pt.chevronColor,
+                                  color: l.source === "ebaySold" ? "#4ADE80" : pt.cardChevronColor,
                                   border: l.source === "ebaySold" ? "1px solid #4ADE80" : "1px solid " + pt.rowBorder.replace("1px solid ", ""),
                                   borderRadius: 3,
                                   padding: "1px 4px",
@@ -7329,7 +7250,7 @@ export default function App() {
                     borderTop: pt.dashedBorder,
                     paddingTop: 12,
                     fontSize: 13,
-                    color: pt.rowText,
+                    color: pt.cardRowText,
                     lineHeight: 1.5,
                   }}
                 >
@@ -7359,7 +7280,7 @@ export default function App() {
                       className="mono"
                       style={{
                         fontSize: 12,
-                        color: pt.chevronColor,
+                        color: pt.cardChevronColor,
                         background: "none",
                         border: "none",
                         padding: 0,
@@ -7371,7 +7292,7 @@ export default function App() {
                     </button>
                   ) : (
                     <div>
-                      <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, color: pt.cardChevronColor, marginBottom: 6 }}>
                         {t("correction_instructions")}
                       </div>
                       <textarea
@@ -7382,7 +7303,7 @@ export default function App() {
                         style={{
                           width: "100%",
                           fontSize: 13,
-                          color: pt.inputText,
+                          color: pt.cardInputText,
                           background: pt.inputBg,
                           border: pt.inputBorder,
                           borderRadius: 4,
@@ -7425,7 +7346,7 @@ export default function App() {
                             borderRadius: 4,
                             border: "1px solid " + pt.rowBorder.replace("1px solid ", ""),
                             background: "transparent",
-                            color: pt.chevronColor,
+                            color: pt.cardChevronColor,
                             cursor: "pointer",
                           }}
                         >
@@ -7470,13 +7391,13 @@ export default function App() {
                   )}
 
                   {!adText && !adLoading && adGenCount >= 3 && (
-                    <div style={{ fontSize: 12, color: pt.chevronColor }}>
+                    <div style={{ fontSize: 12, color: pt.cardChevronColor }}>
                       {t("ad_limit_reached")}
                     </div>
                   )}
 
                   {adLoading && (
-                    <div style={{ fontSize: 12, color: pt.chevronColor }}>{t("ad_generating")}</div>
+                    <div style={{ fontSize: 12, color: pt.cardChevronColor }}>{t("ad_generating")}</div>
                   )}
 
                   {adError && (
@@ -7485,7 +7406,7 @@ export default function App() {
 
                   {adText && !adLoading && (
                     <div>
-                      <div style={{ fontSize: 12, color: pt.chevronColor, marginBottom: 6 }}>
+                      <div style={{ fontSize: 12, color: pt.cardChevronColor, marginBottom: 6 }}>
                         {t("ad_ready_label")}
                       </div>
                       <input
@@ -7495,7 +7416,7 @@ export default function App() {
                           width: "100%",
                           fontSize: 13,
                           fontWeight: 600,
-                          color: pt.inputText,
+                          color: pt.cardInputText,
                           background: pt.inputBg,
                           border: pt.inputBorder,
                           borderRadius: 4,
@@ -7512,7 +7433,7 @@ export default function App() {
                         style={{
                           width: "100%",
                           fontSize: 13,
-                          color: pt.inputText,
+                          color: pt.cardInputText,
                           background: pt.inputBg,
                           border: pt.inputBorder,
                           borderRadius: 4,
@@ -7551,7 +7472,7 @@ export default function App() {
                               borderRadius: 4,
                               border: "1px solid " + pt.rowBorder.replace("1px solid ", ""),
                               background: "transparent",
-                              color: pt.chevronColor,
+                              color: pt.cardChevronColor,
                               cursor: "pointer",
                             }}
                           >
@@ -7562,47 +7483,12 @@ export default function App() {
                         )}
                       </div>
                       {adGenCount >= 3 && (
-                        <div style={{ fontSize: 11, color: pt.chevronColor, marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: pt.cardChevronColor, marginBottom: 8 }}>
                           {t("ad_limit_reached_edit_note")}
                         </div>
                       )}
 
-                      {/* Photo d'origine + éventuelles photos IA sous d'autres
-                          angles (voir generateExtraAngles plus bas dans le
-                          panneau), réunies ici avec le texte au moment de
-                          publier — demandé par Dylan ("le texte, les photos,
-                          il ne reste plus qu'à publier"). */}
-                      {adPhotoCount > 0 && (
-                        <div style={{ marginBottom: 12 }}>
-                          <button
-                            type="button"
-                            onClick={shareAdPhotos}
-                            className="mono"
-                            style={{
-                              fontSize: 12,
-                              padding: "8px 12px",
-                              borderRadius: 4,
-                              border: "1px solid " + pt.rowBorder.replace("1px solid ", ""),
-                              background: "transparent",
-                              color: pt.chevronColor,
-                              cursor: "pointer",
-                              marginBottom: 6,
-                            }}
-                          >
-                            {t("ad_photos_button_prefix")}
-                            {adPhotoCount}
-                            {adPhotoCount > 1 ? t("ad_photos_count_plural") : t("ad_photos_count_singular")}
-                          </button>
-                          <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
-                            {t("ad_photos_note")}
-                          </div>
-                        </div>
-                      )}
-
-                      <div style={{ fontSize: 11, color: pt.chevronColor, marginBottom: 6, lineHeight: 1.5 }}>
-                        {t("ad_paste_instructions")}
-                      </div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
                         {SELL_PLATFORMS.map((p) => (
                           <button
                             key={p.label}
@@ -7616,7 +7502,7 @@ export default function App() {
                               padding: "5px 12px 5px 5px",
                               borderRadius: 20,
                               border: pt.inputBorder,
-                              color: pt.strongColor,
+                              color: pt.cardStrongText,
                               background: pt.inputBg,
                               cursor: "pointer",
                             }}
@@ -7672,7 +7558,7 @@ export default function App() {
                         fontWeight: 700,
                         letterSpacing: "0.06em",
                         textTransform: "uppercase",
-                        color: pt.strongColor,
+                        color: pt.cardStrongText,
                         marginBottom: 8,
                       }}
                     >
@@ -7753,7 +7639,7 @@ export default function App() {
                             </div>
                           ))}
                         </div>
-                        <div style={{ fontSize: 12, color: pt.chevronColor }}>
+                        <div style={{ fontSize: 12, color: pt.cardChevronColor }}>
                           {t("extra_angles_generating")}
                         </div>
                       </div>
@@ -7772,7 +7658,7 @@ export default function App() {
                             borderRadius: 4,
                             border: "1px solid " + pt.rowBorder.replace("1px solid ", ""),
                             background: "transparent",
-                            color: pt.chevronColor,
+                            color: pt.cardChevronColor,
                             cursor: "pointer",
                           }}
                         >
@@ -7820,9 +7706,6 @@ export default function App() {
                               </button>
                             </div>
                           ))}
-                        </div>
-                        <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
-                          {t("extra_angles_download_note")}
                         </div>
                       </div>
                     )}
@@ -7909,14 +7792,14 @@ export default function App() {
 
                 {(() => {
                   const conf = confidenceInfo(result.confiance);
-                  const dotColor = conf.dot === "muted" ? pt.chevronColor : conf.dot || accent;
+                  const dotColor = conf.dot === "muted" ? pt.cardChevronColor : conf.dot || accent;
                   return (
                     <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 16 }}>
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                      <span className="brand" style={{ fontSize: brandSize(13), fontStyle: "italic", fontWeight: 500, color: pt.rowText }}>
+                      <span className="brand" style={{ fontSize: brandSize(13), fontStyle: "italic", fontWeight: 500, color: pt.cardRowText }}>
                         {conf.label}
                       </span>
-                      <span className="mono" style={{ fontSize: 10, color: pt.chevronColor }}>
+                      <span className="mono" style={{ fontSize: 10, color: pt.cardChevronColor }}>
                         · {result.source}
                       </span>
                     </div>
