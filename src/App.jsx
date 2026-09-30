@@ -244,7 +244,9 @@ const AFFICHAGES = [
     key: "classique",
     threshold: 0,
     label: "Classique",
-    emoji: "🔷",
+    // Pas d'emoji ici (retiré à la demande de Dylan — "🔷" ne servait à
+    // rien à côté du nom) ni sur "Classique blanc" juste en dessous.
+    emoji: "",
     mode: "dark",
     fontDisplay: "'Fraunces', Georgia, serif",
     fontBody: "'Inter', sans-serif",
@@ -267,7 +269,7 @@ const AFFICHAGES = [
     key: "blanc",
     threshold: 0,
     label: "Classique blanc",
-    emoji: "⚪",
+    emoji: "",
     mode: "blanc",
     fontDisplay: "'Fraunces', Georgia, serif",
     fontBody: "'Inter', sans-serif",
@@ -282,7 +284,13 @@ const AFFICHAGES = [
     // à écrire — plus proche de cette DA que la première version (sépia
     // sombre) qui ne se distinguait pas assez de "Classique".
     key: "vintage",
-    threshold: 0,
+    // Ordre/paliers de déblocage par jours de connexion CONSÉCUTIFS
+    // (connectionStreak, voir plus bas) demandés par Dylan — Classique et
+    // Classique blanc restent débloqués d'emblée (threshold 0), les autres
+    // se débloquent progressivement dans l'ordre où ils apparaissent dans
+    // ce tableau (voir isAffichageUnlocked plus bas, même principe que
+    // isCharacterUnlocked pour les avatars).
+    threshold: 3,
     label: "Vintage",
     emoji: "📜",
     mode: "light",
@@ -361,7 +369,7 @@ const AFFICHAGES = [
   },
   {
     key: "retro",
-    threshold: 0,
+    threshold: 10,
     label: "Rétro",
     emoji: "📼",
     mode: "dark",
@@ -393,7 +401,7 @@ const AFFICHAGES = [
   },
   {
     key: "robotique",
-    threshold: 0,
+    threshold: 20,
     label: "Robotique",
     emoji: "🤖",
     mode: "dark",
@@ -428,7 +436,7 @@ const AFFICHAGES = [
     // même corps, provoquait des débordements/retours à la ligne sur
     // l'accroche) à Rajdhani, tout aussi futuriste mais condensée.
     key: "futuriste",
-    threshold: 0,
+    threshold: 30,
     label: "Futuriste",
     emoji: "🚀",
     mode: "dark",
@@ -463,6 +471,46 @@ const AFFICHAGES = [
     decor: `url(${decorFuturiste}) top center / 100% auto no-repeat`,
   },
   {
+    // Remplace "Zen" (papier washi, minimalisme japonais épuré) à la
+    // demande de Dylan : ambiance manga/comics japonais, plus graphique et
+    // énergique. `texture` simule des "vitesses"/hachures façon trame
+    // manga (repeating-conic-gradient, lignes radiant depuis un coin) en
+    // complément de la photo générée par IA (voir `decor`).
+    key: "manga",
+    threshold: 50,
+    label: "Manga",
+    emoji: "🎌",
+    mode: "light",
+    // Reggae One : police japonaise épaisse et impactante, esprit
+    // lettrage de couverture manga. Noto Sans JP en corps de texte, sobre
+    // et lisible (compatible japonais si jamais utile plus tard).
+    fontDisplay: "'Reggae One', cursive",
+    fontBody: "'Noto Sans JP', sans-serif",
+    displayTransform: "uppercase",
+    displayLetterSpacing: "0.01em",
+    // heroScale réduit (0.85 -> 0.7) : Dylan trouvait "Combien ça vaut,
+    // vraiment ?" trop gros — même retour que Forêt, Reggae One est aussi
+    // une police très épaisse/large.
+    heroScale: 0.7,
+    base: "#F7F7F4",
+    mid: "#D9D9D6",
+    high: "#E0202B",
+    borderRgb: "20, 20, 20",
+    textStrong: "#121212",
+    textSoft: "#4A4A48",
+    radiusScale: 0.1,
+    accent: "#E0202B",
+    accentDark: "#A10E17",
+    accentLight: "#FF6B72",
+    glow: 0.05,
+    texture:
+      "repeating-conic-gradient(from 0deg at 6% 8%, rgba(18,18,18,0.05) 0deg 1.2deg, transparent 1.2deg 5deg), repeating-conic-gradient(from 0deg at 94% 92%, rgba(224,32,43,0.07) 0deg 1.2deg, transparent 1.2deg 6deg)",
+    decor: [
+      "linear-gradient(90deg, rgba(224,32,43,0.20) 0%, rgba(224,32,43,0.07) 3%, transparent 9%, transparent 91%, rgba(18,18,18,0.06) 97%, rgba(18,18,18,0.20) 100%)",
+      `url(${decorManga}) top center / 100% auto no-repeat`,
+    ].join(", "),
+  },
+  {
     // 5 nouveaux affichages proposés par Claude à la demande de Dylan
     // ("qu'est-ce qu'il pourrait y avoir d'autre comme thème ?"). Images de
     // fond générées par Dylan (Google Flow / Nano Banana Pro à partir des
@@ -470,9 +518,10 @@ const AFFICHAGES = [
     // Futuriste : bande de dégradé de bord en CSS (visible dans la marge
     // mobile) posée PAR-DESSUS l'image, qui est elle-même ancrée en haut de
     // page (jamais "cover" plein cadre, pour ne pas s'étirer sur une page
-    // longue).
+    // longue). Placé en dernier (déblocage le plus long, 100 jours de
+    // connexion consécutifs) : c'est le plus prestigieux des affichages.
     key: "luxe",
-    threshold: 0,
+    threshold: 100,
     label: "Luxe",
     // Ancien "♦️" (losange) jugé peu adapté par Dylan ("l'espèce de petit
     // rectangle rouge") — remplacé par le trident, qui évoque directement
@@ -511,46 +560,6 @@ const AFFICHAGES = [
     decor: [
       "linear-gradient(90deg, rgba(198,166,97,0.20) 0%, rgba(198,166,97,0.07) 3%, transparent 9%, transparent 91%, rgba(198,166,97,0.07) 97%, rgba(198,166,97,0.20) 100%)",
       `url(${decorLuxe}) top center / 100% auto no-repeat`,
-    ].join(", "),
-  },
-  {
-    // Remplace "Zen" (papier washi, minimalisme japonais épuré) à la
-    // demande de Dylan : ambiance manga/comics japonais, plus graphique et
-    // énergique. `texture` simule des "vitesses"/hachures façon trame
-    // manga (repeating-conic-gradient, lignes radiant depuis un coin) en
-    // complément de la photo générée par IA (voir `decor`).
-    key: "manga",
-    threshold: 0,
-    label: "Manga",
-    emoji: "🎌",
-    mode: "light",
-    // Reggae One : police japonaise épaisse et impactante, esprit
-    // lettrage de couverture manga. Noto Sans JP en corps de texte, sobre
-    // et lisible (compatible japonais si jamais utile plus tard).
-    fontDisplay: "'Reggae One', cursive",
-    fontBody: "'Noto Sans JP', sans-serif",
-    displayTransform: "uppercase",
-    displayLetterSpacing: "0.01em",
-    // heroScale réduit (0.85 -> 0.7) : Dylan trouvait "Combien ça vaut,
-    // vraiment ?" trop gros — même retour que Forêt, Reggae One est aussi
-    // une police très épaisse/large.
-    heroScale: 0.7,
-    base: "#F7F7F4",
-    mid: "#D9D9D6",
-    high: "#E0202B",
-    borderRgb: "20, 20, 20",
-    textStrong: "#121212",
-    textSoft: "#4A4A48",
-    radiusScale: 0.1,
-    accent: "#E0202B",
-    accentDark: "#A10E17",
-    accentLight: "#FF6B72",
-    glow: 0.05,
-    texture:
-      "repeating-conic-gradient(from 0deg at 6% 8%, rgba(18,18,18,0.05) 0deg 1.2deg, transparent 1.2deg 5deg), repeating-conic-gradient(from 0deg at 94% 92%, rgba(224,32,43,0.07) 0deg 1.2deg, transparent 1.2deg 6deg)",
-    decor: [
-      "linear-gradient(90deg, rgba(224,32,43,0.20) 0%, rgba(224,32,43,0.07) 3%, transparent 9%, transparent 91%, rgba(18,18,18,0.06) 97%, rgba(18,18,18,0.20) 100%)",
-      `url(${decorManga}) top center / 100% auto no-repeat`,
     ].join(", "),
   },
 ];
@@ -1087,6 +1096,7 @@ const TRANSLATIONS = {
     account_or_divider: "ou",
     account_magic_link_button: "recevoir un lien de connexion (sans mot de passe)",
     display_theme_title: "Thème (polices, couleurs et contours de toute l'appli)",
+    display_hint_connection_days_suffix: " jours de connexion d'affilée",
     profile_title: "Mon profil",
     credits_unit_singular: "estimation",
     credits_unit_plural: "estimations",
@@ -1452,6 +1462,7 @@ const TRANSLATIONS = {
     account_or_divider: "or",
     account_magic_link_button: "get a sign-in link (no password)",
     display_theme_title: "Theme (fonts, colors and outlines across the whole app)",
+    display_hint_connection_days_suffix: " days in a row logged in",
     profile_title: "My profile",
     credits_unit_singular: "estimate",
     credits_unit_plural: "estimates",
@@ -1817,6 +1828,7 @@ const TRANSLATIONS = {
     account_or_divider: "o",
     account_magic_link_button: "recibir un enlace de acceso (sin contraseña)",
     display_theme_title: "Tema (fuentes, colores y contornos de toda la app)",
+    display_hint_connection_days_suffix: " días seguidos conectado",
     profile_title: "Mi perfil",
     credits_unit_singular: "estimación",
     credits_unit_plural: "estimaciones",
@@ -3070,11 +3082,25 @@ export default function App() {
     } catch (e) {}
   }, [selectedAffichageKey]);
 
-  // Tous les affichages sont débloqués d'emblée (`threshold: 0` pour
-  // chacun, voir AFFICHAGES plus haut) — le mécanisme de déblocage sera
-  // défini dans un second temps, ce qui garde la sélection ci-dessous très
-  // simple (pas de notion de "plus haut débloqué"/toast/progression).
-  const activeAffichage = AFFICHAGES.find((a) => a.key === selectedAffichageKey) || AFFICHAGES[0];
+  // Déblocage des affichages par jours de connexion CONSÉCUTIFS
+  // (connectionStreak, calculé plus haut) comparés à `threshold` sur chaque
+  // entrée d'AFFICHAGES — même principe que isCharacterUnlocked pour les
+  // avatars plus bas, avec un seul chemin de déblocage ici (pas de plan
+  // d'abonnement). isOwnerPreview permet au compte de Dylan d'essayer tous
+  // les affichages sans les débloquer pour de vrai (même logique que pour
+  // les avatars/l'habillage).
+  function isAffichageUnlocked(aff) {
+    if (!aff.threshold) return true;
+    return connectionStreak >= aff.threshold || isOwnerPreview;
+  }
+  function affichageHint(aff) {
+    return `${t("avatar_hint_from_prefix")}${aff.threshold}${t("display_hint_connection_days_suffix")}`;
+  }
+  // Repli sur "classique" si l'affichage mémorisé (localStorage) n'est plus
+  // débloqué — par exemple un affichage choisi avant l'introduction de ce
+  // système de paliers, ou un compte qui n'a plus assez de jours de suite.
+  const storedAffichage = AFFICHAGES.find((a) => a.key === selectedAffichageKey);
+  const activeAffichage = storedAffichage && isAffichageUnlocked(storedAffichage) ? storedAffichage : AFFICHAGES[0];
 
   // Couleur de mise en avant (boutons, prix, liens, lueurs...) : vient
   // maintenant de l'affichage choisi (voir `accent`/`accentDark`/
@@ -8304,13 +8330,38 @@ export default function App() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {AFFICHAGES.map((aff) => {
                   const isActive = activeAffichage.key === aff.key;
+                  // "Classique" et "Classique blanc" n'ont pas de base/mid/high
+                  // propre (ils reprennent PANEL_THEMES.dark/blanc tel quel) :
+                  // le dégradé générique ci-dessous retombait sur un mélange
+                  // orange→bleu nuit / orange→blanc peu lisible. Dylan préfère
+                  // une pastille unie pour ces deux-là : bleu nuit plein pour
+                  // Classique, blanc plein pour Classique blanc.
+                  const swatchSolid = aff.key === "blanc" ? "#FFFFFF" : aff.key === "classique" ? "#0A1220" : null;
                   const swatchHigh = aff.high || "#F2662E";
-                  const swatchMid = aff.mid || (aff.key === "blanc" ? "#FFFFFF" : "#152238");
-                  const swatchBase = aff.base || (aff.key === "blanc" ? "#FFFFFF" : "#0A1220");
+                  const swatchMid = aff.mid || "#152238";
+                  const swatchBase = aff.base || "#0A1220";
+                  // Déblocage par paliers de jours de connexion consécutifs
+                  // (voir isAffichageUnlocked plus haut) — même principe que
+                  // pour les avatars : pastille + nom grisés et cadenas avec
+                  // le nombre de jours restants tant que le palier n'est pas
+                  // atteint, sauf pour le compte de Dylan (isOwnerPreview) qui
+                  // peut tout essayer sans débloquer pour de vrai.
+                  const unlocked = isAffichageUnlocked(aff);
+                  const clickable = unlocked || isOwnerPreview;
                   return (
                     <button
                       key={aff.key}
-                      onClick={() => setSelectedAffichageKey(aff.key)}
+                      onClick={() => {
+                        if (clickable) setSelectedAffichageKey(aff.key);
+                      }}
+                      disabled={!clickable}
+                      title={
+                        unlocked
+                          ? aff.label
+                          : isOwnerPreview
+                          ? `${aff.label} — ${t("avatar_owner_preview_template").replace("{hint}", affichageHint(aff))}`
+                          : `${aff.label} — ${affichageHint(aff)}`
+                      }
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -8321,7 +8372,8 @@ export default function App() {
                         border: isActive ? `2px solid ${accent}` : pt.rowBorder,
                         borderRadius: 10,
                         padding: "9px 14px",
-                        cursor: "pointer",
+                        opacity: unlocked ? 1 : isOwnerPreview ? 0.75 : 0.4,
+                        cursor: clickable ? "pointer" : "default",
                       }}
                     >
                       <span
@@ -8331,13 +8383,22 @@ export default function App() {
                           height: 28,
                           borderRadius: "50%",
                           flexShrink: 0,
-                          background: `linear-gradient(135deg, ${swatchHigh} 0%, ${swatchMid} 55%, ${swatchBase} 100%)`,
+                          background: swatchSolid || `linear-gradient(135deg, ${swatchHigh} 0%, ${swatchMid} 55%, ${swatchBase} 100%)`,
                           border: "2px solid rgba(255, 255, 255, 0.25)",
                         }}
                       />
                       <span className="mono" style={{ fontSize: 13, fontWeight: 500, color: pt.rowText, whiteSpace: "nowrap" }}>
-                        {aff.emoji} {aff.label}
+                        {aff.emoji ? `${aff.emoji} ` : ""}
+                        {aff.label}
                       </span>
+                      {!unlocked && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 3, marginLeft: "auto", flexShrink: 0 }}>
+                          <Lock size={11} color={pt.chevronColor} />
+                          <span className="mono" style={{ fontSize: 9, color: pt.chevronColor, whiteSpace: "nowrap" }}>
+                            {affichageHint(aff)}
+                          </span>
+                        </span>
+                      )}
                     </button>
                   );
                 })}
