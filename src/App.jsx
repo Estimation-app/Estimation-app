@@ -853,9 +853,7 @@ const TRANSLATIONS = {
     category_trending_loading: "Chargement des tendances…",
     category_trending_empty: "Rien à afficher pour l'instant.",
     leaderboard_title: "Classement",
-    leaderboard_subtitle: "Les meilleurs estimateurs, par nombre d'estimations et par nombre d'annonces générées.",
-    leaderboard_tab_estimations: "Estimations",
-    leaderboard_tab_ads: "Annonces générées",
+    leaderboard_subtitle: "Les meilleurs estimateurs, par nombre d'estimations.",
     leaderboard_period_month: "Ce mois-ci",
     leaderboard_period_total: "Total",
     leaderboard_loading: "Chargement du classement…",
@@ -1077,7 +1075,6 @@ const TRANSLATIONS = {
     account_subscribe_button: "s'abonner",
     account_refer_friend: "Parrainer un ami",
     account_link_copied: "copié !",
-    account_password_set: "Mot de passe défini",
     account_password_set_note: "définir un mot de passe (se reconnecter sans lien par email)",
     account_new_password_placeholder: "nouveau mot de passe",
     account_set_password_button: "définir",
@@ -1219,9 +1216,7 @@ const TRANSLATIONS = {
     category_trending_loading: "Loading trends…",
     category_trending_empty: "Nothing to show yet.",
     leaderboard_title: "Leaderboard",
-    leaderboard_subtitle: "The top estimators, by number of estimations and by number of ads generated.",
-    leaderboard_tab_estimations: "Estimations",
-    leaderboard_tab_ads: "Ads generated",
+    leaderboard_subtitle: "The top estimators, by number of estimations.",
     leaderboard_period_month: "This month",
     leaderboard_period_total: "Total",
     leaderboard_loading: "Loading leaderboard…",
@@ -1443,7 +1438,6 @@ const TRANSLATIONS = {
     account_subscribe_button: "subscribe",
     account_refer_friend: "Refer a friend",
     account_link_copied: "copied!",
-    account_password_set: "Password set",
     account_password_set_note: "set a password (sign in again without an email link)",
     account_new_password_placeholder: "new password",
     account_set_password_button: "set",
@@ -1585,9 +1579,7 @@ const TRANSLATIONS = {
     category_trending_loading: "Cargando tendencias…",
     category_trending_empty: "Nada que mostrar por ahora.",
     leaderboard_title: "Clasificación",
-    leaderboard_subtitle: "Los mejores estimadores, por número de estimaciones y por número de anuncios generados.",
-    leaderboard_tab_estimations: "Estimaciones",
-    leaderboard_tab_ads: "Anuncios generados",
+    leaderboard_subtitle: "Los mejores estimadores, por número de estimaciones.",
     leaderboard_period_month: "Este mes",
     leaderboard_period_total: "Total",
     leaderboard_loading: "Cargando clasificación…",
@@ -1809,7 +1801,6 @@ const TRANSLATIONS = {
     account_subscribe_button: "suscribirse",
     account_refer_friend: "Invitar a un amigo",
     account_link_copied: "¡copiado!",
-    account_password_set: "Contraseña definida",
     account_password_set_note: "define una contraseña (inicia sesión sin enlace por email)",
     account_new_password_placeholder: "nueva contraseña",
     account_set_password_button: "definir",
@@ -3359,13 +3350,14 @@ export default function App() {
     }
   }
 
-  // "Classement" : nombre d'estimations et nombre d'annonces générées,
-  // chacun en "ce mois-ci" et "total" — 4 combinaisons, calculées côté
-  // Supabase (fonctions leaderboard_estimations / leaderboard_ad_generations,
+  // "Classement" : nombre d'estimations, en "ce mois-ci" et "total" — 2
+  // combinaisons, calculées côté Supabase (fonction leaderboard_estimations,
   // voir supabase_schema.sql) et mises en cache ici par combinaison pour
-  // éviter de recharger à chaque changement d'onglet.
+  // éviter de recharger à chaque changement d'onglet. Le classement
+  // "annonces générées" a été retiré (Dylan : plus d'intérêt) ; la fonction
+  // Supabase leaderboard_ad_generations reste disponible côté base mais
+  // n'est plus appelée depuis l'app.
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [leaderboardType, setLeaderboardType] = useState("estimations"); // estimations | annonces
   const [leaderboardPeriod, setLeaderboardPeriod] = useState("month"); // month | total
   const [leaderboardCache, setLeaderboardCache] = useState({}); // { "estimations:month": [...] }
   const [leaderboardLoadingKey, setLeaderboardLoadingKey] = useState(null);
@@ -3381,8 +3373,7 @@ export default function App() {
     setLeaderboardLoadingKey(cacheKey);
     setLeaderboardError(null);
     try {
-      const fn = type === "annonces" ? "leaderboard_ad_generations" : "leaderboard_estimations";
-      const { data, error } = await supabase.rpc(fn, { p_period: period, p_limit: limit });
+      const { data, error } = await supabase.rpc("leaderboard_estimations", { p_period: period, p_limit: limit });
       if (error) throw new Error(error.message);
       setLeaderboardCache((prev) => ({ ...prev, [cacheKey]: data || [] }));
     } catch (e) {
@@ -3393,9 +3384,9 @@ export default function App() {
     }
   }
   useEffect(() => {
-    if (showLeaderboard) loadLeaderboard(leaderboardType, leaderboardPeriod, 20);
+    if (showLeaderboard) loadLeaderboard("estimations", leaderboardPeriod, 20);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showLeaderboard, leaderboardType, leaderboardPeriod]);
+  }, [showLeaderboard, leaderboardPeriod]);
   useEffect(() => {
     if (showLeaderboard) setPseudoInput((profile && profile.pseudo) || "");
   }, [showLeaderboard, profile]);
@@ -3976,13 +3967,11 @@ export default function App() {
                 </button>
               </div>
 
-              <div style={{ padding: "10px 2px", borderBottom: pt.dashedBorder }}>
-                {passwordStatus === "done" || (profile && profile.has_password) ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <Lock size={16} color={accent} style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: pt.rowText }}>{t("account_password_set")}</span>
-                  </div>
-                ) : (
+              {/* Une fois le mot de passe défini, cette ligne ne sert plus à
+                  rien à afficher (Dylan) — on ne montre plus que le
+                  formulaire tant qu'aucun mot de passe n'est encore défini. */}
+              {!(passwordStatus === "done" || (profile && profile.has_password)) && (
+                <div style={{ padding: "10px 2px", borderBottom: pt.dashedBorder }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                       <Lock size={16} color={accent} style={{ flexShrink: 0 }} />
@@ -4033,8 +4022,8 @@ export default function App() {
                       </p>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <button
                 onClick={() => {
@@ -9261,30 +9250,10 @@ export default function App() {
               )}
             </div>
 
-            <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-              {[
-                { key: "estimations", label: t("leaderboard_tab_estimations") },
-                { key: "annonces", label: t("leaderboard_tab_ads") },
-              ].map((opt) => (
-                <button
-                  key={opt.key}
-                  onClick={() => setLeaderboardType(opt.key)}
-                  className="mono"
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: "7px 12px",
-                    borderRadius: 20,
-                    border: leaderboardType === opt.key ? `1px solid ${accent}` : pt.chipBorder,
-                    background: leaderboardType === opt.key ? accent : pt.chipBg,
-                    color: leaderboardType === opt.key ? "#FFFFFF" : pt.chipText,
-                    cursor: "pointer",
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            {/* Le classement "annonces générées" a été retiré (Dylan : plus
+                d'intérêt) — il ne reste qu'un seul type de classement
+                (estimations), donc plus besoin de sélecteur de type ici,
+                seulement la période. */}
             <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
               {[
                 { key: "month", label: t("leaderboard_period_month") },
@@ -9311,7 +9280,7 @@ export default function App() {
             </div>
 
             {(() => {
-              const cacheKey = `${leaderboardType}:${leaderboardPeriod}:20`;
+              const cacheKey = `estimations:${leaderboardPeriod}:20`;
               const rows = leaderboardCache[cacheKey];
               if (leaderboardLoadingKey === cacheKey && !rows) {
                 return (
