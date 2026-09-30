@@ -175,6 +175,35 @@ function hexToRgbString(hex) {
   return `${r}, ${g}, ${b}`;
 }
 
+// Luminance relative (WCAG) puis ratio de contraste entre deux couleurs hex
+// — sert à vérifier PROGRAMMATIQUEMENT qu'un texte en couleur d'accent reste
+// lisible sur le fond dégradé de l'affichage actif, quel que soit cet
+// affichage (voir pt.accentText plus bas). Corrige un bug remonté par Dylan
+// sur Vintage : `accent` vaut exactement la même couleur que `high` sur
+// TOUS les affichages avec base/mid/high (vérifié sur les 6 affichages
+// concernés), et sur un affichage "light" comme Vintage, le dégradé de la
+// carte résultat DÉMARRE justement sur `high` — un texte en `accent` posé
+// dessus devenait alors illisible ("jaune sur jaune"), à chaque endroit où
+// il tombait sur cette zone du dégradé.
+function relativeLuminance(hex) {
+  const clean = (hex || "").replace("#", "");
+  const chan = (v) => {
+    const c = (parseInt(v, 16) || 0) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const r = chan(clean.substring(0, 2));
+  const g = chan(clean.substring(2, 4));
+  const b = chan(clean.substring(4, 6));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrastRatio(hexA, hexB) {
+  const lA = relativeLuminance(hexA);
+  const lB = relativeLuminance(hexB);
+  const lighter = Math.max(lA, lB);
+  const darker = Math.min(lA, lB);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 // "Affichages" : styles visuels sélectionnables pour TOUTE l'application —
 // remplace l'ancien système de "Fonds" (paliers de couleur débloqués par
 // jours de connexion). Chaque affichage change les polices d'écriture, les
@@ -1035,6 +1064,7 @@ const TRANSLATIONS = {
     extra_angles_generating: "Génération en cours (10 à 20 secondes)…",
     extra_angles_retry_button: "Réessayer",
     extra_angles_download_note: "Télécharge-les puis ajoute-les à ta photo d'origine sur Leboncoin, Vinted ou eBay.",
+    photo_zoom_download_button: "Télécharger",
 
     // Historique / confirmation suppression
     history_title: "Historique",
@@ -1043,6 +1073,7 @@ const TRANSLATIONS = {
       "Connecte-toi depuis ton profil (icône en haut à droite) pour un historique illimité, synchronisé entre appareils. Sans compte, l'historique reste local à cet appareil.",
     history_empty: "Aucune estimation pour l'instant.",
     history_reestimate_title: "Réestimer (voir si le prix a bougé)",
+    history_view_title: "Revoir cette estimation complète",
     history_clear_confirm_title: "Tout effacer ?",
     history_clear_confirm_body_prefix: "Cette action supprimera définitivement ",
     history_clear_confirm_body_middle_singular: " estimation de ton historique. Impossible de revenir en arrière.",
@@ -1406,6 +1437,7 @@ const TRANSLATIONS = {
     extra_angles_generating: "Generating (10 to 20 seconds)…",
     extra_angles_retry_button: "Retry",
     extra_angles_download_note: "Download them, then add them to your original photo on Leboncoin, Vinted or eBay.",
+    photo_zoom_download_button: "Download",
 
     // History / clear confirmation
     history_title: "History",
@@ -1414,6 +1446,7 @@ const TRANSLATIONS = {
       "Sign in from your profile (icon top right) for unlimited history, synced across devices. Without an account, history stays local to this device.",
     history_empty: "No estimates yet.",
     history_reestimate_title: "Re-estimate (see if the price has moved)",
+    history_view_title: "View this full estimate again",
     history_clear_confirm_title: "Clear everything?",
     history_clear_confirm_body_prefix: "This will permanently delete ",
     history_clear_confirm_body_middle_singular: " estimate from your history. This cannot be undone.",
@@ -1777,6 +1810,7 @@ const TRANSLATIONS = {
     extra_angles_generating: "Generando (10 a 20 segundos)…",
     extra_angles_retry_button: "Reintentar",
     extra_angles_download_note: "Descárgalas y añádelas a tu foto original en Leboncoin, Vinted o eBay.",
+    photo_zoom_download_button: "Descargar",
 
     // Historial / confirmación de borrado
     history_title: "Historial",
@@ -1785,6 +1819,7 @@ const TRANSLATIONS = {
       "Inicia sesión desde tu perfil (icono arriba a la derecha) para un historial ilimitado, sincronizado entre dispositivos. Sin cuenta, el historial se queda local en este dispositivo.",
     history_empty: "Todavía no hay estimaciones.",
     history_reestimate_title: "Reestimar (ver si el precio ha cambiado)",
+    history_view_title: "Volver a ver esta estimación completa",
     history_clear_confirm_title: "¿Borrar todo?",
     history_clear_confirm_body_prefix: "Esta acción eliminará definitivamente ",
     history_clear_confirm_body_middle_singular: " estimación de tu historial. No se puede deshacer.",
@@ -2193,10 +2228,26 @@ function PriceEvolutionChart({ points, theme = "dark", height = 130, unit = "€
   const values = clean.map((p) => p.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const range = max - min || Math.max(1, max * 0.1) || 1;
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  // La courbe ne doit pas toujours toucher pile le bas (valeur la plus
+  // basse du lot) et le haut (la plus haute) du graphique : sur une
+  // variation réellement faible (le prix ne bouge presque pas), l'axe se
+  // recalait automatiquement sur ce tout petit écart et étirait la courbe
+  // sur toute la hauteur — donnant l'impression trompeuse d'une tendance
+  // marquée là où il n'y en a en réalité pas (remonté par Dylan : "on peut
+  // croire que les prix augmentent constamment, alors que des fois les
+  // prix ne bougent pas"). On impose donc un écart minimum "visuel" (20 %
+  // de la valeur moyenne) sous lequel la courbe reste proche du centre au
+  // lieu de remplir tout le cadre ; au-delà de ce seuil, une vraie
+  // tendance marquée continue de remplir tout le graphique comme avant.
+  const naturalRange = max - min;
+  const minVisualRange = Math.max(avg * 0.2, 1);
+  const range = Math.max(naturalRange, minVisualRange);
+  const mid = (min + max) / 2;
+  const displayMin = mid - range / 2;
 
   const xAt = (i) => PADX + (i * (W - 2 * PADX)) / Math.max(clean.length - 1, 1);
-  const yAt = (v) => H - PADY - ((v - min) / range) * (H - 2 * PADY);
+  const yAt = (v) => H - PADY - ((v - displayMin) / range) * (H - 2 * PADY);
 
   const linePath = clean.map((p, i) => `${i === 0 ? "M" : "L"} ${xAt(i).toFixed(1)} ${yAt(p.value).toFixed(1)}`).join(" ");
   const areaPath = `${linePath} L ${xAt(clean.length - 1).toFixed(1)} ${H - PADY} L ${xAt(0).toFixed(1)} ${H - PADY} Z`;
@@ -2315,8 +2366,16 @@ function PriceEvolutionChart({ points, theme = "dark", height = 130, unit = "€
       </svg>
 
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-        <span className="mono" style={{ fontSize: 10, color: pt.chevronColor }}>{clean[0].label}</span>
-        <span className="mono" style={{ fontSize: 10, color: pt.chevronColor }}>{clean[clean.length - 1].label}</span>
+        {/* Prix de départ et d'arrivée toujours affichés (pas seulement au
+            survol) : le badge +/-% seul ne dit pas de quel prix on part ni
+            où on arrive, ce qui laissait mal juger l'ampleur réelle d'une
+            variation — demandé par Dylan. */}
+        <span className="mono" style={{ fontSize: 10, color: pt.chevronColor }}>
+          {clean[0].label} · {fmt(first)}
+        </span>
+        <span className="mono" style={{ fontSize: 10, color: pt.chevronColor }}>
+          {clean[clean.length - 1].label} · {fmt(last)}
+        </span>
       </div>
     </div>
   );
@@ -2633,6 +2692,10 @@ export default function App() {
   // Nombre de photos disponibles pour l'annonce (photo d'origine + photos IA
   // sous d'autres angles déjà générées) — voir collectAdPhotos/shareAdPhotos.
   const adPhotoCount = (image && image.base64 ? 1 : 0) + (extraAngles ? extraAngles.length : 0);
+  // Photo agrandie en plein écran (clic sur une miniature d'angle IA — trop
+  // petites pour bien juger le résultat avant de l'enregistrer, demandé par
+  // Dylan) : { img: { data, mime_type }, index } | null.
+  const [zoomedPhoto, setZoomedPhoto] = useState(null);
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
 
   // Langue de l'interface (persistée localement) — volet de traduction
@@ -3218,6 +3281,29 @@ export default function App() {
     pt.subText = activeAffichage.textSoft;
     pt.chevronColor = activeAffichage.textSoft;
     pt.chipText = activeAffichage.textSoft;
+  }
+  // Couleur de texte "accent" garantie lisible sur le fond de la carte
+  // résultat/header (pt.resultCardBg, voir plus haut) — remplace `accent`
+  // nu partout où ce dernier servait de couleur de TEXTE à l'intérieur de
+  // cette carte (catégorie, badges…). `accent` vaut exactement `high` sur
+  // tous les affichages avec base/mid/high, et ce dégradé passe par les
+  // trois teintes base/mid/high : si `accent` n'a pas assez de contraste
+  // avec l'UNE d'elles (typiquement `high`, sur un affichage clair comme
+  // Vintage où le dégradé démarre justement dessus), on retombe sur
+  // pt.strongColor (déjà garanti lisible, voir ci-dessus) plutôt que de
+  // risquer du texte de la même couleur que son fond — corrige le "jaune
+  // sur jaune" remonté par Dylan sur Vintage, de façon générale pour
+  // n'importe quel affichage actuel ou futur.
+  pt.accentText = accent;
+  if (activeAffichage.base) {
+    const worstContrast = Math.min(
+      contrastRatio(accent, activeAffichage.base),
+      contrastRatio(accent, activeAffichage.mid),
+      contrastRatio(accent, activeAffichage.high)
+    );
+    if (worstContrast < 3) {
+      pt.accentText = pt.strongColor;
+    }
   }
   // Taille des titres `.brand` (voir brandSize() plus bas) : certaines
   // polices "affichage" (Orbitron, Bungee...) sont nettement plus larges
@@ -4212,6 +4298,12 @@ export default function App() {
             prix_bas: d.prix_bas,
             prix_haut: d.prix_haut,
             confiance: d.confiance,
+            // Résultat complet (état, commentaire, détail des annonces
+            // comparées, tendance de cote...) pour pouvoir réafficher une
+            // ancienne estimation telle quelle en cliquant dessus dans
+            // l'historique — voir viewHistoryResult(). Absent (null) pour
+            // les entrées créées avant l'ajout de cette colonne.
+            full: d.full_result || null,
           }))
         );
       }
@@ -4232,6 +4324,9 @@ export default function App() {
           prix_haut: entry.prix_haut,
           confiance: entry.confiance,
           image: entry.image,
+          // Résultat complet (voir viewHistoryResult()) — nécessite la
+          // colonne "full_result" jsonb, voir supabase_schema.sql.
+          full_result: entry.full || null,
         });
         // On recharge simplement en préfixant localement (évite un aller-retour)
         setHistory((prev) => [entry, ...prev].slice(0, 200));
@@ -4674,6 +4769,56 @@ export default function App() {
       image: h.image,
       fromHistory: true,
     });
+  }
+
+  // Réaffiche une estimation de l'historique EXACTEMENT comme elle était
+  // (état, commentaire, détail des annonces comparées, tendance de cote,
+  // onglet "statistiques"...) sans relancer d'appel IA — gratuit et
+  // instantané, contrairement à reestimateFromHistory() ci-dessus qui
+  // recalcule un nouveau prix. Demandé par Dylan : pouvoir cliquer sur une
+  // ancienne estimation dans l'historique pour retrouver "tout le tralala",
+  // pas juste la relancer. `h.full` (voir addToHistory()) ne contient le
+  // résultat complet que pour les entrées créées après l'ajout de cette
+  // fonctionnalité — pour les plus anciennes (résumé seul), le clic ne fait
+  // rien plutôt que d'afficher un résultat tronqué/cassé.
+  function viewHistoryResult(h) {
+    if (!h.full) return;
+    setShowHistory(false);
+    setShowMenu(false);
+    setShowProductSearch(false);
+    setShowTrending(false);
+    setShowSubscriptionPanel(false);
+    setShowContact(false);
+    setDetails("");
+    setCorrectionOpen(false);
+    setListingsOpen(false);
+    setCorrectionInput("");
+    setAdText(null);
+    setAdLoading(false);
+    setAdError(null);
+    setAdCopied(false);
+    setAdGenCount(0);
+    setExtraAngles(null);
+    setExtraAnglesLoading(false);
+    setExtraAnglesError(null);
+    setExtraAnglesAttempted(false);
+    setResultTab("estimation");
+    setListingSeed(null);
+    // h.image est déjà une data URL complète (voir addToHistory) — on en
+    // extrait base64/mediaType (même technique que la lecture d'un fichier
+    // photo, voir plus haut) pour que les fonctionnalités qui en dépendent
+    // (partager les photos, régénérer l'annonce...) marchent aussi sur un
+    // résultat rouvert depuis l'historique, pas seulement une estimation
+    // qui vient d'être calculée.
+    const match = typeof h.image === "string" ? h.image.match(/^data:([^;]+);base64,(.*)$/) : null;
+    setImage({
+      dataUrl: h.image || null,
+      mediaType: match ? match[1] : null,
+      base64: match ? match[2] : null,
+      debug: null,
+    });
+    setResult(h.full);
+    setStatus("done");
   }
 
   // Permet de corriger un détail après coup (ex: l'IA a estimé "grande
@@ -5175,6 +5320,7 @@ export default function App() {
           prix_bas: finalResult.prix_bas,
           prix_haut: finalResult.prix_haut,
           confiance: finalResult.confiance,
+          full: finalResult,
         });
         return;
       }
@@ -5523,6 +5669,7 @@ export default function App() {
         prix_bas: finalResult.prix_bas,
         prix_haut: finalResult.prix_haut,
         confiance: finalResult.confiance,
+        full: finalResult,
       });
     } catch (e) {
       console.error(e);
@@ -5612,6 +5759,7 @@ export default function App() {
         prix_bas: finalResult.prix_bas,
         prix_haut: finalResult.prix_haut,
         confiance: finalResult.confiance,
+        full: finalResult,
       });
     } catch (e) {
       console.error(e);
@@ -5671,6 +5819,7 @@ export default function App() {
         prix_bas: finalResult.prix_bas,
         prix_haut: finalResult.prix_haut,
         confiance: finalResult.confiance,
+        full: finalResult,
       });
     } catch (e) {
       console.error(e);
@@ -6759,7 +6908,7 @@ export default function App() {
                     fillRule="evenodd"
                   />
                 </svg>
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: pt.accentText, marginBottom: 4, position: "relative" }}>
                   {t("humor_mode_badge")}
                 </div>
                 <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 12, color: pt.strongColor, position: "relative" }}>
@@ -6798,7 +6947,7 @@ export default function App() {
                     fillRule="evenodd"
                   />
                 </svg>
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: pt.accentText, marginBottom: 4, position: "relative" }}>
                   {result.type_sujet === "vehicule" ? t("vehicle_estimate_badge") : t("realestate_estimate_badge")}
                   {t("indicative_suffix")}
                 </div>
@@ -6844,7 +6993,7 @@ export default function App() {
                     fillRule="evenodd"
                   />
                 </svg>
-                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: accent, marginBottom: 4, position: "relative" }}>
+                <div className="mono" style={{ fontSize: 11, letterSpacing: "0.06em", color: pt.accentText, marginBottom: 4, position: "relative" }}>
                   {result.categorie}
                 </div>
                 <div className="brand" style={{ fontSize: brandSize(20), fontWeight: 600, marginBottom: 4, color: pt.strongColor, position: "relative" }}>
@@ -6881,7 +7030,7 @@ export default function App() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mono"
-                        style={{ fontSize: 10, color: accent, textDecoration: "underline" }}
+                        style={{ fontSize: 10, color: pt.accentText, textDecoration: "underline" }}
                       >
                         {t("listing_seed_link")}
                       </a>
@@ -7007,7 +7156,7 @@ export default function App() {
                     gap: 6,
                     fontSize: 12,
                     fontWeight: 700,
-                    color: accent,
+                    color: pt.accentText,
                     background: `rgba(${accentRgb}, 0.12)`,
                     border: `1px solid rgba(${accentRgb}, 0.35)`,
                     borderRadius: 8,
@@ -7025,7 +7174,7 @@ export default function App() {
                     className="mono"
                     style={{
                       fontSize: 12,
-                      color: accent,
+                      color: pt.accentText,
                       background: `rgba(${accentRgb}, 0.15)`,
                       border: `1px solid rgba(${accentRgb}, 0.4)`,
                       borderRadius: 3,
@@ -7161,7 +7310,7 @@ export default function App() {
                               {l.title}
                             </span>
                           </span>
-                          <span className="mono" style={{ flexShrink: 0, color: accent, display: "flex", alignItems: "center", gap: 3 }}>
+                          <span className="mono" style={{ flexShrink: 0, color: pt.accentText, display: "flex", alignItems: "center", gap: 3 }}>
                             {l.price}
                             {l.link && <span style={{ fontSize: 10 }}>↗</span>}
                           </span>
@@ -7331,7 +7480,7 @@ export default function App() {
                   )}
 
                   {adError && (
-                    <div style={{ fontSize: 12, color: accent, marginTop: adText ? 8 : 0 }}>{adError}</div>
+                    <div style={{ fontSize: 12, color: pt.accentText, marginTop: adText ? 8 : 0 }}>{adError}</div>
                   )}
 
                   {adText && !adLoading && (
@@ -7550,7 +7699,7 @@ export default function App() {
                         }}
                       >
                         <Lock size={13} color={accent} style={{ flexShrink: 0 }} />
-                        <span className="mono" style={{ fontSize: 11, color: accent, textAlign: "left", lineHeight: 1.4 }}>
+                        <span className="mono" style={{ fontSize: 11, color: pt.accentText, textAlign: "left", lineHeight: 1.4 }}>
                           {t("extra_angles_premium_note")}
                         </span>
                       </button>
@@ -7612,7 +7761,7 @@ export default function App() {
 
                     {extraAnglesError && !extraAnglesLoading && (
                       <div>
-                        <div style={{ fontSize: 12, color: accent, marginBottom: 8 }}>{extraAnglesError}</div>
+                        <div style={{ fontSize: 12, color: pt.accentText, marginBottom: 8 }}>{extraAnglesError}</div>
                         <button
                           type="button"
                           onClick={generateExtraAngles}
@@ -7640,6 +7789,7 @@ export default function App() {
                               <img
                                 src={`data:${img.mime_type};base64,${img.data}`}
                                 alt=""
+                                onClick={() => setZoomedPhoto({ img, index: i })}
                                 style={{
                                   width: 110,
                                   height: 110,
@@ -7647,6 +7797,7 @@ export default function App() {
                                   borderRadius: 10,
                                   border: pt.rowBorder,
                                   display: "block",
+                                  cursor: "pointer",
                                 }}
                               />
                               <button
@@ -7673,6 +7824,84 @@ export default function App() {
                         <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
                           {t("extra_angles_download_note")}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Photo agrandie en plein écran au clic sur une
+                        miniature — trop petites pour bien juger avant de les
+                        enregistrer (demandé par Dylan). */}
+                    {zoomedPhoto && (
+                      <div
+                        onClick={() => setZoomedPhoto(null)}
+                        style={{
+                          position: "fixed",
+                          inset: 0,
+                          background: "rgba(4, 6, 12, 0.92)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          zIndex: 60,
+                          padding: 24,
+                        }}
+                      >
+                        <img
+                          src={`data:${zoomedPhoto.img.mime_type};base64,${zoomedPhoto.img.data}`}
+                          alt=""
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            maxWidth: "100%",
+                            maxHeight: "78vh",
+                            objectFit: "contain",
+                            borderRadius: 12,
+                            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setZoomedPhoto(null)}
+                          aria-label={t("close_label")}
+                          style={{
+                            position: "absolute",
+                            top: 18,
+                            right: 18,
+                            background: "rgba(21, 34, 56, 0.72)",
+                            border: "none",
+                            borderRadius: 20,
+                            padding: 8,
+                            display: "flex",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <X size={20} color="#FFFFFF" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadExtraAngle(zoomedPhoto.img, zoomedPhoto.index);
+                          }}
+                          aria-label={t("aria_download_photo")}
+                          className="mono"
+                          style={{
+                            position: "absolute",
+                            bottom: 28,
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            background: accent,
+                            border: "none",
+                            borderRadius: 20,
+                            padding: "10px 18px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 7,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <Download size={15} color="#FFFFFF" />
+                          <span style={{ fontSize: 12, color: "#FFFFFF", fontWeight: 700 }}>
+                            {t("photo_zoom_download_button")}
+                          </span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -7807,40 +8036,67 @@ export default function App() {
                     padding: 8,
                   }}
                 >
-                  <img
-                    src={h.image}
-                    alt={h.objet}
-                    style={{
-                      width: 48,
-                      height: 48,
-                      objectFit: "cover",
-                      borderRadius: 3,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: pt.rowText,
-                      }}
-                    >
-                      {h.objet}
-                    </div>
-                    <div className="mono" style={{ fontSize: 12, color: pt.subText }}>
-                      {h.prix_bas}–{h.prix_haut} € ·{" "}
-                      {new Date(h.date).toLocaleDateString(localeTag(), {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </div>
-                  </div>
+                  {/* Clique sur la vignette/le texte = rouvre l'estimation
+                      complète (voir viewHistoryResult) — demandé par Dylan.
+                      Les deux boutons d'action à droite (réestimer,
+                      supprimer) coupent la propagation pour ne pas aussi
+                      déclencher ce clic sur la ligne. */}
                   <button
-                    onClick={() => reestimateFromHistory(h)}
+                    type="button"
+                    onClick={() => viewHistoryResult(h)}
+                    title={h.full ? t("history_view_title") : undefined}
+                    aria-label={t("history_view_title")}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      flex: 1,
+                      minWidth: 0,
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      textAlign: "left",
+                      cursor: h.full ? "pointer" : "default",
+                    }}
+                  >
+                    <img
+                      src={h.image}
+                      alt={h.objet}
+                      style={{
+                        width: 48,
+                        height: 48,
+                        objectFit: "cover",
+                        borderRadius: 3,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: pt.rowText,
+                        }}
+                      >
+                        {h.objet}
+                      </div>
+                      <div className="mono" style={{ fontSize: 12, color: pt.subText }}>
+                        {h.prix_bas}–{h.prix_haut} € ·{" "}
+                        {new Date(h.date).toLocaleDateString(localeTag(), {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      reestimateFromHistory(h);
+                    }}
                     title={t("history_reestimate_title")}
                     aria-label={t("aria_reestimate")}
                     style={{
@@ -7858,7 +8114,10 @@ export default function App() {
                     <RotateCcw size={14} color={accent} />
                   </button>
                   <button
-                    onClick={() => removeFromHistory(h.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFromHistory(h.id);
+                    }}
                     style={{ background: "none", border: "none", padding: 4, flexShrink: 0 }}
                     aria-label={t("aria_delete")}
                   >
