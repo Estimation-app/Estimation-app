@@ -12,7 +12,6 @@ import decorRetro from "./assets/decor-retro.jpg";
 import decorRobotique from "./assets/decor-robotique.jpg";
 import decorFuturiste from "./assets/decor-futuriste.jpg";
 import decorLuxe from "./assets/decor-luxe.jpg";
-import decorNoir from "./assets/decor-noir.jpg";
 import decorManga from "./assets/decor-manga.jpg";
 
 // Portraits réels (générés avec Google Flow — Nano Banana Pro, cf. doc de
@@ -475,7 +474,11 @@ const AFFICHAGES = [
     key: "luxe",
     threshold: 0,
     label: "Luxe",
-    emoji: "♦️",
+    // Ancien "♦️" (losange) jugé peu adapté par Dylan ("l'espèce de petit
+    // rectangle rouge") — remplacé par le trident, qui évoque directement
+    // le sceptre/la broche de Poséidon, plus cohérent avec l'esprit
+    // "maison de vente aux enchères" antique du thème.
+    emoji: "🔱",
     mode: "dark",
     // Cinzel : serif capitale à l'antique (inscriptions romaines), très
     // "maison de vente aux enchères" en majuscules espacées. EB Garamond
@@ -500,45 +503,6 @@ const AFFICHAGES = [
     decor: [
       "linear-gradient(90deg, rgba(212,175,55,0.20) 0%, rgba(212,175,55,0.07) 3%, transparent 9%, transparent 91%, rgba(212,175,55,0.07) 97%, rgba(212,175,55,0.20) 100%)",
       `url(${decorLuxe}) top center / 100% auto no-repeat`,
-    ].join(", "),
-  },
-  {
-    key: "noir",
-    threshold: 0,
-    label: "Film noir",
-    emoji: "🕵️",
-    mode: "dark",
-    // Bebas Neue : typo capitale condensée façon affiche de film policier
-    // des années 40. Special Elite imite une machine à écrire, esprit
-    // rapport d'enquête/dossier.
-    fontDisplay: "'Bebas Neue', sans-serif",
-    fontBody: "'Special Elite', monospace",
-    displayTransform: "uppercase",
-    displayLetterSpacing: "0.03em",
-    bodyLetterSpacing: "0.02em",
-    heroScale: 0.85,
-    base: "#0A0A0A",
-    mid: "#2B2B2B",
-    high: "#C9C9C9",
-    borderRgb: "170, 170, 170",
-    radiusScale: 0.2,
-    // Seule touche de couleur : un rouge sombre façon "détail signifiant"
-    // dans un film en noir et blanc — tout le reste reste en niveaux de
-    // gris.
-    accent: "#B0201F",
-    accentDark: "#701412",
-    accentLight: "#D65C57",
-    glow: 0.1,
-    // Vignettage (bords assombris, centre plus lumineux façon projecteur)
-    // plutôt qu'un grain de pellicule (retenue de l'épisode Vintage : trop
-    // de "petits points") — adouci (Dylan : "ton dégradé est trop
-    // important") : opacité divisée par ~2 et la zone assombrie repoussée
-    // plus loin du centre (45% au lieu de 35%) pour un effet plus discret.
-    texture:
-      "radial-gradient(circle at 50% 30%, rgba(255,255,255,0.05) 0, transparent 55%), radial-gradient(circle at 50% 50%, transparent 45%, rgba(0,0,0,0.2) 100%)",
-    decor: [
-      "linear-gradient(90deg, rgba(0,0,0,0.2) 0%, transparent 9%, transparent 91%, rgba(0,0,0,0.2) 100%)",
-      `url(${decorNoir}) top center / 100% auto no-repeat`,
     ].join(", "),
   },
   {
@@ -3149,10 +3113,6 @@ export default function App() {
     // couleur plein.
     if (activeAffichage.key === "luxe") {
       pt.headerBg = `radial-gradient(circle at 100% 100%, rgba(212,175,55,0.10) 0%, transparent 45%), radial-gradient(circle at 0% 0%, rgba(212,175,55,0.05) 0%, transparent 40%), ${activeAffichage.base}`;
-    } else if (activeAffichage.key === "noir") {
-      // Même esprit que la "fumée" déjà utilisée pour le fond de page de cet
-      // affichage (voir `texture` plus haut) plutôt qu'un dégradé franc.
-      pt.headerBg = `radial-gradient(circle at 20% 25%, rgba(255,255,255,0.05) 0%, transparent 40%), radial-gradient(circle at 80% 75%, rgba(255,255,255,0.035) 0%, transparent 45%), ${activeAffichage.base}`;
     } else if (activeAffichage.key === "manga") {
       pt.headerBg = `radial-gradient(circle at 100% 100%, rgba(224,32,43,0.10) 0%, transparent 40%), radial-gradient(circle at 0% 0%, rgba(224,32,43,0.05) 0%, transparent 35%), ${activeAffichage.base}`;
     }
@@ -5796,7 +5756,7 @@ export default function App() {
         /* Toutes les polices des 5 affichages sont chargées d'un coup (une
            seule requête) pour permettre un changement d'affichage instantané,
            sans "flash" le temps qu'une police se télécharge. */
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Reggae+One&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Reggae+One&family=Noto+Sans+JP:wght@400;500;700&display=swap');
         * { box-sizing: border-box; }
         /* Les deux polices dépendent de l'affichage sélectionné (voir
            AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
