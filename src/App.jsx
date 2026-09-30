@@ -1296,6 +1296,8 @@ const TRANSLATIONS = {
     err_listings_no_match:
       "Des annonces ont été trouvées mais aucune ne correspond précisément au même produit (même format/modèle).",
     err_listings_not_enough: "Pas assez d'annonces trouvées pour cet objet.",
+    alerte_price_capped_new:
+      "Fourchette corrigée à la baisse : ton estimation initiale dépassait le prix neuf typique de ce produit sans raison claire (pas d'indice de rareté/collector).",
     err_estimation_failed: "L'estimation a échoué. Réessaie avec une autre photo.",
     err_vehicle_estimation_failed: "L'estimation du véhicule a échoué.",
     err_realestate_estimation_failed: "L'estimation du bien immobilier a échoué.",
@@ -1665,6 +1667,8 @@ const TRANSLATIONS = {
     err_listings_no_match:
       "Listings were found but none precisely matches the same product (same format/model).",
     err_listings_not_enough: "Not enough listings found for this item.",
+    alerte_price_capped_new:
+      "Range adjusted downward: your initial estimate exceeded this product's typical new price with no clear reason (no rarity/collector signal).",
     err_estimation_failed: "The estimate failed. Try again with another photo.",
     err_vehicle_estimation_failed: "The vehicle estimate failed.",
     err_realestate_estimation_failed: "The real estate estimate failed.",
@@ -2034,6 +2038,8 @@ const TRANSLATIONS = {
     err_listings_no_match:
       "Se encontraron anuncios, pero ninguno corresponde exactamente al mismo producto (mismo formato/modelo).",
     err_listings_not_enough: "No se encontraron suficientes anuncios para este objeto.",
+    alerte_price_capped_new:
+      "Rango corregido a la baja: tu estimación inicial superaba el precio nuevo típico de este producto sin motivo claro (sin indicio de rareza/coleccionismo).",
     err_estimation_failed: "La estimación ha fallado. Inténtalo de nuevo con otra foto.",
     err_vehicle_estimation_failed: "La estimación del vehículo ha fallado.",
     err_realestate_estimation_failed: "La estimación del inmueble ha fallado.",
@@ -4608,6 +4614,35 @@ export default function App() {
     return low === high ? `environ ${low} €` : `environ ${low}–${high} €`;
   }
 
+  // Garde-fou "prix neuf" : le prompt d'estimation demande déjà à l'IA de
+  // ne pas dépasser le prix neuf typique sans raison claire (rareté/
+  // collector) — mais, comme pour la décote brocante ci-dessus, on ne se
+  // repose pas uniquement là-dessus. Signalé par Dylan : une casquette Von
+  // Dutch courante (déjà estimée plusieurs fois) était ressortie à 25–45 €
+  // alors qu'il ne l'avait jamais vue neuve à ce prix — l'IA s'était laissé
+  // influencer par la réputation/hype de la marque plutôt que par un prix
+  // réaliste pour ce modèle précis. On n'intervient QUE quand l'IA se
+  // contredit elle-même : elle a estimé le produit peu rare (rarete < 7,
+  // donc pas un cas collector qui justifierait de dépasser le prix neuf)
+  // ET a quand même renvoyé un prix_haut supérieur au prix neuf qu'elle a
+  // elle-même estimé. Dans ce cas seulement, on écrête et on le dit
+  // explicitement plutôt que d'afficher silencieusement un prix corrigé.
+  function applyNewPriceGuard(prixBas, prixHaut, prixNeufEstime, rarete, alerte) {
+    const neuf = typeof prixNeufEstime === "number" && prixNeufEstime > 0 ? prixNeufEstime : null;
+    const rareteVal = typeof rarete === "number" ? rarete : null;
+    if (!neuf || (rareteVal !== null && rareteVal >= 7) || prixHaut <= neuf) {
+      return { prix_bas: prixBas, prix_haut: prixHaut, alerte };
+    }
+    const cappedHaut = Math.round(neuf * 0.9);
+    const newHaut = cappedHaut > prixBas ? cappedHaut : Math.round(prixBas * 1.1);
+    const newBas = Math.min(prixBas, newHaut - 1);
+    return {
+      prix_bas: newBas,
+      prix_haut: newHaut,
+      alerte: alerte || t("alerte_price_capped_new"),
+    };
+  }
+
   // Interroge le serveur relais /prices-multi (Leboncoin + Vinted + eBay en
   // parallèle) pour une requête donnée. Renvoie les résultats bruts par
   // plateforme (liste vide si rien de concluant — pas d'exception ici).
@@ -5363,6 +5398,7 @@ export default function App() {
                   ? "Ici tu as des ventes confirmées : ancre ta fourchette en priorité dessus, les prix demandés ne servent que de repère complémentaire. "
                   : "Ici tu n'as que des prix demandés, aucune vente confirmée : pondère-les avec ta connaissance générale du marché, car un prix affiché n'est pas toujours un prix de vente réel. ") +
                 "Ne renvoie JAMAIS prix_bas égal à prix_haut, même s'il n'y a qu'une seule annonce trouvée : élargis intelligemment la fourchette autour du/des prix observés (par exemple ±10 à 25% selon ton incertitude) en tenant compte du nombre d'annonces disponibles (moins il y en a, plus la fourchette doit être large) et de l'état de l'objet. " +
+                "Vérifie aussi la cohérence avec le prix NEUF typique de ce produit aujourd'hui (ta connaissance générale) : un objet d'occasion ne doit approcher ou dépasser ce prix neuf que dans des cas clairement justifiés (pièce rare, collector, arrêtée de production, très recherchée) — sinon ta fourchette doit rester nettement en dessous. Si les annonces trouvées semblent pourtant proches ou au-dessus du prix neuf sans que ce soit justifié (prix demandés surestimés, mauvais comparables), ne les suis pas aveuglément : corrige ta fourchette à la baisse vers un prix d'occasion réaliste et dis-le dans \"alerte\". " +
                 "Donne aussi une estimation SÉPARÉE et prudente pour la revente en brocante/vide-grenier (\"prix_brocante\") : à ces endroits, les acheteurs marchandent presque systématiquement le prix affiché à la baisse (souvent -20 à -40%), donc donne un prix réaliste APRÈS ce marchandage typique, pas le prix de départ espéré — reste précautionneux plutôt qu'optimiste sur ce chiffre-là en particulier. " +
                 "et un conseil de vente pratique en une phrase (\"conseil\"). " +
                 "Si ces prix te semblent anormalement bas ou hauts par rapport à ta connaissance générale du produit " +
@@ -5370,8 +5406,9 @@ export default function App() {
                 "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
                 "\"facilite_vente\" (0 = très difficile à vendre car peu de demande sur ce type de plateformes d'occasion, 10 = se vend très facilement/vite, en te basant sur le nombre d'annonces trouvées et ta connaissance générale de la demande pour ce type de produit), " +
                 "\"rarete\" (0 = produit courant qu'on trouve facilement partout, 10 = produit très rare/recherché/difficile à trouver). " +
+                "Donne aussi ton estimation du prix NEUF typique de ce produit aujourd'hui (\"prix_neuf_estime\", nombre en euros, ou null si vraiment inconnu/non pertinent) — sert à vérifier que ta fourchette d'occasion reste cohérente. " +
                 "Donne aussi une tendance de marché sur les 10 dernières années pour CE TYPE de produit précis (\"tendance_marche\"): un tableau de EXACTEMENT 11 nombres (indices), un par an, du plus ancien (il y a 10 ans) au plus récent (aujourd'hui = toujours 100, c'est le niveau de prix actuel). Base-toi sur ta connaissance réelle de l'évolution de la cote de cette catégorie: les objets qui prennent de la valeur avec le temps (vintage recherché, collector, édition limitée) doivent avoir des indices qui MONTENT vers 100 en fin de période (donc plus bas au début), ceux qui se déprécient (électronique récente, mobilier neuf de grande diffusion) doivent avoir des indices qui BAISSENT vers 100 (donc plus hauts au début), et un marché de l'occasion ne bouge presque jamais en ligne parfaitement droite: varie légèrement chaque point plutôt qu'une progression linéaire. " +
-                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}' +
+                'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "prix_neuf_estime": nombre_ou_null, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}' +
                 aiLangInstruction(),
             },
           ], "claude-haiku-4-5-20251001", 0.2);
@@ -5397,16 +5434,25 @@ export default function App() {
           const baseConfidenceLevel = usedPrices.length >= 4 ? 2 : usedPrices.length >= 2 ? 1 : 0;
           const confidenceLevel = Math.min(2, baseConfidenceLevel + (soldPrices.length > 0 ? 1 : 0));
 
-          pricing = {
+          const rareteExtra = typeof extra.rarete === "number" ? extra.rarete : null;
+          const guarded = applyNewPriceGuard(
             prix_bas,
             prix_haut,
+            extra.prix_neuf_estime,
+            rareteExtra,
+            extra.alerte || null
+          );
+
+          pricing = {
+            prix_bas: guarded.prix_bas,
+            prix_haut: guarded.prix_haut,
             prix_brocante: isBrocanteExcludedCategory(effectiveListingSeed && effectiveListingSeed.category)
               ? null
-              : applyBrocanteDiscount(extra.prix_brocante, prix_bas),
+              : applyBrocanteDiscount(extra.prix_brocante, guarded.prix_bas),
             conseil: extra.conseil,
-            alerte: extra.alerte || null,
+            alerte: guarded.alerte,
             facilite_vente: typeof extra.facilite_vente === "number" ? extra.facilite_vente : null,
-            rarete: typeof extra.rarete === "number" ? extra.rarete : null,
+            rarete: rareteExtra,
             tendance_marche: Array.isArray(extra.tendance_marche)
               ? extra.tendance_marche.filter((n) => typeof n === "number" && !isNaN(n))
               : null,
@@ -5431,13 +5477,15 @@ export default function App() {
               `Objet d'occasion identifié: ${identification.objet} (catégorie: ${identification.categorie}). ` +
               `État: ${identification.etat} (${identification.etat_note}). ` +
               seedFallbackPart +
-              "En te basant sur ta connaissance générale du marché de l'occasion en France, donne une estimation de prix réaliste (aucune annonce réelle trouvée pour ce produit, donc uniquement ta connaissance générale ici). " +
+              "En te basant sur ta connaissance générale du marché de l'occasion en France, donne une estimation de prix réaliste (aucune annonce réelle trouvée pour ce produit, donc uniquement ta connaissance générale ici — sois d'autant plus prudent qu'aucun comparable réel ne vient confirmer ton estimation). " +
+              "Avant de fixer ta fourchette, rappelle-toi le prix NEUF typique de ce produit aujourd'hui : un objet d'occasion ne doit approcher ou dépasser ce prix neuf que dans des cas clairement justifiés (pièce rare, collector, arrêtée de production, très recherchée) — sinon ta fourchette doit rester nettement en dessous. Méfie-toi en particulier d'une réputation ou d'une hype de marque qui te viendrait en tête (nostalgie, mode, buzz) mais qui ne reflète pas le prix réel constaté pour CE modèle précis dans CET état : si tu hésites, penche vers une estimation plus basse et prudente plutôt que vers le prix qu'un vendeur optimiste espérerait. " +
               "Donne aussi une estimation SÉPARÉE et prudente pour la revente en brocante/vide-grenier (\"prix_brocante\") : à ces endroits, les acheteurs marchandent presque systématiquement le prix affiché à la baisse (souvent -20 à -40%), donc donne un prix réaliste APRÈS ce marchandage typique, pas le prix de départ espéré. " +
               "Donne aussi deux notes de 0 à 10 sur ce produit précis: " +
               "\"facilite_vente\" (0 = très difficile à vendre car peu de demande, 10 = se vend très facilement/vite) et " +
               "\"rarete\" (0 = produit courant, 10 = produit très rare/recherché), en te basant sur ta connaissance générale du marché de l'occasion. " +
+              "Donne aussi ton estimation du prix NEUF typique de ce produit aujourd'hui (\"prix_neuf_estime\", nombre en euros, ou null si vraiment inconnu/non pertinent) — sert à vérifier que ta fourchette d'occasion reste cohérente. " +
               "Donne aussi une tendance de marché sur les 10 dernières années pour CE TYPE de produit (\"tendance_marche\"): un tableau de EXACTEMENT 11 nombres (indices), un par an, du plus ancien (il y a 10 ans) au plus récent (aujourd'hui = toujours 100), en montant vers 100 en fin de période si ce type d'objet prend de la valeur avec le temps, en descendant vers 100 s'il se déprécie, avec de légères variations plutôt qu'une ligne droite. " +
-              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}' +
+              'Réponds UNIQUEMENT en JSON: {"prix_bas": nombre, "prix_haut": nombre, "prix_brocante": "...", "conseil": "...", "alerte": "...", "facilite_vente": nombre_0_a_10, "rarete": nombre_0_a_10, "prix_neuf_estime": nombre_ou_null, "tendance_marche": [nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, nombre, 100]}' +
               aiLangInstruction(),
           },
         ], "claude-haiku-4-5-20251001", 0.2);
@@ -5450,15 +5498,23 @@ export default function App() {
           typeof fallback.prix_haut === "number" && fallback.prix_haut > fbBas
             ? fallback.prix_haut
             : Math.round(fbBas * 1.15);
+        const fbRarete = typeof fallback.rarete === "number" ? fallback.rarete : null;
+        // Garde-fou "prix neuf" d'autant plus utile ici qu'aucune annonce
+        // réelle ne vient recadrer l'IA (voir applyNewPriceGuard) — c'est ce
+        // chemin, purement basé sur sa "connaissance générale", qui avait
+        // produit l'estimation trop haute de la casquette Von Dutch signalée
+        // par Dylan.
+        const fbGuarded = applyNewPriceGuard(fbBas, fbHaut, fallback.prix_neuf_estime, fbRarete, fallback.alerte || null);
         pricing = {
           ...fallback,
-          prix_bas: fbBas,
-          prix_haut: fbHaut,
+          prix_bas: fbGuarded.prix_bas,
+          prix_haut: fbGuarded.prix_haut,
           prix_brocante: isBrocanteExcludedCategory(effectiveListingSeed && effectiveListingSeed.category)
             ? null
-            : applyBrocanteDiscount(fallback.prix_brocante, fbBas),
+            : applyBrocanteDiscount(fallback.prix_brocante, fbGuarded.prix_bas),
+          alerte: fbGuarded.alerte,
           facilite_vente: typeof fallback.facilite_vente === "number" ? fallback.facilite_vente : null,
-          rarete: typeof fallback.rarete === "number" ? fallback.rarete : null,
+          rarete: fbRarete,
           tendance_marche: Array.isArray(fallback.tendance_marche)
             ? fallback.tendance_marche.filter((n) => typeof n === "number" && !isNaN(n))
             : null,
