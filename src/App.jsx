@@ -105,10 +105,18 @@ const CONFIDENCE_DOTS = {
 };
 
 // Plateformes vers lesquelles on renvoie pour créer une annonce (bouton
-// "Générer une annonce"). On n'utilise pas les logos officiels (fichiers
-// image sous droits/marque déposée) mais un petit badge rond dans la
-// couleur de marque de chaque site, pour un rendu "icône" reconnaissable
-// sans dépendre d'assets externes ni de droits d'image.
+// "Générer une annonce", voir publishToPlatform()). On n'utilise pas les
+// logos officiels (fichiers image sous droits/marque déposée) mais un petit
+// badge rond dans la couleur de marque de chaque site, pour un rendu "icône"
+// reconnaissable sans dépendre d'assets externes ni de droits d'image.
+// Ni Leboncoin ni Vinted n'exposent d'API publique permettant à une appli
+// tierce de publier une annonce au nom d'un utilisateur (CGU qui interdisent
+// les bots côté Leboncoin, API interne non documentée et fragile côté
+// Vinted) — donc pour ces deux-là, "publier" copie le texte de l'annonce
+// puis ouvre la page de création de la plateforme, prêt à coller. eBay, en
+// revanche, propose une vraie API de publication (Sell API / OAuth) : une
+// fois cette intégration branchée, son entrée ici pourra publier
+// automatiquement au lieu de simplement copier/ouvrir.
 const SELL_PLATFORMS = [
   { label: "Leboncoin", url: "https://www.leboncoin.fr/deposer-une-annonce", color: "#EC5B23", mono: "lbc" },
   { label: "Vinted", url: "https://www.vinted.fr/items/new", color: "#09B1BA", mono: "V" },
@@ -1011,7 +1019,15 @@ const TRANSLATIONS = {
     ad_limit_reached_edit_note:
       "Limite de 3 générations atteinte pour cette estimation — tu peux encore modifier le texte à la main juste au-dessus.",
     ad_paste_instructions:
-      "Copie le texte ci-dessus, puis clique sur une plateforme pour créer ton annonce (colle le texte une fois sur la page) :",
+      "Clique sur une plateforme : le texte est copié automatiquement et la page de création d'annonce s'ouvre, il ne reste plus qu'à le coller :",
+    ad_publish_on_prefix: "Publier sur ",
+    ad_published_prefix: "Texte copié pour ",
+    ad_published_suffix: " — colle-le dans le formulaire qui vient de s'ouvrir.",
+    ad_photos_button_prefix: "Partager ",
+    ad_photos_count_singular: " photo",
+    ad_photos_count_plural: " photos",
+    ad_photos_note:
+      "Envoie-les directement vers Leboncoin, Vinted ou eBay si l'appli propose de les recevoir, ou enregistre-les pour les ajouter toi-même à l'annonce.",
     extra_angles_title: "Photos IA sous d'autres angles",
     extra_angles_premium_note:
       "Fonctionnalité premium — génère jusqu'à 2 photos IA de cet objet sous d'autres angles pour ton annonce",
@@ -1374,7 +1390,15 @@ const TRANSLATIONS = {
     ad_limit_reached_edit_note:
       "Limit of 3 generations reached for this estimate — you can still edit the text by hand just above.",
     ad_paste_instructions:
-      "Copy the text above, then click a platform to create your listing (paste the text once on the page):",
+      "Click a platform: the text is copied automatically and the listing page opens, all that's left is to paste it:",
+    ad_publish_on_prefix: "Post on ",
+    ad_published_prefix: "Text copied for ",
+    ad_published_suffix: " — paste it into the form that just opened.",
+    ad_photos_button_prefix: "Share ",
+    ad_photos_count_singular: " photo",
+    ad_photos_count_plural: " photos",
+    ad_photos_note:
+      "Send them straight to Leboncoin, Vinted or eBay if the app offers to receive them, or save them to add to the listing yourself.",
     extra_angles_title: "AI photos from other angles",
     extra_angles_premium_note:
       "Premium feature — generates up to 2 AI photos of this item from other angles for your listing",
@@ -1737,7 +1761,15 @@ const TRANSLATIONS = {
     ad_limit_reached_edit_note:
       "Límite de 3 generaciones alcanzado para esta estimación — todavía puedes editar el texto a mano justo arriba.",
     ad_paste_instructions:
-      "Copia el texto de arriba y luego haz clic en una plataforma para crear tu anuncio (pega el texto una vez en la página):",
+      "Haz clic en una plataforma: el texto se copia automáticamente y se abre la página de creación del anuncio, solo falta pegarlo:",
+    ad_publish_on_prefix: "Publicar en ",
+    ad_published_prefix: "Texto copiado para ",
+    ad_published_suffix: " — pégalo en el formulario que se acaba de abrir.",
+    ad_photos_button_prefix: "Compartir ",
+    ad_photos_count_singular: " foto",
+    ad_photos_count_plural: " fotos",
+    ad_photos_note:
+      "Envíalas directamente a Leboncoin, Vinted o eBay si la app permite recibirlas, o guárdalas para añadirlas tú mismo al anuncio.",
     extra_angles_title: "Fotos con IA desde otros ángulos",
     extra_angles_premium_note:
       "Función premium — genera hasta 2 fotos con IA de este objeto desde otros ángulos para tu anuncio",
@@ -2560,6 +2592,7 @@ export default function App() {
   const [adLoading, setAdLoading] = useState(false);
   const [adError, setAdError] = useState(null);
   const [adCopied, setAdCopied] = useState(false);
+  const [adPublishedPlatform, setAdPublishedPlatform] = useState(null); // label de la plateforme (ex: "Leboncoin") juste après un clic sur "Publier sur…", pour la confirmation "texte copié" — voir publishToPlatform()
   const [shareStatus, setShareStatus] = useState(null); // null | "generating" | "downloaded"
   const [referralCopied, setReferralCopied] = useState(false);
 
@@ -2597,6 +2630,9 @@ export default function App() {
   const [extraAnglesLoading, setExtraAnglesLoading] = useState(false);
   const [extraAnglesError, setExtraAnglesError] = useState(null);
   const [extraAnglesAttempted, setExtraAnglesAttempted] = useState(false); // masque le bouton une fois un essai réussi (coût réel par génération)
+  // Nombre de photos disponibles pour l'annonce (photo d'origine + photos IA
+  // sous d'autres angles déjà générées) — voir collectAdPhotos/shareAdPhotos.
+  const adPhotoCount = (image && image.base64 ? 1 : 0) + (extraAngles ? extraAngles.length : 0);
   const fileInputRef = useRef(null); // conservé pour compat, non utilisé directement
 
   // Langue de l'interface (persistée localement) — volet de traduction
@@ -4717,6 +4753,103 @@ export default function App() {
       .catch(() => {
         setAdError(t("err_ad_copy_failed"));
       });
+  }
+
+  // Bouton "Publier sur {plateforme}" : ni Leboncoin ni Vinted n'ouvrent leur
+  // création d'annonce à une appli tierce sans partenariat (voir generateAd
+  // ci-dessus), donc on ne peut pas publier automatiquement pour de vrai —
+  // mais on peut faire en un seul clic ce qui prenait deux étapes (copier
+  // le texte, PUIS cliquer sur la plateforme) : copier le texte de l'annonce
+  // et ouvrir directement la page de création d'annonce de la plateforme.
+  // (eBay a une vraie API de publication automatique — voir la note dans
+  // SELL_PLATFORMS — mais tant qu'elle n'est pas branchée, ce bouton lui
+  // applique le même comportement "copier + ouvrir" que Leboncoin/Vinted.)
+  async function publishToPlatform(platform) {
+    if (!adText) return;
+    const full = `${adText.titre}\n\n${adText.description}`;
+    try {
+      await navigator.clipboard.writeText(full);
+      setAdPublishedPlatform(platform.label);
+      setTimeout(() => setAdPublishedPlatform(null), 4000);
+    } catch (e) {
+      setAdError(t("err_ad_copy_failed"));
+    } finally {
+      window.open(platform.url, "_blank", "noopener,noreferrer");
+    }
+  }
+
+  // Rassemble les photos disponibles pour l'annonce : la photo d'origine
+  // (toujours présente si une estimation a été faite) + les éventuelles
+  // photos supplémentaires générées par l'IA sous d'autres angles (jusqu'à
+  // 2, voir generateExtraAngles plus bas) — jusqu'à 3 au total, photo
+  // principale en premier.
+  function collectAdPhotos() {
+    const photos = [];
+    if (image && image.base64) {
+      photos.push({ data: image.base64, mimeType: image.mediaType || "image/jpeg" });
+    }
+    if (extraAngles && extraAngles.length > 0) {
+      extraAngles.forEach((img) => {
+        photos.push({ data: img.data, mimeType: img.mime_type || "image/jpeg" });
+      });
+    }
+    return photos;
+  }
+
+  function adPhotosToFiles() {
+    const safeLabel =
+      (result?.objet || "objet")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-+|-+$/g, "") || "objet";
+    return collectAdPhotos().map((photo, i) => {
+      const byteChars = atob(photo.data);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let j = 0; j < byteChars.length; j++) bytes[j] = byteChars.charCodeAt(j);
+      const blob = new Blob([bytes], { type: photo.mimeType });
+      const ext = photo.mimeType === "image/png" ? "png" : "jpg";
+      return new File([blob], `estim-${safeLabel}-photo-${i + 1}.${ext}`, { type: photo.mimeType });
+    });
+  }
+
+  // Bouton "Partager les photos" à côté du texte de l'annonce : envoie (via
+  // le partage natif du système, qui inclut souvent les applis Leboncoin/
+  // Vinted installées comme destinations possibles) ou, à défaut,
+  // télécharge la photo d'origine + les photos IA déjà générées, pour les
+  // avoir sous la main au moment de créer l'annonce — demandé par Dylan
+  // ("le texte, les photos, il ne reste plus qu'à publier"). Volontairement
+  // séparé des boutons "Publier sur…" (publishToPlatform) plutôt que
+  // combiné en un seul clic : déclencher à la fois le partage natif de
+  // fichiers ET l'ouverture d'un nouvel onglet depuis le même clic n'est
+  // pas fiable sur tous les navigateurs (l'un des deux peut être bloqué
+  // faute d'un "vrai" geste utilisateur dédié) — deux boutons séparés
+  // garantissent que chaque action marche à coup sûr.
+  async function shareAdPhotos() {
+    const files = adPhotosToFiles();
+    if (files.length === 0) return;
+    try {
+      if (navigator.canShare && navigator.canShare({ files })) {
+        await navigator.share({ files });
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") return; // partage annulé par l'utilisateur
+    }
+    // Repli (desktop, ou navigateur sans partage de fichiers) : téléchargement
+    // direct de chaque photo, légèrement décalé pour éviter qu'un navigateur
+    // ne bloque des téléchargements groupés déclenchés d'un coup.
+    files.forEach((file, i) => {
+      setTimeout(() => {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, i * 300);
+    });
   }
 
   // Génère jusqu'à 2 photos supplémentaires du même objet sous d'autres
@@ -7284,16 +7417,49 @@ export default function App() {
                           {t("ad_limit_reached_edit_note")}
                         </div>
                       )}
+
+                      {/* Photo d'origine + éventuelles photos IA sous d'autres
+                          angles (voir generateExtraAngles plus bas dans le
+                          panneau), réunies ici avec le texte au moment de
+                          publier — demandé par Dylan ("le texte, les photos,
+                          il ne reste plus qu'à publier"). */}
+                      {adPhotoCount > 0 && (
+                        <div style={{ marginBottom: 12 }}>
+                          <button
+                            type="button"
+                            onClick={shareAdPhotos}
+                            className="mono"
+                            style={{
+                              fontSize: 12,
+                              padding: "8px 12px",
+                              borderRadius: 4,
+                              border: "1px solid " + pt.rowBorder.replace("1px solid ", ""),
+                              background: "transparent",
+                              color: pt.chevronColor,
+                              cursor: "pointer",
+                              marginBottom: 6,
+                            }}
+                          >
+                            {t("ad_photos_button_prefix")}
+                            {adPhotoCount}
+                            {adPhotoCount > 1 ? t("ad_photos_count_plural") : t("ad_photos_count_singular")}
+                          </button>
+                          <div style={{ fontSize: 11, color: pt.chevronColor, lineHeight: 1.5 }}>
+                            {t("ad_photos_note")}
+                          </div>
+                        </div>
+                      )}
+
                       <div style={{ fontSize: 11, color: pt.chevronColor, marginBottom: 6, lineHeight: 1.5 }}>
                         {t("ad_paste_instructions")}
                       </div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         {SELL_PLATFORMS.map((p) => (
-                          <a
+                          <button
                             key={p.label}
-                            href={p.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            type="button"
+                            onClick={() => publishToPlatform(p)}
+                            className="mono"
                             style={{
                               display: "flex",
                               alignItems: "center",
@@ -7302,8 +7468,8 @@ export default function App() {
                               borderRadius: 20,
                               border: pt.inputBorder,
                               color: pt.strongColor,
-                              textDecoration: "none",
                               background: pt.inputBg,
+                              cursor: "pointer",
                             }}
                           >
                             <span
@@ -7324,12 +7490,20 @@ export default function App() {
                             >
                               {p.mono}
                             </span>
-                            <span className="mono" style={{ fontSize: 12 }}>
+                            <span style={{ fontSize: 12 }}>
+                              {t("ad_publish_on_prefix")}
                               {p.label}
                             </span>
-                          </a>
+                          </button>
                         ))}
                       </div>
+                      {adPublishedPlatform && (
+                        <div style={{ fontSize: 11, color: "#4ADE80", marginTop: 8 }}>
+                          {t("ad_published_prefix")}
+                          {adPublishedPlatform}
+                          {t("ad_published_suffix")}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
