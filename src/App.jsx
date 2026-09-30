@@ -13,7 +13,6 @@ import decorRobotique from "./assets/decor-robotique.jpg";
 import decorFuturiste from "./assets/decor-futuriste.jpg";
 import decorLuxe from "./assets/decor-luxe.jpg";
 import decorNoir from "./assets/decor-noir.jpg";
-import decorForet from "./assets/decor-foret.jpg";
 import decorManga from "./assets/decor-manga.jpg";
 
 // Portraits réels (générés avec Google Flow — Nano Banana Pro, cf. doc de
@@ -45,90 +44,11 @@ import charLapin from "./assets/lapin.jpg";
 import charPanthereNuit from "./assets/panthereNuit.jpg";
 import charRatonMasque from "./assets/ratonMasque.jpg";
 
-// Portraits "en action" (même personnage, corps entier, prêt à scanner un
-// objet) — utilisés en incrustation semi-transparente PLEIN CADRE dans le
-// cadre "prendre une photo" (voir plus bas, mode "immersif"), à la place du
-// texte "Ajoute une photo" / "choisir un fichier", uniquement quand un
-// avatar est réellement sélectionné (voir hasChosenAvatar plus bas). Pas
-// dans le reste de l'avatar. Détourés à la main (fond transparent) à partir
-// des générations Nano Banana de Dylan. Tant qu'un personnage n'a pas
-// encore la sienne, il n'apparaît simplement pas dans CHARACTER_ACTION_IMAGES
-// et le cadre photo reste en mode "de base" (avec le texte) pour ce
-// personnage (pas de génération de repli).
-//
-// `aimX` / `aimY` = position (fraction de la largeur/hauteur de l'image,
-// peut dépasser 1 = un point situé hors de l'image) alignée avec le centre
-// du cadre, où se trouve l'icône appareil photo. Ce point est calculé en
-// PROLONGEANT la droite qui va du regard (yeux) du personnage jusqu'au
-// centre de sa loupe/son outil, un peu plus loin dans le vide juste à côté
-// — ainsi les yeux, la loupe et l'icône appareil photo sont exactement
-// alignés en ligne droite, et la loupe se retrouve juste à côté de l'icône
-// (visée), sans la recouvrir. `scale` = hauteur du personnage en % de la
-// hauteur du cadre. À mesurer/calculer au cas par cas pour chaque nouveau
-// personnage selon sa posture (pas de valeur par défaut qui pourrait être
-// fausse).
-import charChineurAction from "./assets/chineurAction.png";
-import charChineuseAction from "./assets/chineuseAction.png";
-import charRenardAction from "./assets/renardAction.png";
-import charChevalierDoreAction from "./assets/chevalierDoreAction.png";
-import charNinjaSilencieuxAction from "./assets/ninjaSilencieuxAction.png";
-import charAlienCurieuxAction from "./assets/alienCurieuxAction.png";
-import charSorciereFuteeAction from "./assets/sorciereFuteeAction.png";
-import charTigreStyleAction from "./assets/tigreStyleAction.png";
-import charLoupDetectiveAction from "./assets/loupDetectiveAction.png";
-import charAstroDebutantAction from "./assets/astroDebutantAction.png";
-import charHibooAction from "./assets/hibooAction.png";
-import charLapinAction from "./assets/lapinAction.png";
-import charRobotChromeAction from "./assets/robotChromeAction.png";
-import charPieuvreMystiqueAction from "./assets/pieuvreMystiqueAction.png";
-import charDiableEcarlateAction from "./assets/diableEcarlateAction.png";
-import charSpectreElegantAction from "./assets/spectreElegantAction.png";
-import charPanthereNuitAction from "./assets/panthereNuitAction.png";
-import charGriffonCelesteAction from "./assets/griffonCelesteAction.png";
-import charPhenixArdentAction from "./assets/phenixArdentAction.png";
-import charRatonMasqueAction from "./assets/ratonMasqueAction.png";
-import charCapitainePirateAction from "./assets/capitainePirateAction.png";
-import charBebeDragonAction from "./assets/bebeDragonAction.png";
-
-const CHARACTER_ACTION_IMAGES = {
-  // Le Chineur : ici le personnage regarde à travers sa loupe collée à son
-  // œil — l'icône appareil photo est donc posée PILE au centre de la loupe
-  // (aimX/aimY = centre exact de la loupe, pas de décalage), comme s'il
-  // l'observait à travers elle.
-  chineur: { src: charChineurAction, aimX: 0.333, aimY: 0.325, scale: 0.76 },
-  // La Chineuse : même principe que Le Chineur, loupe collée à l'œil,
-  // icône posée pile au centre du verre.
-  chineuse: { src: charChineuseAction, aimX: 0.456, aimY: 0.296, scale: 0.77 },
-  // Lot de 13 personnages "corps entier, loupe collée à l'œil" (même
-  // principe que Chineur/Chineuse : icône pile au centre du verre, sans
-  // décalage), mesurés par détourage + repérage précis du centre de la
-  // loupe, taille (scale) harmonisée à 0.75 pour tout le lot.
-  renard: { src: charRenardAction, aimX: 0.44, aimY: 0.365, scale: 0.75 },
-  chevalierDore: { src: charChevalierDoreAction, aimX: 0.495, aimY: 0.45, scale: 0.75 },
-  ninjaSilencieux: { src: charNinjaSilencieuxAction, aimX: 0.46, aimY: 0.42, scale: 0.75 },
-  alienCurieux: { src: charAlienCurieuxAction, aimX: 0.56, aimY: 0.39, scale: 0.75 },
-  sorciereFutee: { src: charSorciereFuteeAction, aimX: 0.48, aimY: 0.41, scale: 0.88 },
-  tigreStyle: { src: charTigreStyleAction, aimX: 0.51, aimY: 0.41, scale: 0.75 },
-  loupDetective: { src: charLoupDetectiveAction, aimX: 0.62, aimY: 0.325, scale: 0.75 },
-  astroDebutant: { src: charAstroDebutantAction, aimX: 0.33, aimY: 0.33, scale: 0.78 },
-  hiboo: { src: charHibooAction, aimX: 0.46, aimY: 0.415, scale: 0.75 },
-  lapin: { src: charLapinAction, aimX: 0.51, aimY: 0.33, scale: 0.79 },
-  // Lot de 12 personnages "buste, loupe collée à l'œil" (portraits plus
-  // carrés, sans le corps entier) — même principe (icône pile au centre du
-  // verre), taille (scale) harmonisée à 0.68 pour tout le lot (un peu
-  // moins que le lot "corps entier" ci-dessus car ces images sont plus
-  // carrées / prennent plus de largeur à hauteur égale).
-  robotChrome: { src: charRobotChromeAction, aimX: 0.39, aimY: 0.37, scale: 0.78 },
-  pieuvreMystique: { src: charPieuvreMystiqueAction, aimX: 0.62, aimY: 0.37, scale: 0.76 },
-  diableEcarlate: { src: charDiableEcarlateAction, aimX: 0.53, aimY: 0.44, scale: 0.77 },
-  spectreElegant: { src: charSpectreElegantAction, aimX: 0.56, aimY: 0.41, scale: 0.73 },
-  panthereNuit: { src: charPanthereNuitAction, aimX: 0.68, aimY: 0.46, scale: 0.72 },
-  griffonCeleste: { src: charGriffonCelesteAction, aimX: 0.53, aimY: 0.44, scale: 0.72 },
-  phenixArdent: { src: charPhenixArdentAction, aimX: 0.58, aimY: 0.39, scale: 0.72 },
-  ratonMasque: { src: charRatonMasqueAction, aimX: 0.52, aimY: 0.38, scale: 0.68 },
-  capitainePirate: { src: charCapitainePirateAction, aimX: 0.32, aimY: 0.40, scale: 0.82 },
-  bebeDragon: { src: charBebeDragonAction, aimX: 0.525, aimY: 0.45, scale: 0.68 },
-};
+// L'avatar n'est plus jamais qu'une icône (Dylan est revenu sur l'option
+// "mascotte plein cadre sur l'écran photo" ajoutée précédemment — elle
+// n'avait pas assez de sens à l'usage). Les portraits "en action" détourés
+// (CHARACTER_ACTION_IMAGES) et le rendu immersif dans la zone photo ont donc
+// été retirés ; seul CHARACTER_IMAGES (portraits ronds, en icône) subsiste.
 
 const CHARACTER_IMAGES = {
   chineur: charChineur,
@@ -622,43 +542,6 @@ const AFFICHAGES = [
     ].join(", "),
   },
   {
-    // Remplace "Botanique" (clair, herbier délicat) à la demande de Dylan :
-    // plutôt une ambiance forêt tropicale, vert foncé, dense. Pas encore de
-    // photo IA (le prompt est fourni à part) — `decor` en CSS pur pour
-    // l'instant, même principe que les autres affichages avant leur image.
-    key: "foret",
-    threshold: 0,
-    label: "Forêt",
-    emoji: "🌴",
-    mode: "dark",
-    // Bevan : serif slab épaisse, esprit affiche d'expédition/exploration.
-    // Mulish en corps de texte, sobre et très lisible.
-    fontDisplay: "'Bevan', serif",
-    fontBody: "'Mulish', sans-serif",
-    // heroScale réduit (0.85 -> 0.7) : Dylan trouvait "Combien ça vaut,
-    // vraiment ?" trop gros — Bevan est une slab épaisse, plus large que la
-    // plupart des autres polices d'affiche au même corps.
-    heroScale: 0.7,
-    base: "#081410",
-    mid: "#173D2A",
-    high: "#3FAE66",
-    borderRgb: "63, 174, 102",
-    radiusScale: 0.5,
-    accent: "#3FAE66",
-    accentDark: "#227A44",
-    accentLight: "#9EE6B8",
-    glow: 0.15,
-    texture:
-      "radial-gradient(circle at 12% 10%, rgba(63,174,102,0.14) 0, transparent 42%), radial-gradient(circle at 88% 18%, rgba(20,60,38,0.35) 0, transparent 46%), radial-gradient(circle at 80% 85%, rgba(63,174,102,0.10) 0, transparent 48%), radial-gradient(circle at 15% 88%, rgba(15,45,28,0.4) 0, transparent 50%)",
-    // Fond généré par IA (Google Flow — Nano Banana Pro), même principe que
-    // les autres : ancré en haut, largeur du conteneur, bande de bord
-    // par-dessus.
-    decor: [
-      "linear-gradient(90deg, rgba(63,174,102,0.22) 0%, rgba(63,174,102,0.08) 3%, transparent 9%, transparent 91%, rgba(63,174,102,0.08) 97%, rgba(63,174,102,0.22) 100%)",
-      `url(${decorForet}) top center / 100% auto no-repeat`,
-    ].join(", "),
-  },
-  {
     // Remplace "Zen" (papier washi, minimalisme japonais épuré) à la
     // demande de Dylan : ambiance manga/comics japonais, plus graphique et
     // énergique. `texture` simule des "vitesses"/hachures façon trame
@@ -1044,12 +927,6 @@ const TRANSLATIONS = {
     avatar_hint_pack_suffix: "",
     avatar_hint_from_prefix: "dès ",
     avatar_hint_estimations_suffix: " estimations",
-    avatar_where_show_prefix: "Où afficher ",
-    avatar_where_show_suffix: " ?",
-    avatar_icon_only_label: "Icône seulement",
-    avatar_icon_only_desc: "garde l'interface de base pour prendre une photo",
-    avatar_background_label: "Arrière-plan de l'appli",
-    avatar_background_desc: "mascotte en entier sur l'écran photo",
     avatar_save_button: "Enregistrer mon avatar",
     avatar_saved_flash: "Avatar enregistré !",
     aria_share_link: "partager mon lien",
@@ -1415,12 +1292,6 @@ const TRANSLATIONS = {
     avatar_hint_pack_suffix: " plan",
     avatar_hint_from_prefix: "from ",
     avatar_hint_estimations_suffix: " estimations",
-    avatar_where_show_prefix: "Where to show ",
-    avatar_where_show_suffix: "?",
-    avatar_icon_only_label: "Icon only",
-    avatar_icon_only_desc: "keeps the standard camera screen",
-    avatar_background_label: "App background",
-    avatar_background_desc: "full mascot on the camera screen",
     avatar_save_button: "Save my avatar",
     avatar_saved_flash: "Avatar saved!",
     aria_share_link: "share my link",
@@ -1786,12 +1657,6 @@ const TRANSLATIONS = {
     avatar_hint_pack_suffix: "",
     avatar_hint_from_prefix: "a partir de ",
     avatar_hint_estimations_suffix: " estimaciones",
-    avatar_where_show_prefix: "¿Dónde mostrar ",
-    avatar_where_show_suffix: "?",
-    avatar_icon_only_label: "Solo icono",
-    avatar_icon_only_desc: "mantiene la pantalla básica para hacer la foto",
-    avatar_background_label: "Fondo de la app",
-    avatar_background_desc: "mascota completa en la pantalla de la foto",
     avatar_save_button: "Guardar mi avatar",
     avatar_saved_flash: "¡Avatar guardado!",
     aria_share_link: "compartir mi enlace",
@@ -3275,21 +3140,21 @@ export default function App() {
     // Ajustements ponctuels demandés par Dylan sur la formule générique
     // ci-dessus, jugée trop marquée sur certains affichages précis — on ne
     // touche qu'à eux, les autres gardent la formule générique telle quelle.
+    // Premier essai (dégradé diagonal avec une étape intermédiaire) encore
+    // jugé trop présent : la teinte pleine restait concentrée en bas à
+    // droite de la carte, pile là où le prix est écrit ("combien ça vaut
+    // vraiment"), au point de nuire à la lisibilité sur Manga. Remplacé par
+    // un fond quasiment plat (couleur de base de l'affichage) avec juste un
+    // ou deux halos radiaux très légers en coin — une nuance, pas un bloc de
+    // couleur plein.
     if (activeAffichage.key === "luxe") {
-      // "le dégradé vers le jaune est trop prononcé" : on étale la montée
-      // vers l'or vif en passant par une teinte dorée plus sourde
-      // (accentDark) avant d'atteindre le "high" plein, réservé au tout
-      // dernier coin du dégradé.
-      pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 60%, ${activeAffichage.accentDark} 85%, ${activeAffichage.high} 100%)`;
+      pt.headerBg = `radial-gradient(circle at 100% 100%, rgba(212,175,55,0.10) 0%, transparent 45%), radial-gradient(circle at 0% 0%, rgba(212,175,55,0.05) 0%, transparent 40%), ${activeAffichage.base}`;
     } else if (activeAffichage.key === "noir") {
-      // "le dégradé vers le blanc est trop prononcé" : même principe, un
-      // gris intermédiaire retarde l'arrivée du gris clair.
-      pt.headerBg = `linear-gradient(135deg, #04060C 0%, ${activeAffichage.mid} 60%, #6A6A6A 85%, ${activeAffichage.high} 100%)`;
+      // Même esprit que la "fumée" déjà utilisée pour le fond de page de cet
+      // affichage (voir `texture` plus haut) plutôt qu'un dégradé franc.
+      pt.headerBg = `radial-gradient(circle at 20% 25%, rgba(255,255,255,0.05) 0%, transparent 40%), radial-gradient(circle at 80% 75%, rgba(255,255,255,0.035) 0%, transparent 45%), ${activeAffichage.base}`;
     } else if (activeAffichage.key === "manga") {
-      // "le dégradé vers le blanc (ou le rouge) est trop prononcé" : les
-      // deux extrémités sont adoucies par une étape intermédiaire
-      // rouge/gris, même principe que ci-dessus mais dans le sens clair.
-      pt.headerBg = `linear-gradient(135deg, ${activeAffichage.high} 0%, #DC7D81 32%, ${activeAffichage.mid} 68%, ${activeAffichage.base} 100%)`;
+      pt.headerBg = `radial-gradient(circle at 100% 100%, rgba(224,32,43,0.10) 0%, transparent 40%), radial-gradient(circle at 0% 0%, rgba(224,32,43,0.05) 0%, transparent 35%), ${activeAffichage.base}`;
     }
     pt.resultCardBg = pt.headerBg;
     pt.loadingBg = `linear-gradient(160deg, ${activeAffichage.high} 0%, ${activeAffichage.mid} 100%)`;
@@ -3627,6 +3492,31 @@ export default function App() {
   // une suppression accidentelle et irréversible.
   const [confirmClearHistory, setConfirmClearHistory] = useState(false);
 
+  // Même geste de balayage tactile (+ croix en haut à droite déjà présente
+  // partout) que le menu principal et le panneau profil (menuSheet /
+  // profileSheet, voir useBottomSheet plus haut) — étendu à TOUS les
+  // sous-panneaux de l'appli (demandé par Dylan) : chacun se ferme
+  // maintenant aussi bien au clic sur la croix qu'en le faisant glisser vers
+  // le bas depuis n'importe où sur le panneau.
+  const productSearchSheet = useBottomSheet(showProductSearch, () => {
+    setShowProductSearch(false);
+    setSearchCategory(null);
+    setSearchQuery("");
+    setSearchResults(null);
+  });
+  const trendingSheet = useBottomSheet(showTrending, () => setShowTrending(false));
+  const leaderboardSheet = useBottomSheet(showLeaderboard, () => setShowLeaderboard(false));
+  const avatarPanelSheet = useBottomSheet(showAvatarPanel, () => setShowAvatarPanel(false));
+  const subscriptionSheet = useBottomSheet(showSubscriptionPanel, () => setShowSubscriptionPanel(false));
+  const contactSheet = useBottomSheet(showContact, () => setShowContact(false));
+  const displayPanelSheet = useBottomSheet(showDisplayPanel, () => setShowDisplayPanel(false));
+  const collectionSheet = useBottomSheet(showCollection, () => setShowCollection(false));
+  const scannedObjectsSheet = useBottomSheet(showScannedObjectsList, () => setShowScannedObjectsList(false));
+  const historySheet = useBottomSheet(showHistory, () => {
+    setShowHistory(false);
+    setConfirmClearHistory(false);
+  });
+
   // "Ma collection" : panneau gamification/portefeuille (valeur totale,
   // badges, streak, courbe de valeur dans le temps) — calculé côté client à
   // partir de l'historique existant, pas de nouvel appel serveur. Doit
@@ -3742,20 +3632,6 @@ export default function App() {
   // voir le cadre "prendre une photo" dans son mode de base (avec texte),
   // pas le mode immersif plein cadre.
   const hasChosenAvatar = !!(profile && profile.avatar_character);
-  // Portrait "en action" à incruster en plein cadre dans "prendre une
-  // photo" — celui du personnage réellement équipé, seulement s'il en a un
-  // (voir CHARACTER_ACTION_IMAGES tout en haut du fichier) ; sinon (ou si
-  // aucun avatar n'est choisi) le cadre reste en mode de base, sans repli
-  // sur un autre personnage. Egalement absent si l'utilisateur a choisi de
-  // n'utiliser son avatar que comme icône (avatar_display_mode = "icone" —
-  // voir le choix proposé dans le panneau Avatars) : dans ce cas l'écran
-  // photo garde son interface de base, sans le perso en grand. "icone" est
-  // le comportement par défaut (demandé par Dylan, septembre 2026) : choisir
-  // un avatar ne change d'abord QUE la petite icône ; la mascotte en fond
-  // est une option secondaire explicite, pas automatique.
-  const avatarDisplayMode = (profile && profile.avatar_display_mode) || "icone";
-  const dropZoneMascot =
-    hasChosenAvatar && avatarDisplayMode !== "icone" ? CHARACTER_ACTION_IMAGES[profile.avatar_character] || null : null;
   // Nouvelle progression (demandée par Dylan, septembre 2026) : seuils
   // d'estimations entièrement revus, et 4 personnages passent en
   // déblocage par ABONNEMENT plutôt que par nombre d'estimations (voir
@@ -3867,20 +3743,12 @@ export default function App() {
   // avatar_character doit s'afficher comme "Aucun avatar" sélectionné dans
   // le panneau, pas comme si Le Chineur avait été choisi.
   const [avatarCharacterInput, setAvatarCharacterInput] = useState(NO_AVATAR_ID);
-  // "fond" = mascotte plein cadre sur l'écran photo (option secondaire,
-  // choisie explicitement). "icone" = avatar utilisé seulement comme icône
-  // (haut à droite / classement), l'écran photo garde son interface de
-  // base — c'est le choix par défaut : sélectionner un avatar ne doit
-  // d'abord changer que l'icône, la mascotte en fond restant un second
-  // geste volontaire (demandé par Dylan, septembre 2026).
-  const [avatarDisplayModeInput, setAvatarDisplayModeInput] = useState("icone");
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarError, setAvatarError] = useState(null);
   const [avatarSavedFlash, setAvatarSavedFlash] = useState(false);
   useEffect(() => {
     if (showAvatarPanel) {
       setAvatarCharacterInput((profile && profile.avatar_character) || NO_AVATAR_ID);
-      setAvatarDisplayModeInput((profile && profile.avatar_display_mode) || "icone");
       setAvatarError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3894,10 +3762,7 @@ export default function App() {
     if (id !== NO_AVATAR_ID && !isCharacterUnlocked(id) && !isOwnerPreview) return;
     setAvatarCharacterInput(id);
   }
-  const avatarDirty =
-    !!profile &&
-    (avatarCharacterInput !== ((profile.avatar_character || NO_AVATAR_ID)) ||
-      avatarDisplayModeInput !== (profile.avatar_display_mode || "icone"));
+  const avatarDirty = !!profile && avatarCharacterInput !== (profile.avatar_character || NO_AVATAR_ID);
   async function saveAvatar() {
     if (!user || avatarSaving) return;
     setAvatarSaving(true);
@@ -3908,14 +3773,14 @@ export default function App() {
         // avatar_character (voir set_avatar dans supabase_schema.sql) —
         // NO_AVATAR_ID a la même valeur ici, mais on le passe explicitement
         // pour ne pas dépendre de cette coïncidence si l'un des deux change.
+        // p_display_mode n'est plus envoyé (colonne conservée côté base pour
+        // compatibilité, mais l'avatar n'est plus jamais qu'une icône — voir
+        // son défaut 'icone' dans supabase_schema.sql).
         p_character_id: avatarCharacterInput === NO_AVATAR_ID ? "aucun" : avatarCharacterInput,
-        p_display_mode: avatarDisplayModeInput,
       });
       if (error) throw new Error(error.message);
       if (data && data.ok) {
-        setProfile((prev) =>
-          prev ? { ...prev, avatar_character: data.avatar_character, avatar_display_mode: data.avatar_display_mode } : prev
-        );
+        setProfile((prev) => (prev ? { ...prev, avatar_character: data.avatar_character } : prev));
         setAvatarSavedFlash(true);
         setTimeout(() => setAvatarSavedFlash(false), 2500);
         // L'avatar peut avoir changé l'affichage du classement — on vide le
@@ -5931,7 +5796,7 @@ export default function App() {
         /* Toutes les polices des 5 affichages sont chargées d'un coup (une
            seule requête) pour permettre un changement d'affichage instantané,
            sans "flash" le temps qu'une police se télécharge. */
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Bevan&family=Mulish:wght@400;500;600;700&family=Reggae+One&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800;900&family=Courier+Prime:wght@400;700&family=Bungee&family=Space+Mono:wght@400;700&family=Orbitron:wght@400..900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Cinzel:wght@600;700;900&family=EB+Garamond:wght@400;600;700&family=Bebas+Neue&family=Special+Elite&family=Reggae+One&family=Noto+Sans+JP:wght@400;500;700&display=swap');
         * { box-sizing: border-box; }
         /* Les deux polices dépendent de l'affichage sélectionné (voir
            AFFICHAGES/activeAffichage plus haut) — c'est ce qui fait changer
@@ -6057,14 +5922,6 @@ export default function App() {
           pointer-events: none;
         }
         .drop-zone:active { transform: scale(0.99); }
-        .drop-zone-mascot-immersive {
-          position: absolute;
-          width: auto;
-          max-width: none;
-          opacity: 0.4;
-          pointer-events: none;
-          z-index: 0;
-        }
         .tag-card {
           background: ${pt.formCardBg};
           border: 1px solid ${pt.rowBorder.replace("1px solid ", "")};
@@ -6294,63 +6151,10 @@ export default function App() {
 
         {!image && (
           <label className="drop-zone" htmlFor="photo-input">
-            {dropZoneMascot ? (
-              <>
-                <img
-                  src={dropZoneMascot.src}
-                  alt=""
-                  aria-hidden="true"
-                  className="drop-zone-mascot-immersive"
-                  style={{
-                    height: `${dropZoneMascot.scale * 100}%`,
-                    left: "50%",
-                    top: "50%",
-                    transform: `translate(-${dropZoneMascot.aimX * 100}%, -${dropZoneMascot.aimY * 100}%)`,
-                  }}
-                />
-                <div
-                  style={{
-                    position: "relative",
-                    zIndex: 1,
-                    width: 34,
-                    height: 34,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {/* Doublure qui épouse exactement le contour de l'icône
-                      appareil photo (même tracé, légèrement plus grand) pour
-                      effacer uniquement cette forme précise de l'avatar en
-                      dessous. `pt.dropZoneBg` est un dégradé CSS (pas une
-                      couleur unie) donc inutilisable comme `fill` SVG — on
-                      passe par un masque CSS (mask-image) qui applique le
-                      vrai fond du cadre (exactement le même, dégradé compris,
-                      quel que soit le thème choisi) découpé à la forme de
-                      l'icône. */}
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: pt.dropZoneBg,
-                      WebkitMaskImage:
-                        'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z\'/%3E%3Ccircle cx=\'12\' cy=\'13\' r=\'3\'/%3E%3C/svg%3E")',
-                      maskImage:
-                        'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Cpath d=\'M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z\'/%3E%3Ccircle cx=\'12\' cy=\'13\' r=\'3\'/%3E%3C/svg%3E")',
-                      WebkitMaskRepeat: "no-repeat",
-                      maskRepeat: "no-repeat",
-                      WebkitMaskSize: "contain",
-                      maskSize: "contain",
-                      WebkitMaskPosition: "center",
-                      maskPosition: "center",
-                    }}
-                  />
-                  <Camera size={30} strokeWidth={1.5} style={{ position: "relative", color: accent }} />
-                </div>
-              </>
-            ) : (
-              <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+            {/* La mascotte plein cadre a été retirée (Dylan est revenu
+                dessus, septembre 2026) : l'avatar n'est plus jamais qu'une
+                icône, la zone photo garde toujours son interface de base. */}
+            <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                 <Camera size={30} strokeWidth={1.5} style={{ color: accent }} />
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{t("drop_zone_title")}</div>
                 <div style={{ fontSize: 12, opacity: 0.75 }}>{t("drop_zone_sub")}</div>
@@ -6365,8 +6169,7 @@ export default function App() {
                 >
                   <Upload size={14} /> {t("drop_zone_choose_file")}
                 </span>
-              </div>
-            )}
+            </div>
             <input
               id="photo-input"
               type="file"
@@ -7739,7 +7542,7 @@ export default function App() {
         )}
       </div>
 
-      {showHistory && (
+      {historySheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -7756,6 +7559,7 @@ export default function App() {
           }}
         >
           <div
+            ref={historySheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -7766,6 +7570,7 @@ export default function App() {
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
               boxShadow: "0 -10px 30px rgba(21, 34, 56, 0.18)",
+              ...historySheet.sheetStyle,
             }}
           >
             <div
@@ -8001,7 +7806,7 @@ export default function App() {
       )}
 
       {/* ============ Ma collection (portefeuille + gamification) ============ */}
-      {showCollection && (
+      {collectionSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -8015,6 +7820,7 @@ export default function App() {
           onClick={() => setShowCollection(false)}
         >
           <div
+            ref={collectionSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -8025,6 +7831,7 @@ export default function App() {
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
               boxShadow: "0 -10px 30px rgba(21, 34, 56, 0.18)",
+              ...collectionSheet.sheetStyle,
             }}
           >
             <div aria-hidden="true" style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }} />
@@ -8185,7 +7992,7 @@ export default function App() {
       )}
 
       {/* ============ Détail des objets scannés (du plus cher au moins cher) ============ */}
-      {showScannedObjectsList && (
+      {scannedObjectsSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -8199,6 +8006,7 @@ export default function App() {
           onClick={() => setShowScannedObjectsList(false)}
         >
           <div
+            ref={scannedObjectsSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -8209,6 +8017,7 @@ export default function App() {
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
               boxShadow: "0 -10px 30px rgba(21, 34, 56, 0.18)",
+              ...scannedObjectsSheet.sheetStyle,
             }}
           >
             <div aria-hidden="true" style={{ width: 40, height: 4, borderRadius: 3, background: pt.grabBg, margin: "0 auto 16px" }} />
@@ -8466,7 +8275,7 @@ export default function App() {
       )}
 
       {/* ============ Affichage (Habillage + Fonds) ============ */}
-      {showDisplayPanel && (
+      {displayPanelSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -8480,6 +8289,7 @@ export default function App() {
           onClick={() => setShowDisplayPanel(false)}
         >
           <div
+            ref={displayPanelSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -8490,6 +8300,7 @@ export default function App() {
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
               boxShadow: "0 -10px 30px rgba(4, 6, 12, 0.45)",
+              ...displayPanelSheet.sheetStyle,
             }}
           >
             <div
@@ -8622,7 +8433,7 @@ export default function App() {
       )}
 
       {/* ============ Avatar (personnage à personnaliser) ============ */}
-      {showAvatarPanel && (
+      {avatarPanelSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -8636,6 +8447,7 @@ export default function App() {
           onClick={() => setShowAvatarPanel(false)}
         >
           <div
+            ref={avatarPanelSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -8646,6 +8458,7 @@ export default function App() {
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
               boxShadow: "0 -10px 30px rgba(4, 6, 12, 0.45)",
+              ...avatarPanelSheet.sheetStyle,
             }}
           >
             <div
@@ -8868,69 +8681,6 @@ export default function App() {
                   })}
                 </div>
 
-                {/* Choix proposé dès qu'un personnage est sélectionné : mascotte
-                    plein cadre sur l'écran photo, ou juste l'icône (haut à
-                    droite / classement) en gardant l'interface de base pour
-                    prendre une photo (demandé par Dylan). */}
-                <div style={{ marginBottom: 20 }}>
-                  <div
-                    className="mono"
-                    style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: pt.subText, marginBottom: 8 }}
-                  >
-                    {t("avatar_where_show_prefix")}
-                    {characterMeta(avatarCharacterInput).name}
-                    {t("avatar_where_show_suffix")}
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {/* "Icône seulement" est présenté en premier : c'est le
-                        choix par défaut (demandé par Dylan) — l'arrière-plan
-                        avec la mascotte reste possible mais en second temps,
-                        via un geste explicite sur cette seconde carte. */}
-                    <button
-                      onClick={() => setAvatarDisplayModeInput("icone")}
-                      style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-start",
-                        gap: 2,
-                        background: avatarDisplayModeInput === "icone" ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
-                        border: avatarDisplayModeInput === "icone" ? `2px solid ${accent}` : pt.rowBorder,
-                        borderRadius: 10,
-                        padding: "10px 12px",
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                    >
-                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>{t("avatar_icon_only_label")}</span>
-                      <span className="mono" style={{ fontSize: 10, color: pt.subText, lineHeight: 1.3 }}>
-                        {t("avatar_icon_only_desc")}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setAvatarDisplayModeInput("fond")}
-                      style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-start",
-                        gap: 2,
-                        background: avatarDisplayModeInput === "fond" ? `rgba(${accentRgb}, 0.18)` : pt.rowBg,
-                        border: avatarDisplayModeInput === "fond" ? `2px solid ${accent}` : pt.rowBorder,
-                        borderRadius: 10,
-                        padding: "10px 12px",
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                    >
-                      <span style={{ fontSize: 12, fontWeight: 700, color: pt.strongColor }}>{t("avatar_background_label")}</span>
-                      <span className="mono" style={{ fontSize: 10, color: pt.subText, lineHeight: 1.3 }}>
-                        {t("avatar_background_desc")}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
                 <button
                   className="btn-primary"
                   onClick={saveAvatar}
@@ -8957,7 +8707,7 @@ export default function App() {
       )}
 
       {/* ============ Rechercher un produit ============ */}
-      {showProductSearch && (
+      {productSearchSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -8976,6 +8726,7 @@ export default function App() {
           }}
         >
           <div
+            ref={productSearchSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -8985,6 +8736,7 @@ export default function App() {
               overflowY: "auto",
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
+              ...productSearchSheet.sheetStyle,
             }}
           >
             <div
@@ -9211,7 +8963,7 @@ export default function App() {
       )}
 
       {/* ============ Produits du moment ============ */}
-      {showTrending && (
+      {trendingSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -9225,6 +8977,7 @@ export default function App() {
           onClick={() => setShowTrending(false)}
         >
           <div
+            ref={trendingSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -9234,6 +8987,7 @@ export default function App() {
               overflowY: "auto",
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
+              ...trendingSheet.sheetStyle,
             }}
           >
             <div
@@ -9342,7 +9096,7 @@ export default function App() {
       )}
 
       {/* ============ Classement ============ */}
-      {showLeaderboard && (
+      {leaderboardSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -9356,6 +9110,7 @@ export default function App() {
           onClick={() => setShowLeaderboard(false)}
         >
           <div
+            ref={leaderboardSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -9365,6 +9120,7 @@ export default function App() {
               overflowY: "auto",
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
+              ...leaderboardSheet.sheetStyle,
             }}
           >
             <div
@@ -9593,7 +9349,7 @@ export default function App() {
       )}
 
       {/* ============ Abonnement ============ */}
-      {showSubscriptionPanel && (
+      {subscriptionSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -9607,6 +9363,7 @@ export default function App() {
           onClick={() => setShowSubscriptionPanel(false)}
         >
           <div
+            ref={subscriptionSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -9616,6 +9373,7 @@ export default function App() {
               overflowY: "auto",
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
+              ...subscriptionSheet.sheetStyle,
             }}
           >
             <div
@@ -9722,7 +9480,7 @@ export default function App() {
       )}
 
       {/* ============ Contact ============ */}
-      {showContact && (
+      {contactSheet.mounted && (
         <div
           style={{
             position: "fixed",
@@ -9736,6 +9494,7 @@ export default function App() {
           onClick={() => setShowContact(false)}
         >
           <div
+            ref={contactSheet.sheetRef}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: pt.sheetBg,
@@ -9743,6 +9502,7 @@ export default function App() {
               maxWidth: 420,
               borderRadius: "22px 22px 0 0",
               padding: "20px 16px 32px",
+              ...contactSheet.sheetStyle,
             }}
           >
             <div
