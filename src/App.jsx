@@ -491,17 +491,25 @@ const AFFICHAGES = [
     heroScale: 0.85,
     base: "#0D0B08",
     mid: "#241D12",
-    high: "#D4AF37",
-    borderRgb: "212, 175, 55",
+    // Retouche demandée par Dylan (quelque chose "clochait" dans l'ensemble,
+    // sans qu'il sache quoi précisément) : l'ancien #D4AF37 est un or assez
+    // saturé/jaune, plus proche du laiton/trophée que de l'or antique — d'où
+    // un rendu un peu "cliché néon doré" une fois le fond très épuré. Palette
+    // resserrée vers un or plus doux, champagne/bronze (moins jaune, plus de
+    // nuance), et un léger halo chaud ajouté dans `texture` ci-dessous pour
+    // redonner un peu de présence au cuir noir désormais très uni, sans
+    // retomber dans le "trop chargé" déjà corrigé.
+    high: "#C6A661",
+    borderRgb: "198, 166, 97",
     radiusScale: 0.4,
-    accent: "#D4AF37",
-    accentDark: "#9C7A1E",
-    accentLight: "#F0DFA0",
-    glow: 0.18,
+    accent: "#C6A661",
+    accentDark: "#8A6F35",
+    accentLight: "#E9D9A8",
+    glow: 0.22,
     texture:
-      "radial-gradient(circle at 50% 0%, rgba(212,175,55,0.10) 0, transparent 50%), radial-gradient(circle at 85% 90%, rgba(212,175,55,0.07) 0, transparent 45%), linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.025) 50%, transparent 60%)",
+      "radial-gradient(circle at 50% 0%, rgba(198,166,97,0.14) 0, transparent 55%), radial-gradient(circle at 85% 90%, rgba(198,166,97,0.08) 0, transparent 45%), linear-gradient(120deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%)",
     decor: [
-      "linear-gradient(90deg, rgba(212,175,55,0.20) 0%, rgba(212,175,55,0.07) 3%, transparent 9%, transparent 91%, rgba(212,175,55,0.07) 97%, rgba(212,175,55,0.20) 100%)",
+      "linear-gradient(90deg, rgba(198,166,97,0.20) 0%, rgba(198,166,97,0.07) 3%, transparent 9%, transparent 91%, rgba(198,166,97,0.07) 97%, rgba(198,166,97,0.20) 100%)",
       `url(${decorLuxe}) top center / 100% auto no-repeat`,
     ].join(", "),
   },
@@ -3112,7 +3120,7 @@ export default function App() {
     // ou deux halos radiaux très légers en coin — une nuance, pas un bloc de
     // couleur plein.
     if (activeAffichage.key === "luxe") {
-      pt.headerBg = `radial-gradient(circle at 100% 100%, rgba(212,175,55,0.10) 0%, transparent 45%), radial-gradient(circle at 0% 0%, rgba(212,175,55,0.05) 0%, transparent 40%), ${activeAffichage.base}`;
+      pt.headerBg = `radial-gradient(circle at 100% 100%, rgba(198,166,97,0.11) 0%, transparent 45%), radial-gradient(circle at 0% 0%, rgba(198,166,97,0.06) 0%, transparent 40%), ${activeAffichage.base}`;
     } else if (activeAffichage.key === "manga") {
       pt.headerBg = `radial-gradient(circle at 100% 100%, rgba(224,32,43,0.10) 0%, transparent 40%), radial-gradient(circle at 0% 0%, rgba(224,32,43,0.05) 0%, transparent 35%), ${activeAffichage.base}`;
     }
