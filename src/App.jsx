@@ -854,6 +854,12 @@ const TRANSLATIONS = {
     loading_analyzing: "Identification de l'objet…",
     loading_pricing: "Recherche des prix sur Leboncoin, Vinted, eBay…",
     used_price_label: "estimation d'occasion",
+    model_identified_badge: "Modèle identifié :",
+    new_price_label: "prix neuf",
+    new_price_real_prefix: "constaté sur ",
+    new_price_real_suffix_singular: " offre actuelle",
+    new_price_real_suffix_plural: " offres actuelles",
+    new_price_estimated_note: "estimation IA, aucune offre neuve trouvée en ligne",
     menu_title: "Menu",
     menu_my_estimates: "Mes Estim'",
     menu_search_product: "Rechercher un produit",
@@ -1219,6 +1225,12 @@ const TRANSLATIONS = {
     loading_analyzing: "Identifying the item…",
     loading_pricing: "Searching prices on Leboncoin, Vinted, eBay…",
     used_price_label: "second-hand estimate",
+    model_identified_badge: "Model identified:",
+    new_price_label: "new price",
+    new_price_real_prefix: "seen in ",
+    new_price_real_suffix_singular: " current listing",
+    new_price_real_suffix_plural: " current listings",
+    new_price_estimated_note: "AI estimate, no new listing found online",
     menu_title: "Menu",
     menu_my_estimates: "My Estim'",
     menu_search_product: "Search a product",
@@ -1584,6 +1596,12 @@ const TRANSLATIONS = {
     loading_analyzing: "Identificando el objeto…",
     loading_pricing: "Buscando precios en Leboncoin, Vinted, eBay…",
     used_price_label: "estimación de segunda mano",
+    model_identified_badge: "Modelo identificado:",
+    new_price_label: "precio nuevo",
+    new_price_real_prefix: "visto en ",
+    new_price_real_suffix_singular: " oferta actual",
+    new_price_real_suffix_plural: " ofertas actuales",
+    new_price_estimated_note: "estimación IA, ninguna oferta nueva encontrada en línea",
     menu_title: "Menú",
     menu_my_estimates: "Mis Estim'",
     menu_search_product: "Buscar un producto",
@@ -4665,6 +4683,44 @@ export default function App() {
     return { ...second, queryUsed: query + " occasion" };
   }
 
+  // Interroge /prices (SerpAPI, moteur Google Shopping — de vraies offres
+  // actuelles de vendeurs neufs, pas des annonces d'occasion) pour le prix
+  // NEUF d'un modèle précis. Volontairement déclenché seulement quand la
+  // marque/le modèle ont été reconnus avec certitude (voir le prompt
+  // d'identification) : une recherche "neuf" sur un objet mal identifié
+  // renverrait des prix sans rapport. Erreurs ou absence de résultat =
+  // tableau vide plutôt qu'une exception, pour ne jamais faire échouer
+  // l'estimation elle-même à cause de cette recherche complémentaire.
+  async function fetchNewPriceListings(query) {
+    try {
+      const res = await fetch(PROXY_URL + "/prices?q=" + encodeURIComponent(query));
+      const data = await res.json();
+      if (data.error || !Array.isArray(data.results)) return [];
+      return data.results.filter((r) => typeof r.extracted_price === "number" && r.extracted_price > 0);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Recherche Amazon dédiée (/prices-amazon) pour le prix neuf — UNIQUEMENT
+  // en secours, quand fetchNewPriceListings (Google Shopping) ci-dessus n'a
+  // presque rien remonté : Shopping n'agrège pas forcément Amazon ni
+  // AliExpress, alors que beaucoup d'objets du quotidien s'y trouvent
+  // d'abord (remonté par Dylan). Volontairement un appel séparé, déclenché
+  // seulement dans ce cas précis plutôt que systématiquement à chaque
+  // estimation, pour ne pas doubler le coût SerpAPI de cette fonctionnalité
+  // (choix validé avec Dylan le 2026-10-01).
+  async function fetchAmazonPriceListings(query) {
+    try {
+      const res = await fetch(PROXY_URL + "/prices-amazon?q=" + encodeURIComponent(query));
+      const data = await res.json();
+      if (data.error || !Array.isArray(data.results)) return [];
+      return data.results.filter((r) => typeof r.extracted_price === "number" && r.extracted_price > 0);
+    } catch (e) {
+      return [];
+    }
+  }
+
   // Point d'entrée du bouton "Estimer": vérifie/consomme le quota côté
   // serveur avant de dépenser un appel IA. runEstimationCore() ci-dessous
   // contient l'estimation elle-même (inchangée) et est aussi appelée
@@ -5165,8 +5221,9 @@ export default function App() {
                 type: "text",
                 text:
                   "Tu regardes une photo. D'abord détermine le type de sujet: (a) un objet du quotidien à estimer pour une revente d'occasion, (b) un être vivant (humain ou animal), (c) un véhicule (voiture, moto, scooter...), (d) un bien immobilier (maison ou appartement, vu de l'extérieur ou l'intérieur). " +
+                  "Si c'est un objet (a) ou un véhicule (c), essaie en plus de reconnaître précisément la marque, le modèle et la référence exacte (nom de gamme, code produit, numéro de modèle gravé/imprimé/sur étiquette...) à partir de ce qui est vraiment visible sur la photo (logo, texte, forme caractéristique) — ça sert ensuite à donner aussi un prix NEUF fiable en plus de l'estimation d'occasion habituelle. Sois rigoureux là-dessus : ne remplis \"marque\"/\"modele\"/\"reference\" que si tu les reconnais vraiment avec certitude, ne devine JAMAIS à partir d'une simple ressemblance générale ou d'un style qui te fait penser à telle marque — laisse ces champs vides et \"identification_precise\" à false plutôt que de risquer une fausse identification (ça déclenche une vraie recherche de prix neuf, une fausse marque fausserait complètement ce prix). " +
                   "Réponds UNIQUEMENT en JSON, sans texte autour, avec ce format exact: " +
-                  '{"type_sujet": "objet" ou "etre_vivant" ou "vehicule" ou "immobilier", "objet": "nom précis de l\'objet (marque/modèle si visible) OU description brève et neutre de l\'être vivant OU description du véhicule OU description du bien immobilier", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (vide si pas type objet)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé", "marque": "marque du véhicule si type_sujet=vehicule, sinon vide", "modele": "modèle du véhicule si type_sujet=vehicule, sinon vide", "annee": nombre (année du véhicule si clairement identifiable, sinon null), "type_bien": "maison ou appartement si type_sujet=immobilier, sinon vide"}' +
+                  '{"type_sujet": "objet" ou "etre_vivant" ou "vehicule" ou "immobilier", "objet": "nom précis de l\'objet (marque/modèle si visible) OU description brève et neutre de l\'être vivant OU description du véhicule OU description du bien immobilier", "recherche": "2 à 4 mots-clés génériques pour chercher ce produit sur un moteur de shopping (vide si pas type objet)", "categorie": "catégorie générale", "etat": "état apparent en une phrase courte", "etat_note": "neuf / très bon état / bon état / état moyen / abîmé", "marque": "marque de l\'objet ou du véhicule si identifiable avec certitude, sinon vide", "modele": "modèle précis si identifiable avec certitude, sinon vide", "reference": "référence/code exact du modèle si identifiable avec certitude, sinon vide", "identification_precise": true seulement si tu es vraiment certain d\'avoir reconnu la marque ET le modèle exact (pas juste le type général d\'objet), false sinon, "annee": nombre (année du véhicule si clairement identifiable, sinon null), "type_bien": "maison ou appartement si type_sujet=immobilier, sinon vide"}' +
                   (effectiveDetails.trim()
                     ? ` L'utilisateur précise en plus: "${effectiveDetails.trim()}". Utilise ces précisions en priorité sur ce que tu vois sur la photo si elles se contredisent (ex: la contenance exacte, un défaut caché), et intègre-les dans "objet" et "recherche".`
                     : "") +
@@ -5270,8 +5327,71 @@ export default function App() {
       setStatus("pricing");
       let pricing;
       try {
-        const searchTerm = identification.recherche || identification.objet;
-        const { bySource, errors, total } = await fetchRealListings(searchTerm);
+        // Marque/modèle/référence reconnus avec certitude (voir le prompt
+        // d'identification) : on cherche D'ABORD de vraies annonces du MÊME
+        // modèle précis (recherche plus fine que les mots-clés génériques),
+        // et seulement si ça ne suffit pas on complète avec la recherche
+        // générique habituelle en secours — plutôt que l'inverse — pour une
+        // estimation plus précise sur les objets identifiés, quitte à
+        // interroger les sources un peu plus souvent.
+        const genericSearchTerm = identification.recherche || identification.objet;
+        const referenceParts = [identification.marque, identification.modele, identification.reference]
+          .map((v) => (v ? String(v).trim() : ""))
+          .filter(Boolean);
+        const preciseSearchTerm =
+          identification.identification_precise && referenceParts.length > 0 ? referenceParts.join(" ") : null;
+        const searchTerm = preciseSearchTerm || genericSearchTerm;
+
+        // Recherche du prix NEUF (vraies offres actuelles, moteur shopping)
+        // en parallèle de la recherche d'occasion — seulement quand le
+        // modèle est identifié avec certitude, voir fetchNewPriceListings.
+        const [listingsResult, newPriceRaw] = await Promise.all([
+          fetchRealListings(searchTerm),
+          preciseSearchTerm ? fetchNewPriceListings(preciseSearchTerm + " neuf") : Promise.resolve([]),
+        ]);
+        let { bySource, errors, total } = listingsResult;
+        let newPricesReal = newPriceRaw
+          .map((r) => r.extracted_price)
+          .filter((n) => typeof n === "number" && n > 0)
+          .sort((a, b) => a - b);
+
+        // Google Shopping n'a presque rien remonté pour ce modèle (n'agrège
+        // pas forcément Amazon/AliExpress) : on complète avec une recherche
+        // Amazon dédiée en secours, SEULEMENT dans ce cas précis — voir
+        // fetchAmazonPriceListings pour le choix de ne pas la lancer
+        // systématiquement (coût SerpAPI).
+        if (preciseSearchTerm && newPricesReal.length < 2) {
+          const amazonRaw = await fetchAmazonPriceListings(preciseSearchTerm);
+          const amazonPrices = amazonRaw
+            .map((r) => r.extracted_price)
+            .filter((n) => typeof n === "number" && n > 0);
+          newPricesReal = [...newPricesReal, ...amazonPrices].sort((a, b) => a - b);
+        }
+
+        // Recherche précise trop pauvre en résultats (modèle rare, peu
+        // d'annonces d'occasion pour CE modèle précis) : on complète avec
+        // la recherche générique plutôt que de se retrouver avec trop peu
+        // de comparables — les annonces déjà trouvées restent prioritaires,
+        // celles-ci ne font que compléter (dédoublonnage par lien).
+        if (preciseSearchTerm && total < 2 && genericSearchTerm && genericSearchTerm !== preciseSearchTerm) {
+          const fallbackListings = await fetchRealListings(genericSearchTerm);
+          const existingLinks = new Set(
+            [...bySource.leboncoin, ...bySource.vinted, ...bySource.ebay, ...bySource.ebaySold]
+              .map((r) => r.link)
+              .filter(Boolean)
+          );
+          const mergeIn = (key) => {
+            const extraListings = (fallbackListings.bySource[key] || []).filter(
+              (r) => !r.link || !existingLinks.has(r.link)
+            );
+            bySource = { ...bySource, [key]: [...bySource[key], ...extraListings] };
+          };
+          mergeIn("leboncoin");
+          mergeIn("vinted");
+          mergeIn("ebay");
+          mergeIn("ebaySold");
+          total = bySource.leboncoin.length + bySource.vinted.length + bySource.ebay.length + bySource.ebaySold.length;
+        }
 
         // Quand l'estimation part d'une annonce déjà en ligne, on continue
         // même si la recherche fraîche ne retrouve aucun comparable: le
@@ -5483,10 +5603,33 @@ export default function App() {
           const confidenceLevel = Math.min(2, baseConfidenceLevel + (soldPrices.length > 0 ? 1 : 0));
 
           const rareteExtra = typeof extra.rarete === "number" ? extra.rarete : null;
+
+          // Prix neuf affiché à l'utilisateur: uniquement quand le modèle a
+          // été identifié avec certitude (voir le prompt d'identification —
+          // sinon le risque de l'associer au mauvais produit est trop
+          // élevé). En priorité de VRAIES offres actuelles trouvées via
+          // fetchNewPriceListings ci-dessus (médiane, plus robuste qu'une
+          // moyenne si un prix aberrant s'est glissé dedans) ; à défaut,
+          // l'estimation générale de l'IA (prix_neuf_estime), déjà demandée
+          // pour le garde-fou ci-dessous de toute façon.
+          let prixNeuf = null;
+          if (identification.identification_precise) {
+            if (newPricesReal.length > 0) {
+              const mid = Math.floor(newPricesReal.length / 2);
+              const median =
+                newPricesReal.length % 2 !== 0
+                  ? newPricesReal[mid]
+                  : Math.round((newPricesReal[mid - 1] + newPricesReal[mid]) / 2);
+              prixNeuf = { valeur: median, constate: true, nb_offres: newPricesReal.length };
+            } else if (typeof extra.prix_neuf_estime === "number" && extra.prix_neuf_estime > 0) {
+              prixNeuf = { valeur: extra.prix_neuf_estime, constate: false, nb_offres: 0 };
+            }
+          }
+
           const guarded = applyNewPriceGuard(
             prix_bas,
             prix_haut,
-            extra.prix_neuf_estime,
+            prixNeuf ? prixNeuf.valeur : extra.prix_neuf_estime,
             rareteExtra,
             extra.alerte || null
           );
@@ -5497,6 +5640,7 @@ export default function App() {
             prix_brocante: isBrocanteExcludedCategory(effectiveListingSeed && effectiveListingSeed.category)
               ? null
               : applyBrocanteDiscount(extra.prix_brocante, guarded.prix_bas),
+            prix_neuf: prixNeuf,
             conseil: extra.conseil,
             alerte: guarded.alerte,
             facilite_vente: typeof extra.facilite_vente === "number" ? extra.facilite_vente : null,
@@ -5560,6 +5704,16 @@ export default function App() {
           prix_brocante: isBrocanteExcludedCategory(effectiveListingSeed && effectiveListingSeed.category)
             ? null
             : applyBrocanteDiscount(fallback.prix_brocante, fbGuarded.prix_bas),
+          // Même logique que la branche principale: affiché seulement si le
+          // modèle a été reconnu avec certitude — ici forcément une
+          // estimation IA (pas de recherche de prix neuf réelle tentée dans
+          // ce repli sans annonces).
+          prix_neuf:
+            identification.identification_precise &&
+            typeof fallback.prix_neuf_estime === "number" &&
+            fallback.prix_neuf_estime > 0
+              ? { valeur: fallback.prix_neuf_estime, constate: false, nb_offres: 0 }
+              : null,
           alerte: fbGuarded.alerte,
           facilite_vente: typeof fallback.facilite_vente === "number" ? fallback.facilite_vente : null,
           rarete: fbRarete,
@@ -6924,6 +7078,30 @@ export default function App() {
                   {result.etat} · <em>{result.etat_note}</em>
                 </div>
 
+                {result.identification_precise && (result.marque || result.modele) && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      flexWrap: "wrap",
+                      fontSize: 11,
+                      color: pt.cardSubText,
+                      background: pt.rowBg,
+                      border: pt.rowBorder,
+                      borderRadius: 8,
+                      padding: "7px 10px",
+                      marginBottom: 16,
+                      position: "relative",
+                    }}
+                  >
+                    <Tag size={11} color={accent} style={{ flexShrink: 0 }} />
+                    <span className="brand" style={{ fontStyle: "italic" }}>
+                      {t("model_identified_badge")} {[result.marque, result.modele, result.reference].filter(Boolean).join(" ")}
+                    </span>
+                  </div>
+                )}
+
                 {listingSeed && (
                   <div
                     style={{
@@ -7062,9 +7240,33 @@ export default function App() {
                 <div className="price-pill mono" style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>
                   {result.prix_bas}–{result.prix_haut} €
                 </div>
-                <div style={{ fontSize: 13, color: pt.cardSubText, marginBottom: 14 }}>
+                <div style={{ fontSize: 13, color: pt.cardSubText, marginBottom: result.prix_neuf ? 6 : 14 }}>
                   {t("used_price_label")}
                 </div>
+
+                {result.prix_neuf && typeof result.prix_neuf.valeur === "number" && (
+                  <div
+                    className="mono"
+                    style={{
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: 6,
+                      flexWrap: "wrap",
+                      fontSize: 13,
+                      marginBottom: 14,
+                    }}
+                  >
+                    <span style={{ fontWeight: 700, color: pt.cardRowText }}>{result.prix_neuf.valeur} €</span>
+                    <span style={{ fontSize: 11, color: pt.cardChevronColor, fontStyle: "italic" }}>
+                      {t("new_price_label")}{" "}
+                      {result.prix_neuf.constate
+                        ? t("new_price_real_prefix") +
+                          result.prix_neuf.nb_offres +
+                          (result.prix_neuf.nb_offres > 1 ? t("new_price_real_suffix_plural") : t("new_price_real_suffix_singular"))
+                        : t("new_price_estimated_note")}
+                    </span>
+                  </div>
+                )}
 
                 <button
                   type="button"
