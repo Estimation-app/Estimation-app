@@ -138,11 +138,16 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // moment de la souscription (voir SIGNUP_BONUS et le webhook Stripe dans
 // worker.js pour l'octroi réel côté serveur — ce champ ne sert qu'à
 // l'affichage ici).
+// Chaque forfait existe en version normale (prix neuf = estimation IA) et
+// "Plus" (+pricePlus, prix neuf réel constaté via Google Shopping/Amazon —
+// voir canSearchRealNewPrice dans runEstimationCore). Même quota/bonus dans
+// les deux versions, seul le prix et l'accès au prix neuf réel changent
+// (choix Dylan, 2026-10-01 — garde les tarifs de base d'origine).
 const PLANS = [
-  { key: "debutant", label: "Starter", price: "2,99 €/mois", quota: 20, bonus: 3 },
-  { key: "pro", label: "Pro", price: "9,99 €/mois", quota: 100, bonus: 8 },
-  { key: "premium", label: "Premium", price: "24,99 €/mois", quota: 300, bonus: 20 },
-  { key: "elite", label: "Elite", price: "69,99 €/mois", quota: 1000, bonus: 50 },
+  { key: "debutant", label: "Starter", price: "2,99 €/mois", pricePlus: "3,99 €/mois", quota: 20, bonus: 3 },
+  { key: "pro", label: "Pro", price: "9,99 €/mois", pricePlus: "12,99 €/mois", quota: 80, bonus: 8 },
+  { key: "premium", label: "Premium", price: "24,99 €/mois", pricePlus: "31,99 €/mois", quota: 300, bonus: 20 },
+  { key: "elite", label: "Elite", price: "69,99 €/mois", pricePlus: "89,99 €/mois", quota: 1000, bonus: 50 },
 ];
 
 // Achat d'estimations "à l'unité" (hors abonnement) : 0,30 € pièce, sans
@@ -154,6 +159,10 @@ const PLANS = [
 // constante ne sert qu'à l'affichage ici. Aucune quantité maximale côté
 // front (demandé par Dylan) : seul le minimum de 1 est imposé.
 const CREDIT_UNIT_PRICE = 0.3;
+// Variante "Plus" (prix neuf réel inclus, voir canSearchRealNewPrice dans
+// runEstimationCore) — même volume/bonus que la version normale, juste plus
+// cher pièce pour couvrir la recherche SerpAPI dédiée (choix Dylan, 2026-10-01).
+const CREDIT_UNIT_PRICE_PLUS = 0.4;
 const CREDIT_BONUS_PER_HUNDRED = 10;
 
 // Rang de plan d'abonnement, partagé par le déblocage des avatars
@@ -860,6 +869,7 @@ const TRANSLATIONS = {
     new_price_real_suffix_singular: " offre actuelle",
     new_price_real_suffix_plural: " offres actuelles",
     new_price_estimated_note: "estimation IA, aucune offre neuve trouvée en ligne",
+    new_price_estimated_upsell: "estimation IA — passe en formule Plus pour un prix neuf constaté sur de vraies offres",
     menu_title: "Menu",
     menu_my_estimates: "Mes Estim'",
     menu_search_product: "Rechercher un produit",
@@ -919,8 +929,11 @@ const TRANSLATIONS = {
     subscription_bonus_suffix: "offertes à la souscription",
     subscription_cancel_anytime: "Résiliable à tout moment, directement depuis ton compte.",
     credits_section_title: "Ou achète des estimations à l'unité :",
+    credits_mode_normal: "Normal",
+    credits_mode_plus: "Plus (prix neuf réel)",
     credits_section_subtitle: "Utilisées seulement une fois ton quota du mois épuisé. N'expirent jamais.",
     credits_balance_label: "estimation(s) achetée(s) disponible(s)",
+    credits_balance_label_plus: "estimation(s) Plus achetée(s) disponible(s)",
     credits_bonus_suffix: "offerte(s)",
     credits_total_suffix: "estimations au total",
     credits_buy_button: "Acheter",
@@ -1152,6 +1165,7 @@ const TRANSLATIONS = {
     paywall_watch_ad_button: "regarder une pub pour 1 estimation gratuite",
     paywall_or_subscribe: "ou passe à un abonnement pour beaucoup plus d'estimations :",
     plan_per_month_suffix: "/mois",
+    plan_plus_badge: "prix neuf réel",
     trend_range_1j: "1J",
     trend_range_1s: "1S",
     trend_range_1m: "1M",
@@ -1231,6 +1245,7 @@ const TRANSLATIONS = {
     new_price_real_suffix_singular: " current listing",
     new_price_real_suffix_plural: " current listings",
     new_price_estimated_note: "AI estimate, no new listing found online",
+    new_price_estimated_upsell: "AI estimate — upgrade to Plus for a real new-price check",
     menu_title: "Menu",
     menu_my_estimates: "My Estim'",
     menu_search_product: "Search a product",
@@ -1290,8 +1305,11 @@ const TRANSLATIONS = {
     subscription_bonus_suffix: "offered when you subscribe",
     subscription_cancel_anytime: "Cancel anytime, directly from your account.",
     credits_section_title: "Or buy estimations one by one:",
+    credits_mode_normal: "Normal",
+    credits_mode_plus: "Plus (real new price)",
     credits_section_subtitle: "Used only once your monthly quota is used up. Never expire.",
     credits_balance_label: "purchased estimation(s) available",
+    credits_balance_label_plus: "purchased Plus estimation(s) available",
     credits_bonus_suffix: "free",
     credits_total_suffix: "estimations total",
     credits_buy_button: "Buy",
@@ -1523,6 +1541,7 @@ const TRANSLATIONS = {
     paywall_watch_ad_button: "watch an ad for 1 free estimate",
     paywall_or_subscribe: "or upgrade to a subscription for a lot more estimates:",
     plan_per_month_suffix: "/mo",
+    plan_plus_badge: "real new price",
     trend_range_1j: "1D",
     trend_range_1s: "1W",
     trend_range_1m: "1M",
@@ -1602,6 +1621,7 @@ const TRANSLATIONS = {
     new_price_real_suffix_singular: " oferta actual",
     new_price_real_suffix_plural: " ofertas actuales",
     new_price_estimated_note: "estimación IA, ninguna oferta nueva encontrada en línea",
+    new_price_estimated_upsell: "estimación IA — pásate al modo Plus para un precio nuevo verificado",
     menu_title: "Menú",
     menu_my_estimates: "Mis Estim'",
     menu_search_product: "Buscar un producto",
@@ -1661,8 +1681,11 @@ const TRANSLATIONS = {
     subscription_bonus_suffix: "de regalo al suscribirte",
     subscription_cancel_anytime: "Cancelable en cualquier momento, directamente desde tu cuenta.",
     credits_section_title: "O compra estimaciones por unidad:",
+    credits_mode_normal: "Normal",
+    credits_mode_plus: "Plus (precio nuevo real)",
     credits_section_subtitle: "Se usan solo una vez agotada tu cuota mensual. Nunca caducan.",
     credits_balance_label: "estimación(es) comprada(s) disponible(s)",
+    credits_balance_label_plus: "estimación(es) Plus comprada(s) disponible(s)",
     credits_bonus_suffix: "de regalo",
     credits_total_suffix: "estimaciones en total",
     credits_buy_button: "Comprar",
@@ -1894,6 +1917,7 @@ const TRANSLATIONS = {
     paywall_watch_ad_button: "ver un anuncio para 1 estimación gratis",
     paywall_or_subscribe: "o pásate a una suscripción para muchas más estimaciones:",
     plan_per_month_suffix: "/mes",
+    plan_plus_badge: "precio nuevo real",
     trend_range_1j: "1D",
     trend_range_1s: "1S",
     trend_range_1m: "1M",
@@ -2804,6 +2828,9 @@ export default function App() {
   const [creditQuantityText, setCreditQuantityText] = useState("10"); // texte affiché dans le champ, peut être vide pendant la saisie
   const [creditCheckoutLoading, setCreditCheckoutLoading] = useState(false);
   const [creditError, setCreditError] = useState(null);
+  // Crédits "Plus" (prix neuf réel) vs normaux — voir CREDIT_UNIT_PRICE_PLUS
+  // et renderCreditPurchaseBlock plus bas.
+  const [creditPlus, setCreditPlus] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
@@ -2817,7 +2844,7 @@ export default function App() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "plan, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_character, avatar_display_mode, credits_achetes, has_password"
+        "plan, plan_plus, subscription_status, quota_mensuel, estimations_utilisees, gratuit_utilisees, gratuit_pubs_vues, bonus_pub_disponible, stripe_customer_id, pseudo, avatar_character, avatar_display_mode, credits_achetes, credits_achetes_plus, has_password"
       )
       .eq("id", userId)
       .maybeSingle();
@@ -2845,15 +2872,35 @@ export default function App() {
     return data;
   }
 
-  async function startCheckout(planKey) {
+  // Détermine si CETTE estimation (celle qu'on vient de consommer via
+  // checkQuota ci-dessus) donne droit au prix neuf réel : soit l'estimation
+  // a été payée avec un crédit à l'unité "Plus" (source renvoyée par
+  // consume_estimation côté serveur), soit elle vient du quota/bonus pub
+  // d'un abonnement qui est lui-même en formule Plus (profile.plan_plus).
+  // Le palier gratuit (source "gratuit"/"gratuit_pub") n'y a jamais droit.
+  function isPlusSource(quota) {
+    if (!quota) return false;
+    if (quota.source === "credits_achetes_plus") return true;
+    if (quota.source === "quota" || quota.source === "bonus_pub") {
+      return !!(profile && profile.plan_plus);
+    }
+    return false;
+  }
+
+  async function startCheckout(planKey, plus = false) {
     if (!user) return;
-    setCheckoutLoading(planKey);
+    // "plus" n'est pas un paramètre séparé côté Worker : on envoie
+    // directement la clé combinée ("debutant_plus"...), qui correspond à
+    // une entrée distincte dans STRIPE_PRICES (voir worker.js) — même prix
+    // Stripe que la version normale pour tout le reste du flux.
+    const effectiveKey = plus ? planKey + "_plus" : planKey;
+    setCheckoutLoading(effectiveKey);
     try {
       const res = await fetch(PROXY_URL + "/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          plan: planKey,
+          plan: effectiveKey,
           user_id: user.id,
           email: user.email,
           return_url: window.location.origin,
@@ -2870,9 +2917,10 @@ export default function App() {
   }
 
   // Achat d'estimations à l'unité (hors abonnement) : session Stripe en
-  // mode paiement unique, quantité choisie via le stepper +/-. Le prix
-  // réel (0,30 €/estimation, sans remise) est recalculé côté serveur —
-  // "quantity" est la seule donnée envoyée, jamais un prix.
+  // mode paiement unique, quantité choisie via le stepper +/-, normale
+  // (0,30 €, estimation IA du prix neuf) ou "Plus" (0,40 €, prix neuf réel
+  // — creditPlus). Le prix réel est recalculé côté serveur à partir de
+  // "quantity" et "plus" — jamais un prix envoyé directement par le client.
   async function startCreditCheckout() {
     if (!user) return;
     setCreditError(null);
@@ -2885,6 +2933,7 @@ export default function App() {
           user_id: user.id,
           email: user.email,
           quantity: creditQuantity,
+          plus: creditPlus,
           return_url: window.location.origin,
         }),
       });
@@ -2928,7 +2977,7 @@ export default function App() {
     if (quota.allowed) {
       setShowPaywall(false);
       setPaywallInfo(null);
-      await runEstimationCore();
+      await runEstimationCore(undefined, undefined, isPlusSource(quota));
     } else {
       setPaywallInfo(quota);
     }
@@ -4079,11 +4128,18 @@ export default function App() {
               </div>
             )}
 
-            {profile && profile.credits_achetes > 0 && (
+            {profile && (profile.credits_achetes > 0 || profile.credits_achetes_plus > 0) && (
               <div style={{ padding: "0 2px", marginTop: 4 }}>
-                <span className="mono" style={{ fontSize: 11, color: pt.strongColor, fontWeight: 700 }}>
-                  +{profile.credits_achetes} {t("credits_balance_label")}
-                </span>
+                {profile.credits_achetes > 0 && (
+                  <span className="mono" style={{ fontSize: 11, color: pt.strongColor, fontWeight: 700 }}>
+                    +{profile.credits_achetes} {t("credits_balance_label")}
+                  </span>
+                )}
+                {profile.credits_achetes_plus > 0 && (
+                  <span className="mono" style={{ fontSize: 11, color: pt.strongColor, fontWeight: 700, marginLeft: profile.credits_achetes > 0 ? 8 : 0 }}>
+                    +{profile.credits_achetes_plus} {t("credits_balance_label_plus")}
+                  </span>
+                )}
               </div>
             )}
 
@@ -4740,7 +4796,7 @@ export default function App() {
       setShowPaywall(true);
       return;
     }
-    await runEstimationCore(detailsOverride);
+    await runEstimationCore(detailsOverride, undefined, isPlusSource(quota));
   }
 
   // Point d'entrée du bouton "Estimer" affiché sur une carte de résultat
@@ -4804,7 +4860,7 @@ export default function App() {
     setListingSeed(seed);
     setImage({ dataUrl: item.image || null, mediaType: null, base64: null, debug: null });
 
-    await runEstimationCore("", seed);
+    await runEstimationCore("", seed, isPlusSource(quota));
   }
 
   // Relance une estimation à partir d'une entrée déjà dans l'historique, pour
@@ -5168,7 +5224,7 @@ export default function App() {
   // faire setDetails juste avant, à cause du batching des mises à jour de
   // state) — utilisé par la correction post-résultat ("ce n'est pas tout à
   // fait ça").
-  async function runEstimationCore(detailsOverride, listingSeedOverride) {
+  async function runEstimationCore(detailsOverride, listingSeedOverride, isPlusEstimation = false) {
     // listingSeedOverride permet, comme detailsOverride, d'éviter de lire
     // "listingSeed" depuis le state React juste après l'avoir défini avec
     // setListingSeed() dans le même événement: le state ne serait pas
@@ -5342,12 +5398,28 @@ export default function App() {
           identification.identification_precise && referenceParts.length > 0 ? referenceParts.join(" ") : null;
         const searchTerm = preciseSearchTerm || genericSearchTerm;
 
+        // La recherche RÉELLE de prix neuf (Google Shopping + secours Amazon,
+        // coût SerpAPI à chaque fois) n'est faite que pour une estimation
+        // "Plus" — payée soit par un abonnement en formule Plus (quota ou
+        // bonus pub), soit par un crédit à l'unité Plus (voir isPlusSource
+        // et PLANS/CREDIT_UNIT_PRICE_PLUS plus haut). Les estimations
+        // normales gardent la reconnaissance précise marque/modèle
+        // (affichée à l'utilisateur) mais le prix neuf y reste l'estimation
+        // IA (prix_neuf_estime, déjà demandée pour le garde-fou plus bas),
+        // sans appel supplémentaire — ça permet de garder les tarifs de
+        // base bas tout en réservant le "prix neuf constaté" à la formule
+        // Plus, quel que soit le forfait.
+        const canSearchRealNewPrice = !!isPlusEstimation;
+
         // Recherche du prix NEUF (vraies offres actuelles, moteur shopping)
         // en parallèle de la recherche d'occasion — seulement quand le
-        // modèle est identifié avec certitude, voir fetchNewPriceListings.
+        // modèle est identifié avec certitude ET que le forfait y donne
+        // droit, voir fetchNewPriceListings.
         const [listingsResult, newPriceRaw] = await Promise.all([
           fetchRealListings(searchTerm),
-          preciseSearchTerm ? fetchNewPriceListings(preciseSearchTerm + " neuf") : Promise.resolve([]),
+          preciseSearchTerm && canSearchRealNewPrice
+            ? fetchNewPriceListings(preciseSearchTerm + " neuf")
+            : Promise.resolve([]),
         ]);
         let { bySource, errors, total } = listingsResult;
         let newPricesReal = newPriceRaw
@@ -5355,12 +5427,13 @@ export default function App() {
           .filter((n) => typeof n === "number" && n > 0)
           .sort((a, b) => a - b);
 
-        // Google Shopping n'a presque rien remonté pour ce modèle (n'agrège
+        // Google Shopping n'a RIEN remonté du tout pour ce modèle (n'agrège
         // pas forcément Amazon/AliExpress) : on complète avec une recherche
-        // Amazon dédiée en secours, SEULEMENT dans ce cas précis — voir
-        // fetchAmazonPriceListings pour le choix de ne pas la lancer
-        // systématiquement (coût SerpAPI).
-        if (preciseSearchTerm && newPricesReal.length < 2) {
+        // Amazon dédiée en secours, SEULEMENT dans ce cas précis (0 résultat,
+        // pas juste "peu") et seulement pour les forfaits qui ont déjà droit
+        // à la recherche de prix neuf réelle — voir fetchAmazonPriceListings
+        // pour le choix de ne pas la lancer systématiquement (coût SerpAPI).
+        if (preciseSearchTerm && canSearchRealNewPrice && newPricesReal.length === 0) {
           const amazonRaw = await fetchAmazonPriceListings(preciseSearchTerm);
           const amazonPrices = amazonRaw
             .map((r) => r.extracted_price)
@@ -5368,12 +5441,12 @@ export default function App() {
           newPricesReal = [...newPricesReal, ...amazonPrices].sort((a, b) => a - b);
         }
 
-        // Recherche précise trop pauvre en résultats (modèle rare, peu
-        // d'annonces d'occasion pour CE modèle précis) : on complète avec
-        // la recherche générique plutôt que de se retrouver avec trop peu
-        // de comparables — les annonces déjà trouvées restent prioritaires,
-        // celles-ci ne font que compléter (dédoublonnage par lien).
-        if (preciseSearchTerm && total < 2 && genericSearchTerm && genericSearchTerm !== preciseSearchTerm) {
+        // Recherche précise VRAIMENT vide (0 résultat — modèle rare, aucune
+        // annonce d'occasion pour CE modèle précis) : on complète avec la
+        // recherche générique plutôt que de n'avoir aucun comparable — les
+        // annonces déjà trouvées restent prioritaires, celles-ci ne font
+        // que compléter (dédoublonnage par lien).
+        if (preciseSearchTerm && total === 0 && genericSearchTerm && genericSearchTerm !== preciseSearchTerm) {
           const fallbackListings = await fetchRealListings(genericSearchTerm);
           const existingLinks = new Set(
             [...bySource.leboncoin, ...bySource.vinted, ...bySource.ebay, ...bySource.ebaySold]
@@ -5641,6 +5714,7 @@ export default function App() {
               ? null
               : applyBrocanteDiscount(extra.prix_brocante, guarded.prix_bas),
             prix_neuf: prixNeuf,
+            prix_neuf_real_attempted: canSearchRealNewPrice,
             conseil: extra.conseil,
             alerte: guarded.alerte,
             facilite_vente: typeof extra.facilite_vente === "number" ? extra.facilite_vente : null,
@@ -5714,6 +5788,10 @@ export default function App() {
             fallback.prix_neuf_estime > 0
               ? { valeur: fallback.prix_neuf_estime, constate: false, nb_offres: 0 }
               : null,
+          // Jamais tenté dans ce repli (aucune annonce trouvée du tout,
+          // voir le commentaire au-dessus), que l'estimation soit Plus ou
+          // non — le message affiché reste donc toujours le même ici.
+          prix_neuf_real_attempted: false,
           alerte: fbGuarded.alerte,
           facilite_vente: typeof fallback.facilite_vente === "number" ? fallback.facilite_vente : null,
           rarete: fbRarete,
@@ -5904,12 +5982,77 @@ export default function App() {
   }
 
   // Bloc réutilisé à deux endroits (panneau "Abonnement" + paywall quota
-  // atteint) : stepper +/- pour choisir la quantité, prix live (0,30 €
-  // pièce, sans remise) et rappel du bonus "10 offertes tous les 100".
+  // atteint) : un forfait = 2 boutons, la version normale (prix neuf =
+  // estimation IA) et sa version "Plus" juste en dessous (prix neuf réel
+  // constaté, voir PLANS plus haut pour les tarifs et canSearchRealNewPrice
+  // dans runEstimationCore pour ce que ça change concrètement).
+  function renderPlanButtons(plan, enabled) {
+    return (
+      <div key={plan.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <button
+          className="btn-primary"
+          onClick={() => (enabled ? startCheckout(plan.key, false) : null)}
+          disabled={!enabled || checkoutLoading !== null}
+          style={{ justifyContent: "space-between", width: "100%", opacity: enabled ? 1 : 0.6 }}
+        >
+          <span style={{ textAlign: "left" }}>
+            <span style={{ display: "block" }}>
+              {plan.label} — {plan.quota}
+              {t("plan_per_month_suffix")}
+            </span>
+            {plan.bonus > 0 && (
+              <span style={{ display: "block", fontSize: 11, opacity: 0.85 }}>
+                + {plan.bonus} {t("subscription_bonus_suffix")}
+              </span>
+            )}
+          </span>
+          <span>
+            {checkoutLoading === plan.key ? (
+              <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+            ) : (
+              plan.price
+            )}
+          </span>
+        </button>
+        <button
+          className="btn-ghost"
+          onClick={() => (enabled ? startCheckout(plan.key, true) : null)}
+          disabled={!enabled || checkoutLoading !== null}
+          style={{
+            justifyContent: "space-between",
+            width: "100%",
+            opacity: enabled ? 1 : 0.6,
+            fontSize: 11,
+            padding: "6px 10px",
+            borderColor: pt.ghostBorder,
+            color: pt.ghostColor,
+            background: pt.ghostBg,
+          }}
+        >
+          <span style={{ textAlign: "left" }}>
+            {plan.label} Plus — {t("plan_plus_badge")}
+          </span>
+          <span>
+            {checkoutLoading === plan.key + "_plus" ? (
+              <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />
+            ) : (
+              plan.pricePlus
+            )}
+          </span>
+        </button>
+      </div>
+    );
+  }
+
+  // Bloc réutilisé à deux endroits (panneau "Abonnement" + paywall quota
+  // atteint) : toggle normal/Plus, stepper +/- pour choisir la quantité,
+  // prix live (0,30 € ou 0,40 € pièce en Plus, sans remise par ailleurs) et
+  // rappel du bonus "10 offertes tous les 100".
   function renderCreditPurchaseBlock() {
     const bonus = Math.floor(creditQuantity / 100) * CREDIT_BONUS_PER_HUNDRED;
     const total = creditQuantity + bonus;
-    const priceLabel = (creditQuantity * CREDIT_UNIT_PRICE).toFixed(2).replace(".", ",") + " €";
+    const unitPrice = creditPlus ? CREDIT_UNIT_PRICE_PLUS : CREDIT_UNIT_PRICE;
+    const priceLabel = (creditQuantity * unitPrice).toFixed(2).replace(".", ",") + " €";
     return (
       <div style={{ borderTop: pt.dashedBorder, paddingTop: 14, marginTop: 14 }}>
         <p className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 0, marginBottom: 2 }}>
@@ -5918,6 +6061,36 @@ export default function App() {
         <p className="mono" style={{ fontSize: 10.5, color: pt.subText, marginTop: 0, marginBottom: 10, opacity: 0.85 }}>
           {t("credits_section_subtitle")}
         </p>
+        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          <button
+            type="button"
+            onClick={() => setCreditPlus(false)}
+            className={creditPlus ? "btn-ghost" : "btn-primary"}
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              fontSize: 11,
+              padding: "6px 8px",
+              ...(creditPlus ? { borderColor: pt.ghostBorder, color: pt.ghostColor, background: pt.ghostBg } : {}),
+            }}
+          >
+            {t("credits_mode_normal")} ({CREDIT_UNIT_PRICE.toFixed(2).replace(".", ",")} €)
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreditPlus(true)}
+            className={creditPlus ? "btn-primary" : "btn-ghost"}
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              fontSize: 11,
+              padding: "6px 8px",
+              ...(!creditPlus ? { borderColor: pt.ghostBorder, color: pt.ghostColor, background: pt.ghostBg } : {}),
+            }}
+          >
+            {t("credits_mode_plus")} ({CREDIT_UNIT_PRICE_PLUS.toFixed(2).replace(".", ",")} €)
+          </button>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
           <button
             type="button"
@@ -6597,6 +6770,25 @@ export default function App() {
                   <Tag size={11} strokeWidth={2.5} style={{ transform: "rotate(-8deg)" }} />+{profile.credits_achetes}
                 </span>
               )}
+              {profile.credits_achetes_plus > 0 && (
+                <span
+                  className="mono"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 3,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "#5B2E8C",
+                    background: "linear-gradient(135deg, #E8D5FF 0%, #C9A0FF 60%, #A66BF2 100%)",
+                    borderRadius: 999,
+                    padding: "3px 9px",
+                    boxShadow: "0 2px 6px rgba(102, 40, 178, 0.35)",
+                  }}
+                >
+                  <Tag size={11} strokeWidth={2.5} style={{ transform: "rotate(-8deg)" }} />+{profile.credits_achetes_plus} Plus
+                </span>
+              )}
             </div>
             <button
               onClick={() => {
@@ -7263,6 +7455,8 @@ export default function App() {
                         ? t("new_price_real_prefix") +
                           result.prix_neuf.nb_offres +
                           (result.prix_neuf.nb_offres > 1 ? t("new_price_real_suffix_plural") : t("new_price_real_suffix_singular"))
+                        : !result.prix_neuf_real_attempted
+                        ? t("new_price_estimated_upsell")
                         : t("new_price_estimated_note")}
                     </span>
                   </div>
@@ -9961,33 +10155,7 @@ export default function App() {
                 {t("subscription_plans_title")}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {PLANS.map((plan) => (
-                  <button
-                    key={plan.key}
-                    className="btn-primary"
-                    onClick={() => (user ? startCheckout(plan.key) : null)}
-                    disabled={!user || checkoutLoading !== null}
-                    style={{ justifyContent: "space-between", width: "100%", opacity: user ? 1 : 0.6 }}
-                  >
-                    <span style={{ textAlign: "left" }}>
-                      <span style={{ display: "block" }}>
-                        {plan.label} — {plan.quota}{t("plan_per_month_suffix")}
-                      </span>
-                      {plan.bonus > 0 && (
-                        <span style={{ display: "block", fontSize: 11, opacity: 0.85 }}>
-                          + {plan.bonus} {t("subscription_bonus_suffix")}
-                        </span>
-                      )}
-                    </span>
-                    <span>
-                      {checkoutLoading === plan.key ? (
-                        <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
-                      ) : (
-                        plan.price
-                      )}
-                    </span>
-                  </button>
-                ))}
+                {PLANS.map((plan) => renderPlanButtons(plan, !!user))}
               </div>
               <p className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 10, marginBottom: 0 }}>
                 {t("subscription_cancel_anytime")}
@@ -10141,33 +10309,7 @@ export default function App() {
                 {t("paywall_or_subscribe")}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {PLANS.map((plan) => (
-                  <button
-                    key={plan.key}
-                    className="btn-primary"
-                    onClick={() => startCheckout(plan.key)}
-                    disabled={checkoutLoading !== null}
-                    style={{ justifyContent: "space-between", width: "100%" }}
-                  >
-                    <span style={{ textAlign: "left" }}>
-                      <span style={{ display: "block" }}>
-                        {plan.label} — {plan.quota}{t("plan_per_month_suffix")}
-                      </span>
-                      {plan.bonus > 0 && (
-                        <span style={{ display: "block", fontSize: 11, opacity: 0.85 }}>
-                          + {plan.bonus} {t("subscription_bonus_suffix")}
-                        </span>
-                      )}
-                    </span>
-                    <span>
-                      {checkoutLoading === plan.key ? (
-                        <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
-                      ) : (
-                        plan.price
-                      )}
-                    </span>
-                  </button>
-                ))}
+                {PLANS.map((plan) => renderPlanButtons(plan, true))}
               </div>
               <p className="mono" style={{ fontSize: 11, color: pt.subText, marginTop: 10, marginBottom: 0 }}>
                 {t("subscription_cancel_anytime")}
