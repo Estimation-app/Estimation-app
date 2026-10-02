@@ -1,0 +1,8 @@
+{
+  "appId": "com.estim.app",
+  "appName": "Estim'",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
