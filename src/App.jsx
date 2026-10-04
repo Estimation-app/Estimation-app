@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Camera, Upload, Loader2, Tag, RotateCcw, History, Trash2, X, Mail, LogOut, Eye, EyeOff, Mic, MicOff, Sparkles, PlayCircle, CreditCard, Menu, Search, TrendingUp, TrendingDown, Globe, ChevronRight, ChevronLeft, ExternalLink, Moon, Share2, Trophy, Flame, Link2, Lock, Copy, Gift, BarChart3, Smile, User, Download, Plus, Minus } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import logoWordmarkLight from "./assets/logo-wordmark-light.png";
 import logoWordmarkDark from "./assets/logo-wordmark.png";
 // Fonds d'écran par affichage (générés avec Google Flow — Nano Banana Pro,
@@ -4522,6 +4524,87 @@ export default function App() {
     reader.readAsDataURL(file);
   }
 
+  // Redimensionne et prépare une image déjà sous forme de dataURL (utilisé
+  // par la capture caméra native, à la différence de handleFile qui part
+  // d'un objet File venant d'un <input type="file">).
+  async function setImageFromDataUrl(dataUrl) {
+    try {
+      const resp = await fetch(dataUrl);
+      const blob = await resp.blob();
+      if (window.createImageBitmap) {
+        const bitmap = await createImageBitmap(blob, {
+          resizeWidth: 900,
+          resizeQuality: "medium",
+        });
+        const canvas = document.createElement("canvas");
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(bitmap, 0, 0);
+        const outDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+        const base64 = outDataUrl.split(",")[1];
+        setImage({
+          dataUrl: outDataUrl,
+          mediaType: "image/jpeg",
+          base64,
+          debug: "redimensionnée (caméra native), " + Math.round((base64.length * 3) / 4 / 1024) + " Ko",
+        });
+        return;
+      }
+    } catch (err) {
+      // on tente le repli simple ci-dessous
+    }
+    const base64 = dataUrl.split(",")[1];
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    const match = dataUrl.match(/^data:([^;]+);base64,/);
+    let mediaType = match ? match[1] : "";
+    if (!allowed.includes(mediaType)) mediaType = "image/jpeg";
+    setImage({
+      dataUrl,
+      mediaType,
+      base64,
+      debug: "NON redimensionnée (repli caméra), " + Math.round((base64.length * 3) / 4 / 1024) + " Ko",
+    });
+  }
+
+  // Capture photo via l'appareil natif (iOS/Android, Capacitor) : propose
+  // nativement le choix "Appareil photo" / "Galerie" à l'utilisateur.
+  async function handleNativeCapture() {
+    setError(null);
+    setResult(null);
+    setResultTab("estimation");
+    setCorrectionOpen(false);
+    setListingsOpen(false);
+    setCorrectionInput("");
+    setAdText(null);
+    setAdLoading(false);
+    setAdError(null);
+    setAdCopied(false);
+    setAdGenCount(0);
+    setExtraAngles(null);
+    setExtraAnglesLoading(false);
+    setExtraAnglesError(null);
+    setExtraAnglesAttempted(false);
+    setStatus("idle");
+    setListingSeed(null);
+
+    try {
+      const photo = await CapacitorCamera.getPhoto({
+        quality: 75,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Prompt,
+      });
+      if (!photo?.dataUrl) return;
+      await setImageFromDataUrl(photo.dataUrl);
+    } catch (err) {
+      // L'utilisateur a annulé le sélecteur caméra/galerie : rien à faire.
+      if (err && /cancel/i.test(err.message || err.errorMessage || "")) return;
+      console.error("Capture photo native :", err);
+      setError(t("err_file_read") + " [" + (err && (err.message || err.errorMessage || String(err))) + "]");
+    }
+  }
+
   async function readBody(res) {
     if (res.body && res.body.getReader) {
       try {
@@ -6663,7 +6746,11 @@ export default function App() {
         </header>
 
         {!image && (
-          <label className="drop-zone" htmlFor="photo-input">
+          <label
+            className="drop-zone"
+            htmlFor="photo-input"
+            onClick={Capacitor.isNativePlatform() ? handleNativeCapture : undefined}
+          >
             {/* La mascotte plein cadre a été retirée (Dylan est revenu
                 dessus, septembre 2026) : l'avatar n'est plus jamais qu'une
                 icône, la zone photo garde toujours son interface de base. */}
@@ -6683,13 +6770,19 @@ export default function App() {
                   <Upload size={14} /> {t("drop_zone_choose_file")}
                 </span>
             </div>
-            <input
-              id="photo-input"
-              type="file"
-              accept="image/*"
-              onChange={handleFile}
-              style={{ display: "none" }}
-            />
+            {/* Sur mobile natif (iOS/Android via Capacitor), ce input ne
+                sert plus de déclencheur : le clic ouvre directement le
+                sélecteur caméra/galerie natif (handleNativeCapture
+                ci-dessus). On le garde pour le web (label htmlFor). */}
+            {!Capacitor.isNativePlatform() && (
+              <input
+                id="photo-input"
+                type="file"
+                accept="image/*"
+                onChange={handleFile}
+                style={{ display: "none" }}
+              />
+            )}
           </label>
         )}
 
